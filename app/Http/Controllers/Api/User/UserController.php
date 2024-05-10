@@ -1,0 +1,172 @@
+<?php
+
+namespace App\Http\Controllers\Api\User;
+
+use App\Http\Controllers\Api\Auth\Resources\AuthResource;
+use App\Http\Controllers\Api\User\Requests\CreateOrUpdateUserRequest;
+use App\Http\Controllers\Api\User\Requests\UpdateBasicInfoRequest;
+use App\Http\Controllers\Api\User\Requests\UpdateMyEmailRequest;
+use App\Http\Controllers\Api\User\Requests\UpdateMyPasswordRequest;
+use App\Http\Controllers\Api\User\Resources\UserResource;
+use App\Http\Controllers\Controller;
+use App\Models\AdminRole;
+use App\Models\User;
+use App\Services\UserService;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Hash;
+
+class UserController extends Controller
+{
+
+    /**
+     * Retrieves a paginated list of users based on the given request parameters.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function userList(Request $request): Response
+    {
+        $limit = $request->input('limit', 10);
+
+        $users = User::query()
+                    ->select('id','name','email','username','admin_role_id','logo','phone','workspace','status')
+                    ->when(! empty($request->search_txt), function ($query) use ($request) {
+                        return $query->whereAny(['name','email','username'], 'like', "%{$request->search_txt}%");
+                    })
+                    ->with('adminRole:id,name')
+                    ->where('role', 'admin')
+                    ->latest('id')
+                    ->paginate($limit);
+
+        return withSuccessResourceList(UserResource::collection($users));
+    }
+
+    /**
+     * Creates a new user based on the provided request data.
+     *
+     * @param CreateOrUpdateUserRequest $request
+     * @return Response
+     */
+    public function createUser(CreateOrUpdateUserRequest $request): Response
+    {
+        $user = User::create($request->validated());
+        return withSuccess(new UserResource($user->load('adminRole:id,name')), 'User created successfully');
+    }
+
+    /**
+     * Retrieves and shows the user information based on the provided user ID.
+     * @param Request $request
+     * @param int $userId
+     * @param UserService $userService
+     * @return Response
+     */
+    public function showUser(Request $request, int $userId, UserService $userService): Response
+    {
+        $user = $userService->getSingleUser($userId);
+        if(empty($user)){
+            return withError('User not found', 404);
+        }
+        return withSuccess(new UserResource($user));
+    }
+
+    /**
+     * Updates a user based on the provided user ID and request data.
+     *
+     * @param CreateOrUpdateUserRequest $request
+     * @param int $userId
+     * @param UserService $userService
+     * @return Response
+     */
+    public function updateUser(CreateOrUpdateUserRequest $request, int $userId, UserService $userService): Response
+    {
+        $user = $userService->getSingleUser($userId);
+        if(empty($user)){
+            return withError('User not found', 404);
+        }
+
+        $formattedData = $userService->formatRequestData($request->validated());
+
+        $user->update($formattedData);
+        return withSuccess(new UserResource($user->refresh()), 'User updated successfully');
+    }
+
+    /**
+     * Deletes a user with the given user ID.
+     *
+     * @param int $userId
+     * @return Response
+     */
+    public function deleteUser(int $userId): Response
+    {
+        $user = User::find($userId);
+        if(empty($user)){
+            return withError('User not found', 404);
+        }
+        $user->delete();
+        return withSuccess(message: 'User deleted successfully');
+    }
+
+    /**
+     * Updates the user's basic information.
+     *
+     * @param UpdateBasicInfoRequest $request
+     * @param UserService $userService
+     * @return Response
+     */
+    public function updateMyInfo(UpdateBasicInfoRequest $request, UserService $userService): Response
+    {
+        $user = $userService->getSingleUser($request->user()->id);
+        if(empty($user)){
+            return withError('User not found', 404);
+        }
+
+        $user->update($request->validated());
+        return withSuccess(new AuthResource($user->refresh()), 'User updated successfully');
+    }
+
+    /**
+     * Updates the user's email based on the provided request data.
+     *
+     * @param UpdateMyEmailRequest $request
+     * @param UserService $userService
+     * @return Response
+     */
+    public function updateMyEmail(UpdateMyEmailRequest $request, UserService $userService): Response
+    {
+        $user = $userService->getSingleUser($request->user()->id);
+        if(empty($user)){
+            return withError('User not found', 404);
+        }
+
+        if(! Hash::check($request->password, $user->password)){
+            return withError('The provided credentials are incorrect.', 400);
+        }
+
+        $user->update(['email' => $request->email]);
+        return withSuccess(new AuthResource($user->refresh()), 'Email updated successfully');
+    }
+
+    /**
+     * Updates the user's password based on the provided request data.
+     *
+     * @param UpdateMyPasswordRequest $request
+     * @param UserService $userService
+     * @return Response
+     */
+    public function updateMyPassword(UpdateMyPasswordRequest $request, UserService $userService): Response
+    {
+        $user = $userService->getSingleUser($request->user()->id);
+        if(empty($user)){
+            return withError('User not found', 404);
+        }
+
+        if(! Hash::check($request->old_password, $user->password)){
+            return withError('The provided credentials are incorrect.', 400);
+        }
+
+        $user->update(['password' => $request->password]);
+        return withSuccess(new AuthResource($user->refresh()), 'Password updated successfully');
+    }
+
+}
