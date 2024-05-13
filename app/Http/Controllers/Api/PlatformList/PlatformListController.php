@@ -22,11 +22,22 @@ class PlatformListController extends Controller
         $limit = $request->input('limit', 10);
         $orderBy = $request->input('order_by');
         $orderIn = $request->input('order_in');
+        $platformSourceIds = $request->input('platform_source_ids', []);
 
         $platforms = PlatformList::query()
                         ->select('id', 'tag', 'name', 'campaign_name', 'source', 'status', 'created_at')
                         ->when(! empty($request->search_txt), function ($query) use ($request) {
-                            return $query->where('tag', 'like', "%{$request->search_txt}%");
+                            return $query->whereAny([
+                                'name',
+                                'campaign_name',
+                                'source'
+                            ], 'like', '%' . $request->search_txt . '%');
+                        })
+                        ->when(! empty($request->status), function ($query) use ($request) {
+                            return $query->where('status', $request->status);
+                        })
+                        ->when(! empty($platformSourceIds) && is_array($platformSourceIds), function ($query) use ($platformSourceIds) {
+                            return $query->whereIn('id', $platformSourceIds);
                         })
                         ->when(! empty($orderBy) && ! empty($orderIn), function ($query) use ($orderBy, $orderIn) {
                             return $query->orderBy($orderBy, $orderIn);
@@ -36,6 +47,24 @@ class PlatformListController extends Controller
                         ->paginate($limit);
 
         return withSuccessResourceList(PlatformListResource::collection($platforms));
+    }
+
+    /**
+     * Retrieves a list of sources based on the search text provided in the request.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function getSourceList(Request $request): Response
+    {
+        $platformSource = PlatformList::query()
+                            ->select('id as value', 'source as label')
+                            ->when(! empty($request->search_txt), function ($query) use ($request) {
+                                return $query->where('source', 'like', "%{$request->search_txt}%");
+                            })
+                            ->limit(100)
+                            ->get();
+        return withSuccess($platformSource);
     }
 
 }
