@@ -10,7 +10,5 @@ Route::prefix('permission')->as('permission.')
     ->group(function ($route) {
         $route->get('menus/{roleId}', 'getMenus')->name('menus');
         $route->post('update-permission/{roleId}', 'updatePermission')->name('update-permission');
-        // $route->get('get-permission', 'getPermission')->name('get-permission');
+        $route->get('get-permission', 'getPermission')->name('get-permission');
     });
-
-Route::get('/permission/get-permission', [PermissionController::class, 'getPermission'])->name('permission.get-permission');

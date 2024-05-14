@@ -19,6 +19,8 @@ class PlatformListResource extends JsonResource
             'tag' => $this->tag,
             'name' => $this->name,
             'campaign_name' => $this->campaign_name,
+            //format the amount to 2 decimal places
+            'total_leads' => number_format($this->total_leads, 2),
             'source' => $this->source,
             'status' => $this->status,
             'created_at' => $this->created_at->toDateTimeString()
