@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::table('platform_datas', function (Blueprint $table) {
             $table->unsignedBigInteger('buyer_id')->nullable()->after('is_retainer')->index();
             $table->unsignedBigInteger('buyer_integration_id')->nullable()->after('is_retainer');
-            $table->string('is_sold')->after('is_retainer')->default(0);
+            $table->boolean('is_sold')->after('is_retainer')->default(0);
             $table->unsignedBigInteger('affiliate_specs_id')->nullable()->after('is_retainer');
             $table->string('sold_type')->nullable()->after('retained_date');
             $table->string('page_source')->nullable()->after('retained_date');

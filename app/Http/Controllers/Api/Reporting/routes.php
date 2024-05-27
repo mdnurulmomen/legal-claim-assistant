@@ -1,0 +1,12 @@
+<?php
+
+use App\Http\Controllers\Api\Reporting\ReportingController;
+use Illuminate\Support\Facades\Route;
+
+
+Route::prefix('report')->as('report.')
+    ->controller(ReportingController::class)
+    ->middleware('auth:sanctum')
+    ->group(function ($route) {
+        $route->get('list', 'reportingList')->name('list');
+    });
