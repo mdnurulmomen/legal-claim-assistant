@@ -29,7 +29,22 @@ class ReportingService
             $orderIn = '';
         }
 
-        $validOrderByColumns = ['platform_name', 'revenue', 'revenue_per_lead', 'profit', 'average_profit', 'affiliate_payout', 'affiliate_average_payout'];
+        $validOrderByColumns = [
+            'platform_name',
+            'posted',
+            'accepted',
+            'rejected',
+            'accepted_cpl',
+            'acceptance_rate',
+            'acceptance_rate',
+            'revenue',
+            'profit',
+            'affiliate_payout',
+            'revenue_per_lead',
+            'average_profit',
+            'affiliate_average_payout'
+        ];
+
         if (! in_array($orderBy, $validOrderByColumns)) {
             $orderBy = '';
         }

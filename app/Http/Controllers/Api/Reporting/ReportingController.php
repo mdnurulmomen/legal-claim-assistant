@@ -53,6 +53,9 @@ class ReportingController extends Controller
                                 FORMAT((sub.accepted_cpl / NULLIF(sub.posted, 0)) * 100, 2) as acceptance_rate_cpl
                             ")
                             ->leftJoin('platform_lists as pl', 'sub.list_id', '=', 'pl.id')
+                            ->when(! empty($orderBy) && ! empty($orderIn), function ($query) use ($orderBy, $orderIn) {
+                                return $query->orderBy($orderBy, $orderIn);
+                            })
                             ->paginate($limit);
 
         return withSuccessResourceList(ReportingResource::collection($leads));
