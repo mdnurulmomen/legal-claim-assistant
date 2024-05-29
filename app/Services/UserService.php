@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\User;
-use Illuminate\Contracts\Database\Query\Builder;
 
 class UserService
 {
