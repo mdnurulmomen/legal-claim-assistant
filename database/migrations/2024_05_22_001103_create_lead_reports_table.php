@@ -16,9 +16,10 @@ return new class extends Migration
             $table->unsignedBigInteger('affiliate_id')->nullable()->index();
             $table->unsignedBigInteger('lead_id')->index()->nullable();
             $table->unsignedBigInteger('list_id')->index();
-            $table->unsignedBigInteger('buyer_id')->index();
+            $table->boolean('is_posted')->index()->default(true);
+            $table->unsignedBigInteger('buyer_id')->index()->nullable();
             $table->string('affid')->index()->nullable();
-            $table->unsignedBigInteger('buyer_integration_id');
+            $table->unsignedBigInteger('buyer_integration_id')->nullable();
             $table->unsignedBigInteger('affiliate_specs_id')->nullable();
             $table->string('sold_type')->nullable();
             $table->boolean('is_retainer')->default(false);
