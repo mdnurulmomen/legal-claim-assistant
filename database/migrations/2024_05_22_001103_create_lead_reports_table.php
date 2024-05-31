@@ -21,6 +21,7 @@ return new class extends Migration
             $table->unsignedBigInteger('affiliate_specs_id')->nullable();
             $table->string('sold_type')->nullable();
             $table->boolean('is_retainer')->default(false);
+            $table->boolean('is_custom')->default(false);
             $table->boolean('is_paid')->default(false);
             $table->boolean('is_internal')->default(false);
             $table->decimal('lead_revenue')->default(0);
