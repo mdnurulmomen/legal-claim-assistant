@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('lead_reports', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('affiliate_id')->nullable()->index();
-            $table->unsignedBigInteger('lead_id')->index();
+            $table->unsignedBigInteger('lead_id')->index()->nullable();
             $table->unsignedBigInteger('list_id')->index();
             $table->unsignedBigInteger('buyer_id')->index();
             $table->string('affid')->index()->nullable();
