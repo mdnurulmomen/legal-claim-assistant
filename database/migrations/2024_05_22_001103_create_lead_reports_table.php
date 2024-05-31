@@ -29,6 +29,8 @@ return new class extends Migration
             $table->decimal('lead_profit')->default(0);
             $table->decimal('affiliate_margin')->default(0);
             $table->decimal('profit_margin')->default(0);
+            $table->string('page_source')->nullable()->after('retained_date');
+            $table->string('affm_source_id')->nullable()->after('retained_date');
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent();
         });
