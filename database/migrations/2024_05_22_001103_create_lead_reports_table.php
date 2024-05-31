@@ -17,6 +17,7 @@ return new class extends Migration
             $table->unsignedBigInteger('lead_id')->index();
             $table->unsignedBigInteger('list_id')->index();
             $table->unsignedBigInteger('buyer_id')->index();
+            $table->string('affid')->index()->nullable();
             $table->unsignedBigInteger('buyer_integration_id');
             $table->unsignedBigInteger('affiliate_specs_id')->nullable();
             $table->string('sold_type')->nullable();
