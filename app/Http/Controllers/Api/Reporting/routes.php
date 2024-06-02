@@ -9,4 +9,5 @@ Route::prefix('report')->as('report.')
     ->middleware('auth:sanctum')
     ->group(function ($route) {
         $route->get('list', 'reportingList')->name('list');
+        $route->get('report-tabs', 'getReportingTabs')->name('get-reporting-tabs');
     });

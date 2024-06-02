@@ -24,6 +24,9 @@ class LeadReport extends Model
         'affiliate_payout',
         'lead_profit',
         'affiliate_margin',
-        'profit_margin'
+        'profit_margin',
+        'is_posted',
+        'page_source',
+        'affm_source_id'
     ];
 }
