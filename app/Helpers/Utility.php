@@ -14,7 +14,6 @@ class Utility
         0 => 'Inactive'
     ];
 
-
     /**
      * Define user status
      *
@@ -27,6 +26,27 @@ class Utility
         'partner' => 'Partner',
         'advertiser' => 'Advertiser',
         'affiliate' => 'Affiliate'
+    ];
+
+    /**
+     * Define Report Tabs
+     *
+     * @var array
+     */
+    public static $reportTabs = [
+        'list_id' => 'List',
+        'affiliate_id' => 'Affiliate',
+        'buyer_id' => 'Buyer',
+        'affid' => 'AffId'
+    ];
+
+    /**
+     * Define Page Slugs
+     *
+     * @var array
+     */
+    public static $pageSlugs = [
+        'report' => 'Report'
     ];
 
 }
