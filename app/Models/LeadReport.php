@@ -14,6 +14,7 @@ class LeadReport extends Model
         'lead_id',
         'list_id',
         'buyer_id',
+        'affid',
         'buyer_integration_id',
         'affiliate_specs_id',
         'sold_type',

@@ -15,7 +15,10 @@ class ReportingResource extends JsonResource
     public function toArray($request): array
     {
         return [
-            'platform_name' => $this->platform_name,
+            'platform_name' => $this->platform_name ?? '',
+            'buyer_name' => $this->buyer_name ?? '',
+            'affiliate_name' => $this->affiliate_name ?? '',
+            'affid' => $this->affid ?? '',
             'posted' => $this->posted,
             'accepted' => $this->accepted,
             'rejected' => $this->rejected,
