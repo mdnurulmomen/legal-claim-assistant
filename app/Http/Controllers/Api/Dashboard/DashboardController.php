@@ -94,4 +94,86 @@ class DashboardController extends Controller
         ]);
     }
 
+    /**
+     * Get top buyers for dashboard
+     *
+     * @return Response
+     */
+    public function getTopBuyers(): Response
+    {
+        $topBuyers = DB::table('lead_reports')
+            ->join('buyers', 'lead_reports.buyer_id', '=', 'buyers.id')
+            ->select('buyers.name', 'buyers.company_name as companyName', DB::raw('count(case when lead_id is not null then 1 end) as totalConvertedLeads, sum(lead_revenue) as totalRevenue'))
+            ->whereBetween('lead_reports.created_at', [now()->startOfMonth(), now()->endOfDay()])
+            ->groupBy('buyers.id')
+            ->orderBy('totalRevenue', 'desc')
+            ->limit(5)
+            ->get();
+
+        return withSuccess($topBuyers);
+    }
+
+    /**
+     * Get top affiliates for dashboard
+     *
+     * @return Response
+     */
+    public function getTopAffiliates(): Response
+    {
+        $topAffiliates = DB::table('lead_reports')
+            ->join('users', 'lead_reports.affiliate_id', '=', 'users.id')
+            ->leftJoin('affiliates', 'lead_reports.affiliate_id', '=', 'affiliates.user_id')
+            ->select('users.name', 'affiliates.company_name as companyName', DB::raw('count(case when is_posted = 1 then 1 end) as totalPosted, count(case when buyer_id is not null and lead_id is not null then 1 end) as totalConvertedLeads, sum(affiliate_payout) as totalEarned'))
+            ->whereBetween('lead_reports.created_at', [now()->startOfMonth(), now()->endOfDay()])
+            ->groupBy('affiliates.id')
+            ->orderBy('totalEarned', 'desc')
+            ->limit(5)
+            ->get();
+
+        $topAffiliates = collect($topAffiliates)->map(function ($item) {
+            return [
+                'name' => $item->name,
+                'companyName' => $item->companyName,
+                'totalPosted' => $item->totalPosted,
+                'totalConvertedLeads' => $item->totalConvertedLeads,
+                'AR' => $item->totalPosted > 0 ? $item->totalConvertedLeads / $item->totalPosted * 100 : 0,
+                'totalEarned' => $item->totalEarned,
+            ];
+        });
+
+
+        return withSuccess($topAffiliates);
+    }
+
+    /**
+     * Get top lists for dashboard
+     *
+     * @return Response
+     */
+    public function getTopLists(): Response
+    {
+        $topLists = DB::table('lead_reports')
+            ->join('platform_lists', 'lead_reports.list_id', '=', 'platform_lists.id')
+            ->select('platform_lists.name', DB::raw('count(case when is_posted = 1 then 1 end) as totalPosted, count(case when buyer_id is not null and lead_id is not null then 1 end) as totalConvertedLeads, count(case when sold_type = "CPL" then 1 end) as totalCPLConvertedLeads, sum(lead_revenue) as totalRevenue, sum(lead_profit) as totalProfit'))
+            ->whereBetween('lead_reports.created_at', [now()->startOfMonth(), now()->endOfDay()])
+            ->groupBy('platform_lists.id')
+            ->orderBy('totalRevenue', 'desc')
+            ->limit(5)
+            ->get();
+
+        $topLists = collect($topLists)->map(function ($item) {
+            return [
+                'name' => $item->name,
+                'totalPosted' => $item->totalPosted,
+                'totalConvertedLeads' => $item->totalConvertedLeads,
+                'AR' => $item->totalPosted > 0 ? $item->totalConvertedLeads / $item->totalPosted * 100 : 0,
+                'AR_CPL' => $item->totalPosted > 0 ? $item->totalCPLConvertedLeads / $item->totalPosted * 100 : 0,
+                'totalRevenue' => $item->totalRevenue,
+                'totalProfit' => $item->totalProfit,
+            ];
+        });
+
+        return withSuccess($topLists);
+    }
+
 }
