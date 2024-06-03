@@ -20,8 +20,9 @@ class PlatformListResource extends JsonResource
             'name' => $this->name,
             'campaign_name' => $this->campaign_name,
             'total_leads' => number_format($this->total),
-            'source' => $this->source,
+            'sources' => array_unique(array_merge([$this->source] ?? [], $this->options['additional_sources'] ?? [])),
             'status' => $this->status,
+            'updated_at' => $this->updated_at->diffForHumans(),
             'created_at' => $this->created_at->toDateTimeString()
         ];
     }

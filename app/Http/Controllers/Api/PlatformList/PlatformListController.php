@@ -20,12 +20,12 @@ class PlatformListController extends Controller
     public function platformList(Request $request): Response
     {
         $limit = $request->input('limit', 10);
-        $orderBy = $request->input('order_by');
+        $orderBy = $request->input('order_by') == 'total_leads' ? 'total' : $request->input('order_by');
         $orderIn = $request->input('order_in');
         $platformSourceIds = $request->input('platform_source_ids', []);
 
         $platforms = PlatformList::query()
-                        ->select('id', 'tag', 'name', 'total', 'campaign_name', 'source', 'status', 'created_at')
+                        ->select('id', 'tag', 'name', 'total', 'campaign_name', 'options', 'source', 'status', 'updated_at', 'created_at')
                         ->when(! empty($request->search_txt), function ($query) use ($request) {
                             return $query->whereAny([
                                 'name',
@@ -42,7 +42,7 @@ class PlatformListController extends Controller
                         ->when(! empty($orderBy) && ! empty($orderIn), function ($query) use ($orderBy, $orderIn) {
                             return $query->orderBy($orderBy, $orderIn);
                         }, function ($query) {
-                            return $query->orderBy('id', 'desc');
+                            return $query->orderBy('updated_at', 'desc');
                         })
                         ->paginate($limit);
 
