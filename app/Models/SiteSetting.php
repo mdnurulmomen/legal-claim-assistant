@@ -9,6 +9,10 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 class SiteSetting extends Model
 {
     use HasFactory;
+
+    //define table name
+    protected $table = 'page_settings';
+
     protected $fillable = [
         'page',
         'user_id',

@@ -12,13 +12,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('site_settings', function (Blueprint $table) {
+        Schema::create('page_settings', function (Blueprint $table) {
             $table->id();
             $table->string('page');
             $table->json('data')->nullable();
             $table->foreignIdFor(User::class)->nullable()->constrained('users');
             $table->string('type')->nullable();
-            $table->index(['page', 'type'], 'site_settings_page_type_index');
+            $table->index(['page', 'type'], 'page_settings_page_type_index');
             $table->timestamps();
         });
     }
