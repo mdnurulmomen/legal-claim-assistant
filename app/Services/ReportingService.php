@@ -30,6 +30,9 @@ class ReportingService
         }
 
         $validOrderByColumns = [
+            'affid',
+            'buyer_name',
+            'affiliate_name',
             'platform_name',
             'posted',
             'accepted',
@@ -49,7 +52,7 @@ class ReportingService
             $orderBy = '';
         }
 
-        return [$orderBy, $orderIn];
+        return ["sub.$orderBy", $orderIn];
     }
 
     /**
@@ -89,6 +92,66 @@ class ReportingService
                 'checked' => $key === 'list_id'
             ];
         }, $tabs, array_keys($tabs));
+    }
+
+    public function formatFilters(Request $request): array
+    {
+        $filters = $request->input('filters', '');
+        if(empty($filters)){
+            return [];
+        }
+
+        $filters = json_decode($filters, true);
+
+        $formattedRules = collect($filters)->map(function ($item) {
+            return collect($item)->map(function ($subitem) {
+                return $this->convertConditionToSql($subitem);
+            });
+        });
+
+        return $formattedRules->toArray();
+    }
+
+    public function convertConditionToSql($conditions)
+    {
+        $condition = match($conditions['rule']){
+            'contains' => $this->makeCondition($conditions['column'], 'like', '%' . $conditions['value'] . '%'),
+            'does_not_contain' => $this->makeCondition($conditions['column'], 'not like', '%' . $conditions['value'] . '%'),
+            'begins_with' => $this->makeCondition($conditions['column'], 'like', $conditions['value'] . '%'),
+            'does_not_begin_with' => $this->makeCondition($conditions['column'], 'not like', $conditions['value'] . '%'),
+            'greater_than' => $this->makeCondition($conditions['column'], '>', $conditions['value']),
+            'less_than' => $this->makeCondition($conditions['column'], '<', $conditions['value']),
+            'equals' => $this->makeCondition($conditions['column'], '=', $conditions['value']),
+            'not_equals' => $this->makeCondition($conditions['column'], '!=', $conditions['value']),
+            'exists' => $this->makeCondition($conditions['column'], 'exists'),
+            'does_not_exist' => $this->makeCondition($conditions['column'], 'does_not_exist'),
+            default => []
+        };
+        return $condition;
+    }
+
+    public function makeCondition($column, $operator, $value = null)
+    {
+        return [
+            'column' => $column,
+            'operator' => $operator,
+            'value' => $value
+        ];
+    }
+
+    public function getConditionMethod(int $index, string $type = null)
+    {
+        $method = $index == 0 ? 'where' : 'orWhere';
+
+        if($type){
+            $type == 'exists' ? ($method .= 'NotNull') : ($method .= 'Null');
+        }
+
+        return $method;
+    }
+
+    public function getConditionType(string $operator){
+        return in_array($operator, ['exists', 'does_not_exist']) ? $operator : null;
     }
 
 }
