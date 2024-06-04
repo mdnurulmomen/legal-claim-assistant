@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('platform_lists', function (Blueprint $table) {
+/*         Schema::create('platform_lists', function (Blueprint $table) {
             $table->id();
             $table->string('tag')->index();
             $table->string('name');
@@ -26,7 +26,7 @@ return new class extends Migration
             $table->json('insights')->nullable();
             $table->string('status')->default('Active')->index()->nullable();
             $table->timestamps();
-        });
+        }); */
     }
 
     /**
@@ -34,6 +34,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('platform_lists');
+        // Schema::dropIfExists('platform_lists');
     }
 };
