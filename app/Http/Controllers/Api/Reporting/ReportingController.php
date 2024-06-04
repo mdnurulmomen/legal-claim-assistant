@@ -34,10 +34,12 @@ class ReportingController extends Controller
         $subQuery = LeadReport::selectRaw("
                         pl.name as platform_name,
                         buyers.name as buyer_name,
+                        integrations.name as integration_name,
                         affiliate.name as affiliate_name,
                         lead_reports.affid,
                         lead_reports.list_id,
                         lead_reports.buyer_id,
+                        lead_reports.buyer_integration_id,
                         lead_reports.affiliate_id,
                         COUNT(CASE WHEN lead_reports.is_posted = 1 THEN 1 END) as posted,
                         COUNT(CASE WHEN lead_reports.buyer_id IS NOT NULL AND lead_reports.is_posted = 1 THEN 1 END) as accepted,
@@ -52,12 +54,16 @@ class ReportingController extends Controller
                     ")
                     ->leftJoin('platform_lists as pl', 'lead_reports.list_id', '=', 'pl.id')
                     ->leftJoin('buyers', 'lead_reports.buyer_id', '=', 'buyers.id')
+                    ->leftJoin('integrations', 'lead_reports.buyer_integration_id', '=', 'integrations.id')
                     ->leftJoin('users as affiliate', 'lead_reports.affiliate_id', '=', 'affiliate.id')
                     ->when(in_array('lead_reports.affid', $groupBy), function ($query) {
                         return $query->whereNotNull('lead_reports.affid');
                     })
                     ->when(in_array('lead_reports.buyer_id', $groupBy), function ($query) {
                         return $query->whereNotNull('lead_reports.buyer_id');
+                    })
+                    ->when(in_array('lead_reports.buyer_integration_id', $groupBy), function ($query) {
+                        return $query->whereNotNull('lead_reports.buyer_integration_id');
                     })
                     ->when(in_array('lead_reports.list_id', $groupBy), function ($query) {
                         return $query->whereNotNull('lead_reports.list_id');
@@ -73,9 +79,9 @@ class ReportingController extends Controller
                             }
                         });
                     })
-                    ->when(! empty($request->start_date) && ! empty($request->end_date), function ($query) use ($request) {
-                        return $query->whereBetween('lead_reports.created_at', [$request->start_date, $request->end_date]);
-                    })
+                    // ->when(! empty($request->start_date) && ! empty($request->end_date), function ($query) use ($request) {
+                    //     return $query->whereBetween('lead_reports.created_at', [$request->start_date, $request->end_date]);
+                    // })
                     ->groupBy($groupBy);
 
         $leads = DB::table(DB::raw("({$subQuery->toSql()}) as sub"))
@@ -135,8 +141,9 @@ class ReportingController extends Controller
         $buyers = DB::table('buyers')->select('id as value', 'name as label')->get();
         $affiliates = User::select('id as value', 'name as label')->where('role', 'affiliate')->get();
         $affIds = LeadReport::select('affid as value', 'affid as label')->whereNotNull('affid')->groupBy('affid')->get();
+        $buyer_integrations = DB::table('integrations')->select('id as value', 'name as label')->get();
 
-        return withSuccess(compact('lists', 'buyers', 'affiliates', 'affIds'));
+        return withSuccess(compact('lists', 'buyers', 'buyer_integrations', 'affiliates', 'affIds'));
     }
 
 }

@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\SiteSetting;
 use App\Http\Controllers\Api\SiteSetting\Requests\SiteSettingRequest;
 use App\Http\Controllers\Api\SiteSetting\Resources\SiteSettingResource;
 use App\Http\Controllers\Controller;
-use App\Models\SiteSetting;
+use App\Models\PageSetting;
 use App\Services\SettingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -22,7 +22,7 @@ class SiteSettingController extends Controller
      */
     public function getSiteSettings(Request $request, $slug): Response
     {
-        $settings = SiteSetting::where('page', $slug)->get();
+        $settings = PageSetting::where('page', $slug)->get();
         return withSuccess(SiteSettingResource::collection($settings));
     }
 
@@ -37,7 +37,7 @@ class SiteSettingController extends Controller
 
         $formattedData = $settingService->formatRequestData($request->validated());
 
-        $setting = SiteSetting::updateOrCreate(
+        $setting = PageSetting::updateOrCreate(
                             ['page' => $request->page, 'type' => $request->type, 'user_id' => $formattedData['user_id']],
                             $formattedData
                         );
