@@ -247,8 +247,8 @@ class ReportingController extends Controller
                         $formattedColumn = 'DATE_FORMAT(lead_reports.created_at, "%M, %Y")';
                     break;
                 default:
-                    $groupBy = 'YEAR(lead_reports.created_at)';
-                    $formattedColumn = 'DATE_FORMAT(lead_reports.created_at, "%Y")';
+                    $groupBy = 'MONTH(lead_reports.created_at)';
+                    $formattedColumn = 'DATE_FORMAT(lead_reports.created_at, "%M, %Y")';
             }
 
             $performanceQueries[] = DB::raw($formattedColumn .' as day');
