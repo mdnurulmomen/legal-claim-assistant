@@ -89,17 +89,17 @@ function customResponse(mixed $data, bool $success, int $status, string $message
  * @param float $number
  * @return int | float
  */
-function minusBeforeDollarSign(float $number)
+function minusBeforeDollarSign(string $currency, float $number)
 {
     //if contains comma, remove it
     if (strpos($number, ',') !== false) {
 
         $senitized_number = str_replace(',', '', $number);
 
-        $formatted = $senitized_number < 0 ? '-$' . number_format($senitized_number * (-1)) : '$' . $number;
+        $formatted = $senitized_number < 0 ? '-'.$currency . number_format($senitized_number * (-1)) : $currency . $number;
     } else {
 
-        $formatted = $number < 0 ? '-$' . $number * (-1) : '$' . $number;
+        $formatted = $number < 0 ? '-'.$currency . $number * (-1) : $currency . $number;
     }
 
     return $formatted;
