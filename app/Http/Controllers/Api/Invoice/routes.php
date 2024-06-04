@@ -10,4 +10,5 @@ Route::prefix('finance')->as('platform.')
     ->group(function ($route) {
         $route->get('invoices', 'invoiceList')->name('invoice-list');
         $route->get('invoice/{tag}', 'invoiceByTag')->name('invoice');
+        $route->post('invoice/{tag}/update', 'invoiceUpdate')->name('invoice-update');
     });

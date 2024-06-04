@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Invoice\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 class InvoiceListResource extends JsonResource
 {
@@ -23,6 +24,7 @@ class InvoiceListResource extends JsonResource
             'amount' => minusBeforeDollarSign(number_format($this->amount ?? 0, 2, '.', ',')),
             'status' => $this->status,
             'listresult' => $this->listresult,
+            'file' => url(Storage::url($this->file)),
             'created_at' => $this->created_at->toDateTimeString()
         ];
     }

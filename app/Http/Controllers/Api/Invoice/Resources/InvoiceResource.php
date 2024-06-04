@@ -25,6 +25,10 @@ class InvoiceResource extends JsonResource
             'status' => $this->status,
             // 'listresult' => $this->listresult,
              'file' => url(Storage::url($this->file)),
+            'dueDate' => $this->dueDate,
+            'periodDateFrom' => $this->periodDateFrom,
+            'periodDateTo' => $this->periodDateTo,
+            'description' => $this->description,
             'created_at' => $this->created_at->toDateTimeString()
         ];
     }
