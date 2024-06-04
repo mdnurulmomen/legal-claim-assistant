@@ -10,4 +10,5 @@ Route::prefix('report')->as('report.')
     ->group(function ($route) {
         $route->get('list', 'reportingList')->name('list');
         $route->get('report-tabs', 'getReportingTabs')->name('get-reporting-tabs');
+        $route->get('filter-dropdown-values', 'getFilterDropdownValues')->name('get-filter-dropdown-values');
     });

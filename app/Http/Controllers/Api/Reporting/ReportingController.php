@@ -29,10 +29,16 @@ class ReportingController extends Controller
         $limit = $request->get('limit', 10);
         [$orderBy, $orderIn] = $reportingService->formatOrderByIn($request);
         $groupBy = $reportingService->formatGroupBy($request);
-        $conditions = $reportingService->formatFilters($request);
+        [$relationalConditions, $conditions] = $reportingService->formatFilters($request);
 
         $subQuery = LeadReport::selectRaw("
+                        pl.name as platform_name,
+                        buyers.name as buyer_name,
+                        affiliate.name as affiliate_name,
+                        lead_reports.affid,
                         lead_reports.list_id,
+                        lead_reports.buyer_id,
+                        lead_reports.affiliate_id,
                         COUNT(CASE WHEN lead_reports.is_posted = 1 THEN 1 END) as posted,
                         COUNT(CASE WHEN lead_reports.buyer_id IS NOT NULL AND lead_reports.is_posted = 1 THEN 1 END) as accepted,
                         COUNT(CASE WHEN lead_reports.buyer_id IS NULL AND lead_reports.is_posted = 1 THEN 1 END) as rejected,
@@ -45,26 +51,30 @@ class ReportingController extends Controller
                         AVG(lead_reports.affiliate_payout) as affiliate_average_payout
                     ")
                     ->leftJoin('platform_lists as pl', 'lead_reports.list_id', '=', 'pl.id')
-                    ->when(! empty($request->start_date) && ! empty($request->end_date), function ($query) use ($request) {
-                        return $query->whereBetween('lead_reports.created_at', [$request->start_date, $request->end_date]);
-                    })
+                    ->leftJoin('buyers', 'lead_reports.buyer_id', '=', 'buyers.id')
+                    ->leftJoin('users as affiliate', 'lead_reports.affiliate_id', '=', 'affiliate.id')
                     ->when(in_array('lead_reports.affid', $groupBy), function ($query) {
-                        return $query->addSelect('lead_reports.affid');
+                        return $query->whereNotNull('lead_reports.affid');
                     })
                     ->when(in_array('lead_reports.buyer_id', $groupBy), function ($query) {
-                        return $query->addSelect([
-                            'buyer_name' => DB::table('buyers')->select('name')->whereColumn('lead_reports.buyer_id', 'buyers.id')->limit(1)
-                        ]);
+                        return $query->whereNotNull('lead_reports.buyer_id');
                     })
                     ->when(in_array('lead_reports.list_id', $groupBy), function ($query) {
-                        return $query->addSelect([
-                            'platform_name' => PlatformList::select('name')->whereColumn('lead_reports.list_id', 'platform_lists.id')->limit(1)
-                        ]);
+                        return $query->whereNotNull('lead_reports.list_id');
                     })
                     ->when(in_array('lead_reports.affiliate_id', $groupBy), function ($query) {
-                        return $query->addSelect([
-                            'affiliate_name' => User::select('name')->whereColumn('lead_reports.affiliate_id', 'users.id')->limit(1)
-                        ]);
+                        return $query->whereNotNull('lead_reports.affiliate_id');
+                    })
+                    ->when(! empty($relationalConditions), function ($query) use ($relationalConditions, $reportingService) {
+                        return $query->where(function ($query) use ($relationalConditions, $reportingService) {
+                            foreach ($relationalConditions as $index => $condition) {
+                                $method = $reportingService->getConditionMethod($index);
+                                $query->$method($condition['column'], $condition['operator'], $condition['value']);
+                            }
+                        });
+                    })
+                    ->when(! empty($request->start_date) && ! empty($request->end_date), function ($query) use ($request) {
+                        return $query->whereBetween('lead_reports.created_at', [$request->start_date, $request->end_date]);
                     })
                     ->groupBy($groupBy);
 
@@ -76,7 +86,6 @@ class ReportingController extends Controller
                                 FORMAT((sub.accepted_cpl / NULLIF(sub.posted, 0)) * 100, 2) as acceptance_rate_cpl
                             ")
                             ->when(! empty($orderBy) && ! empty($orderIn), function ($query) use ($orderBy, $orderIn) {
-                                info($orderBy.$orderIn);
                                 return $query->orderBy($orderBy, $orderIn);
                             })
                             ->when(! empty($conditions), function ($query) use ($conditions, $reportingService) {
@@ -118,6 +127,16 @@ class ReportingController extends Controller
     public function getReportingTabs(Request $request, ReportingService $reportingService): Response
     {
         return withSuccess($reportingService->formatReportingTabs(Utility::$reportTabs));
+    }
+
+    public function getFilterDropdownValues(Request $request)
+    {
+        $lists = PlatformList::select('id as value', 'name as label')->get();
+        $buyers = DB::table('buyers')->select('id as value', 'name as label')->get();
+        $affiliates = User::select('id as value', 'name as label')->where('role', 'affiliate')->get();
+        $affIds = LeadReport::select('affid as value', 'affid as label')->whereNotNull('affid')->groupBy('affid')->get();
+
+        return withSuccess(compact('lists', 'buyers', 'affiliates', 'affIds'));
     }
 
 }
