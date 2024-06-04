@@ -238,6 +238,10 @@ class ReportingController extends Controller
             $diffDays = $startDate->diffInDays($endDate);
 
             switch (true) {
+                case ($diffDays <= 2):
+                    $groupBy = 'HOUR(lead_reports.created_at)';
+                    $formattedColumn = 'DATE_FORMAT(lead_reports.created_at, "%H:00, %W")';
+                    break;
                 case ($diffDays <= 7):
                     $groupBy = 'DATE(lead_reports.created_at)';
                     $formattedColumn = 'DATE_FORMAT(lead_reports.created_at, "%a, %d")';

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Dashboard;
 
 use App\Http\Controllers\Controller;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Response;
 
@@ -37,6 +38,7 @@ class DashboardController extends Controller
     {
         $performanceStats = DB::table('lead_reports')
             ->select(
+                DB::raw('count(case when is_posted = 1 then 1 end) as postedLead'),
                 DB::raw('count(case when sold_type = "CPL" then 1 end) as acceptanceRateCPL'),
                 DB::raw('count(case when buyer_id is not null and lead_id is not null  then 1 end) as acceptanceRate'),
                 DB::raw('avg(lead_revenue) as avarageRevenue'),
@@ -44,6 +46,10 @@ class DashboardController extends Controller
             )
             ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfDay()])
             ->first();
+
+        $performanceStats->acceptanceRate = $performanceStats->postedLead > 0 ? $performanceStats->acceptanceRate / $performanceStats->postedLead * 100 : 0;
+
+        $performanceStats->acceptanceRateCPL = $performanceStats->postedLead > 0 ? $performanceStats->acceptanceRateCPL / $performanceStats->postedLead * 100 : 0;
 
         return withSuccess($performanceStats);
     }
@@ -55,17 +61,31 @@ class DashboardController extends Controller
      */
     public function getGraph(): Response
     {
+
+        //initialize performance graph data
+        $performanceGraphData = DB::table('lead_reports');
+
+        //check the day of the month
+        $dayOfMonth = Carbon::now()->day;
+
         $daysInMonth = DB::table('lead_reports')
         ->select(DB::raw('DAY(LAST_DAY(CURDATE())) as days_in_month'))
-        ->first()
-        ->days_in_month;
+        ->first();
 
-        $interval = ceil($daysInMonth / 6);
+            if ($dayOfMonth > 15 && $daysInMonth) {
 
-        $performanceGraphData = DB::table('lead_reports')
-            ->select(DB::raw('DATE_FORMAT(created_at, "%a, %d") as day, COUNT(CASE WHEN is_posted = 1 THEN 1 END) as posted, COUNT(CASE WHEN buyer_id IS NOT NULL and lead_id IS NOT NULL THEN 1 END) as accepted, SUM(lead_revenue) as revenue, SUM(lead_profit) as profit'))
-            ->whereRaw('DAY(created_at) % ' . $interval . ' = 1')
-            ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
+                $interval = ceil($daysInMonth->days_in_month / 6);
+
+                $performanceGraphData = $performanceGraphData->whereRaw('DAY(created_at) % ' . $interval . ' = 1');
+
+            } else {
+
+                $performanceGraphData = $performanceGraphData->limit(15);
+
+            }
+
+            $performanceGraphData = $performanceGraphData->select(DB::raw('DATE_FORMAT(created_at, "%a, %d") as day, COUNT(CASE WHEN is_posted = 1 THEN 1 END) as posted, COUNT(CASE WHEN buyer_id IS NOT NULL and lead_id IS NOT NULL THEN 1 END) as accepted, SUM(lead_revenue) as revenue, SUM(lead_profit) as profit'))
+            ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfDay()])
             ->groupBy('day')
             ->orderBy('created_at', 'asc')
             ->get();
