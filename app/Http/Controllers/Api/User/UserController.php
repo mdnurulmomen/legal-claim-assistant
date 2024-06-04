@@ -179,10 +179,10 @@ class UserController extends Controller
     public function partnerList()
     {
         $partners =  User::query()
-            ->where('users.role', '=', 'partner')
-            ->join('partners', 'users.id', '=', 'partners.user_id')
+            ->where('users.role', '=', 'affiliate')
+            ->leftJoin('affiliates', 'users.id', '=', 'affiliates.user_id')
             ->selectRaw("users.id as user_id")
-            ->selectRaw("partners.company as name")
+            ->selectRaw("affiliates.company_name as name")
             ->selectRaw("users.workspace as workspace")
             ->distinct()
             ->get();
