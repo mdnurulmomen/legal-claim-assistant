@@ -52,7 +52,7 @@ class ReportingService
             $orderBy = '';
         }
 
-        return ["sub.$orderBy", $orderIn];
+        return [$orderBy, $orderIn];
     }
 
     /**
@@ -98,18 +98,61 @@ class ReportingService
     {
         $filters = $request->input('filters', '');
         if(empty($filters)){
-            return [];
+            return [[], []];
         }
 
         $filters = json_decode($filters, true);
 
-        $formattedRules = collect($filters)->map(function ($item) {
-            return collect($item)->map(function ($subitem) {
-                return $this->convertConditionToSql($subitem);
-            });
-        });
+        $relationalConditions = [];
+        $formattedFilters = [];
 
-        return $formattedRules->toArray();
+        foreach($filters as $value){
+            $conditions = [];
+
+            foreach($value as $item){
+                if(in_array($item['column'], ['platform', 'buyer', 'affiliate', 'affid'])){
+                    $relationalConditions[] = $this->formatAdvanceConditionToSql($item);
+                    continue;
+                }
+                $conditions[] = $this->convertConditionToSql($item);
+            }
+
+            if(count($conditions) > 0){
+                $formattedFilters[] = $conditions;
+            }
+        }
+
+        return [$relationalConditions, $formattedFilters];
+    }
+
+    public function formatAdvanceConditionToSql($conditions){
+        if(in_array($conditions['rule'], ['equals', 'not_equals'])){
+            $dbColumns = [
+                'platform' => 'lead_reports.list_id',
+                'buyer' => 'lead_reports.buyer_id',
+                'affiliate' => 'lead_reports.affiliate_id',
+                'affid' => 'lead_reports.affid'
+            ];
+
+            return $this->convertConditionToSql([
+                'column' => $dbColumns[$conditions['column']],
+                'rule' => $conditions['rule'],
+                'value' => $conditions['value']
+            ]);
+        }
+
+        $columns = [
+            'platform' => 'pl.name',
+            'buyer' => 'buyers.name',
+            'affiliate' => 'affiliate.name',
+            'affid' => 'lead_reports.affid'
+        ];
+
+        return $this->convertConditionToSql([
+            'column' => $columns[$conditions['column']],
+            'rule' => $conditions['rule'],
+            'value' => $conditions['value']
+        ]);
     }
 
     public function convertConditionToSql($conditions)
