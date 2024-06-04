@@ -181,47 +181,47 @@ class ReportingController extends Controller
             $performanceConfig = [
                 'posted' => [
                     'label' => 'Posted',
-                    'db_name' => 'COUNT(CASE WHEN is_posted = 1 THEN 1 END)',
+                    'db_name' => 'COUNT(CASE WHEN lead_reports.is_posted = 1 THEN 1 END)',
                 ],
                 'accepted' => [
                     'label' => 'Accepted',
-                    'db_name' => 'COUNT(CASE WHEN buyer_id IS NOT NULL and lead_id IS NOT NULL THEN 1 END)',
+                    'db_name' => 'COUNT(CASE WHEN lead_reports.buyer_id IS NOT NULL and lead_reports.lead_id IS NOT NULL THEN 1 END)',
                 ],
                 'rejected' => [
                     'label' => 'Rejected',
-                    'db_name' => 'COUNT(CASE WHEN buyer_id IS NULL and lead_id IS NOT NULL THEN 1 END)',
+                    'db_name' => 'COUNT(CASE WHEN lead_reports.buyer_id IS NULL and lead_reports.lead_id IS NOT NULL THEN 1 END)',
                 ],
                 'ar' => [
                     'label' => 'A/R',
-                    'db_name' => 'COUNT(CASE WHEN buyer_id IS NOT NULL and lead_id IS NOT NULL THEN 1 END) / COUNT(CASE WHEN is_posted = 1 THEN 1 END) * 100',
+                    'db_name' => 'COUNT(CASE WHEN lead_reports.buyer_id IS NOT NULL and lead_reports.lead_id IS NOT NULL THEN 1 END) / COUNT(CASE WHEN lead_reports.is_posted = 1 THEN 1 END) * 100',
                 ],
                 'ar_cpl' => [
                     'label' => 'A/R (CPL)',
-                    'db_name' => 'COUNT(CASE WHEN sold_type = "CPL" THEN 1 END) / COUNT(CASE WHEN is_posted = 1 THEN 1 END) * 100',
+                    'db_name' => 'COUNT(CASE WHEN lead_reports.sold_type = "CPL" THEN 1 END) / COUNT(CASE WHEN lead_reports.is_posted = 1 THEN 1 END) * 100',
                 ],
                 'revenue' => [
                     'label' => 'Revenue',
-                    'db_name' => 'SUM(lead_revenue)',
+                    'db_name' => 'SUM(lead_reports.lead_revenue)',
                 ],
                 'profit' => [
                     'label' => 'Profit',
-                    'db_name' => 'SUM(lead_profit)',
+                    'db_name' => 'SUM(lead_reports.lead_profit)',
                 ],
                 'affiliate_payout' => [
                     'label' => 'Affiliate Payout',
-                    'db_name' => 'SUM(affiliate_payout)',
+                    'db_name' => 'SUM(lead_reports.affiliate_payout)',
                 ],
                 'affiliate_average_payout' => [
                     'label' => 'Affiliate Average Payout',
-                    'db_name' => 'AVG(affiliate_payout)',
+                    'db_name' => 'AVG(lead_reports.affiliate_payout)',
                 ],
                 'revenue_per_lead' => [
                     'label' => 'Revenue Per Lead',
-                    'db_name' => 'AVG(lead_revenue)',
+                    'db_name' => 'AVG(lead_reports.lead_revenue)',
                 ],
                 'average_profit' => [
                     'label' => 'Average Profit',
-                    'db_name' => 'AVG(lead_profit)',
+                    'db_name' => 'AVG(lead_reports.lead_profit)',
                 ],
             ];
 
@@ -231,24 +231,24 @@ class ReportingController extends Controller
 
             switch (true) {
                 case ($diffDays <= 7):
-                    $groupBy = 'DATE(created_at)';
-                    $formattedColumn = 'DATE_FORMAT(created_at, "%a, %d")';
+                    $groupBy = 'DATE(lead_reports.created_at)';
+                    $formattedColumn = 'DATE_FORMAT(lead_reports.created_at, "%a, %d")';
                     break;
                 case ($diffDays <= 31):
-                    $groupBy = 'FLOOR(DATEDIFF(created_at, "' . $startDate->format('Y-m-d') . '") / 3)';
-                    $formattedColumn = 'DATE_FORMAT(created_at, "%a, %d")';
+                    $groupBy = 'FLOOR(DATEDIFF(lead_reports.created_at, "' . $startDate->format('Y-m-d') . '") / 3)';
+                    $formattedColumn = 'DATE_FORMAT(lead_reports.created_at, "%a, %d")';
                     break;
                 case ($diffDays <= 60):
-                    $groupBy = 'WEEK(created_at, 1)';
-                    $formattedColumn = 'DATE_FORMAT(created_at, "%a, %d, %b")';
+                    $groupBy = 'WEEK(lead_reports.created_at, 1)';
+                    $formattedColumn = 'DATE_FORMAT(lead_reports.created_at, "%a, %d, %b")';
                     break;
                 case ($diffDays <= 92):
-                    $groupBy = 'MONTH(created_at)';
-                        $formattedColumn = 'DATE_FORMAT(created_at, "%M, %Y")';
+                    $groupBy = 'MONTH(lead_reports.created_at)';
+                        $formattedColumn = 'DATE_FORMAT(lead_reports.created_at, "%M, %Y")';
                     break;
                 default:
-                    $groupBy = 'YEAR(created_at)';
-                    $formattedColumn = 'DATE_FORMAT(created_at, "%Y")';
+                    $groupBy = 'YEAR(lead_reports.created_at)';
+                    $formattedColumn = 'DATE_FORMAT(lead_reports.created_at, "%Y")';
             }
 
             $performanceQueries[] = DB::raw($formattedColumn .' as day');
@@ -269,7 +269,7 @@ class ReportingController extends Controller
                                 ->when(! empty($request->start_date) && ! empty($request->end_date), function ($query) use ($request) {
                                     return $query->whereBetween('lead_reports.created_at', [$request->start_date, $request->end_date]);
                                 })
-                                ->orderBy('created_at', 'asc')
+                                ->orderBy('lead_reports.created_at', 'asc')
                                 //add other filters here
                                 ->get();
 
