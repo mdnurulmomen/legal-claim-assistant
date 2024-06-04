@@ -63,7 +63,7 @@ class DashboardController extends Controller
         $interval = ceil($daysInMonth / 6);
 
         $performanceGraphData = DB::table('lead_reports')
-            ->select(DB::raw('DATE_FORMAT(created_at, "%a, %d") as day, COUNT(*) as posted, COUNT(CASE WHEN buyer_id IS NOT NULL and lead_id IS NOT NULL THEN 1 END) as accepted, SUM(lead_revenue) as revenue, SUM(lead_profit) as profit'))
+            ->select(DB::raw('DATE_FORMAT(created_at, "%a, %d") as day, COUNT(CASE WHEN is_posted = 1 THEN 1 END) as posted, COUNT(CASE WHEN buyer_id IS NOT NULL and lead_id IS NOT NULL THEN 1 END) as accepted, SUM(lead_revenue) as revenue, SUM(lead_profit) as profit'))
             ->whereRaw('DAY(created_at) % ' . $interval . ' = 1')
             ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
             ->groupBy('day')
