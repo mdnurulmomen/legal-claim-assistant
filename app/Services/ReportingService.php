@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class ReportingService
 {
@@ -198,6 +199,31 @@ class ReportingService
 
     public function getConditionType(string $operator){
         return in_array($operator, ['exists', 'does_not_exist']) ? $operator : null;
+    }
+
+    public function formatDate(Request $request, $isReturnDateObj = false)
+    {
+        $timezone = $request->timezone;
+        if(empty($timezone)){
+            $timezone = 'Europe/Amsterdam';
+        }
+
+        $reportStart = Carbon::parse($request->start_date, $timezone);
+        $reportEnd = Carbon::parse($request->end_date, $timezone);
+
+        if ($timezone !== 'Europe/Amsterdam') {
+            $reportStart->setTimezone('Europe/Amsterdam');
+            $reportEnd->setTimezone('Europe/Amsterdam');
+        }
+
+        if($isReturnDateObj){
+            return [$reportStart, $reportEnd];
+        }
+
+        $reportStart = $reportStart->toDateTimeString();
+        $reportEnd = $reportEnd->toDateTimeString();
+
+        return [$reportStart, $reportEnd];
     }
 
 }

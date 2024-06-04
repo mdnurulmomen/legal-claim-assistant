@@ -32,18 +32,23 @@ class ReportingController extends Controller
         $groupBy = $reportingService->formatGroupBy($request);
         [$relationalConditions, $conditions] = $reportingService->formatFilters($request);
 
-        // $timezone = $request->get('timezone', 'Europe/Amsterdam');
+        // $timezone = $request->timezone;
+        // if(empty($timezone)){
+        //     $timezone = 'Europe/Amsterdam';
+        // }
 
-        // $reportStart = Carbon::parse($request->start_date, $request->get('timezone', 'Europe/Amsterdam'));
-        // $reportEnd = Carbon::parse($request->end_date, $request->('timezone'));
+        // $reportStart = Carbon::parse($request->start_date, $timezone);
+        // $reportEnd = Carbon::parse($request->end_date, $timezone);
 
-        // if ($request->timezone !== 'Europe/Amsterdam') {
+        // if ($timezone !== 'Europe/Amsterdam') {
         //     $reportStart->setTimezone('Europe/Amsterdam');
         //     $reportEnd->setTimezone('Europe/Amsterdam');
         // }
 
         // $reportStart = $reportStart->toDateTimeString();
         // $reportEnd = $reportEnd->toDateTimeString();
+
+        [$reportStart, $reportEnd] = $reportingService->formatDate($request);
 
         $subQuery = LeadReport::selectRaw("
                         pl.name as platform_name,
@@ -93,12 +98,12 @@ class ReportingController extends Controller
                             }
                         });
                     })
-                    // ->when(! empty($reportStart) && ! empty($reportEnd), function ($query) use ($reportStart, $reportEnd) {
-                    //     return $query->whereBetween('lead_reports.created_at', [$reportStart, $reportEnd]);
-                    // })
-                    ->when(! empty($request->start_date) && ! empty($request->end_date), function ($query) use ($request) {
-                        return $query->whereBetween('lead_reports.created_at', [$request->start_date, $request->end_date]);
+                    ->when(! empty($reportStart) && ! empty($reportEnd), function ($query) use ($reportStart, $reportEnd) {
+                        return $query->whereBetween('lead_reports.created_at', [$reportStart, $reportEnd]);
                     })
+                    // ->when(! empty($request->start_date) && ! empty($request->end_date), function ($query) use ($request) {
+                    //     return $query->whereBetween('lead_reports.created_at', [$request->start_date, $request->end_date]);
+                    // })
                     ->groupBy($groupBy);
 
         $leads = DB::table(DB::raw("({$subQuery->toSql()}) as sub"))
@@ -227,6 +232,9 @@ class ReportingController extends Controller
 
             $startDate = Carbon::parse($request->start_date);
             $endDate = Carbon::parse($request->end_date);
+
+            [$startDate, $endDate] = $reportingService->formatDate($request, true);
+
             $diffDays = $startDate->diffInDays($endDate);
 
             switch (true) {
