@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\User\Requests\UpdateBasicInfoRequest;
 use App\Http\Controllers\Api\User\Requests\UpdateMyEmailRequest;
 use App\Http\Controllers\Api\User\Requests\UpdateMyPasswordRequest;
 use App\Http\Controllers\Api\User\Resources\UserResource;
+use App\Http\Controllers\Api\User\Resources\PartnerSelectResource;
 use App\Http\Controllers\Controller;
 use App\Models\AdminRole;
 use App\Models\User;
@@ -167,6 +168,25 @@ class UserController extends Controller
 
         $user->update(['password' => $request->password]);
         return withSuccess(new AuthResource($user->refresh()), 'Password updated successfully');
+    }
+    
+    /**
+     * Retrieves a list of partners.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function partnerList()
+    {
+        $partners =  User::query()
+            ->where('users.role', '=', 'partner')
+            ->join('partners', 'users.id', '=', 'partners.user_id')
+            ->selectRaw("users.id as user_id")
+            ->selectRaw("partners.company as name")
+            ->selectRaw("users.workspace as workspace")
+            ->distinct()
+            ->get();
+       return withSuccessResourceList(PartnerSelectResource::collection($partners));
     }
 
 }
