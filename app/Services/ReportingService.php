@@ -34,6 +34,7 @@ class ReportingService
             'buyer_name',
             'affiliate_name',
             'platform_name',
+            'integration_name',
             'posted',
             'accepted',
             'rejected',
@@ -110,7 +111,7 @@ class ReportingService
             $conditions = [];
 
             foreach($value as $item){
-                if(in_array($item['column'], ['platform', 'buyer', 'affiliate', 'affid'])){
+                if(in_array($item['column'], ['platform', 'buyer', 'buyer_integration', 'affiliate', 'affid'])){
                     $relationalConditions[] = $this->formatAdvanceConditionToSql($item);
                     continue;
                 }
@@ -130,6 +131,7 @@ class ReportingService
             $dbColumns = [
                 'platform' => 'lead_reports.list_id',
                 'buyer' => 'lead_reports.buyer_id',
+                'buyer_integration' => 'lead_reports.buyer_integration_id',
                 'affiliate' => 'lead_reports.affiliate_id',
                 'affid' => 'lead_reports.affid'
             ];
@@ -144,6 +146,7 @@ class ReportingService
         $columns = [
             'platform' => 'pl.name',
             'buyer' => 'buyers.name',
+            'buyer_integration' => 'integrations.name',
             'affiliate' => 'affiliate.name',
             'affid' => 'lead_reports.affid'
         ];

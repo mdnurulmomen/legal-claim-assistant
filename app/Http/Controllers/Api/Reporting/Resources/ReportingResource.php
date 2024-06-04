@@ -17,6 +17,7 @@ class ReportingResource extends JsonResource
         return [
             'platform_name' => $this->platform_name ?? '',
             'buyer_name' => $this->buyer_name ?? '',
+            'integration_name' => $this->integration_name ?? '',
             'affiliate_name' => $this->affiliate_name ?? '',
             'affid' => $this->affid ?? '',
             'posted' => $this->posted,

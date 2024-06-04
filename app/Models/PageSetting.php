@@ -2,16 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 
-class SiteSetting extends Model
+class PageSetting extends Model
 {
     use HasFactory;
-
-    //define table name
-    protected $table = 'page_settings';
 
     protected $fillable = [
         'page',

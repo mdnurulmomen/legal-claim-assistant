@@ -37,6 +37,7 @@ class Utility
         'list_id' => 'List',
         'affiliate_id' => 'Affiliate',
         'buyer_id' => 'Buyer',
+        'buyer_integration_id' => 'Buyer Integration',
         'affid' => 'AffId'
     ];
 
