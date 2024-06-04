@@ -172,7 +172,7 @@ class ReportingController extends Controller
      */
     public function getPerformanceData(Request $request, ReportingService $reportingService): Response
     {
-        $conditions = $reportingService->formatFilters($request);
+        [$relationalConditions, $conditions] = $reportingService->formatFilters($request);
 
         $graphData = [];
 
@@ -270,7 +270,18 @@ class ReportingController extends Controller
                                     return $query->whereBetween('lead_reports.created_at', [$request->start_date, $request->end_date]);
                                 })
                                 ->orderBy('lead_reports.created_at', 'asc')
-                                //add other filters here
+                                ->leftJoin('platform_lists as pl', 'lead_reports.list_id', '=', 'pl.id')
+                                ->leftJoin('buyers', 'lead_reports.buyer_id', '=', 'buyers.id')
+                                ->leftJoin('integrations', 'lead_reports.buyer_integration_id', '=', 'integrations.id')
+                                ->leftJoin('users as affiliate', 'lead_reports.affiliate_id', '=', 'affiliate.id')
+                                ->when(! empty($relationalConditions), function ($query) use ($relationalConditions, $reportingService) {
+                                    return $query->where(function ($query) use ($relationalConditions, $reportingService) {
+                                        foreach ($relationalConditions as $index => $condition) {
+                                            $method = $reportingService->getConditionMethod($index);
+                                            $query->$method($condition['column'], $condition['operator'], $condition['value']);
+                                        }
+                                    });
+                                })
                                 ->get();
 
             foreach ($request->event_values as $event_num => $event) {
