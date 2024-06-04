@@ -33,7 +33,7 @@ return new class extends Migration
             $table->decimal('profit_margin')->default(0);
             $table->string('page_source')->nullable();
             $table->string('affm_source_id')->nullable();
-            $table->timestamp('created_at')->useCurrent();
+            $table->timestamp('created_at')->useCurrent()->index();
             $table->timestamp('updated_at')->useCurrent();
         });
     }

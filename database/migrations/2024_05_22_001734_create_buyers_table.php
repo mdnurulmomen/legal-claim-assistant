@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('buyers', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('company_name');
+            $table->string('company_name')->nullable();
             $table->string('alias')->nullable();
             $table->string('email')->nullable()->index();
             $table->string('phone')->nullable();
