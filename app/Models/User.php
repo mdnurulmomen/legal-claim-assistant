@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -66,5 +67,21 @@ class User extends Authenticatable
     public function adminRole(): BelongsTo
     {
         return $this->belongsTo(AdminRole::class);
+    }
+
+    /**
+     * Get the affiliate record associated with the user.
+     */
+    public function affiliate(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Affiliate::class);
+    }
+
+    /**
+     * Get the affiliate record associated partner_platform_connections.
+     */
+    public function postingDocs(): HasMany
+    {
+        return $this->hasMany(partnerPlatformConnections::class);
     }
 }
