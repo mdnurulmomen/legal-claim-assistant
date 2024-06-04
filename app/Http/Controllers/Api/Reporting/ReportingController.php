@@ -10,6 +10,7 @@ use App\Models\PlatformData;
 use App\Models\PlatformList;
 use App\Models\User;
 use App\Services\ReportingService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -137,6 +138,140 @@ class ReportingController extends Controller
         $affIds = LeadReport::select('affid as value', 'affid as label')->whereNotNull('affid')->groupBy('affid')->get();
 
         return withSuccess(compact('lists', 'buyers', 'affiliates', 'affIds'));
+    }
+
+    /**
+     * Retrieves performance data for the given request parameters.
+     *
+     * @param Request $request
+     * @param ReportingService $reportingService
+     * @return Response
+     */
+    public function getPerformanceData(Request $request, ReportingService $reportingService): Response
+    {
+        $conditions = $reportingService->formatFilters($request);
+
+        $graphData = [];
+
+        if (!empty($request->event_values)) {
+
+            $performanceConfig = [
+                'posted' => [
+                    'label' => 'Posted',
+                    'db_name' => 'COUNT(CASE WHEN is_posted = 1 THEN 1 END)',
+                ],
+                'accepted' => [
+                    'label' => 'Accepted',
+                    'db_name' => 'COUNT(CASE WHEN buyer_id IS NOT NULL and lead_id IS NOT NULL THEN 1 END)',
+                ],
+                'rejected' => [
+                    'label' => 'Rejected',
+                    'db_name' => 'COUNT(CASE WHEN buyer_id IS NULL and lead_id IS NOT NULL THEN 1 END)',
+                ],
+                'ar' => [
+                    'label' => 'A/R',
+                    'db_name' => 'COUNT(CASE WHEN buyer_id IS NOT NULL and lead_id IS NOT NULL THEN 1 END) / COUNT(CASE WHEN is_posted = 1 THEN 1 END) * 100',
+                ],
+                'ar_cpl' => [
+                    'label' => 'A/R (CPL)',
+                    'db_name' => 'COUNT(CASE WHEN sold_type = "CPL" THEN 1 END) / COUNT(CASE WHEN is_posted = 1 THEN 1 END) * 100',
+                ],
+                'revenue' => [
+                    'label' => 'Revenue',
+                    'db_name' => 'SUM(lead_revenue)',
+                ],
+                'profit' => [
+                    'label' => 'Profit',
+                    'db_name' => 'SUM(lead_profit)',
+                ],
+                'affiliate_payout' => [
+                    'label' => 'Affiliate Payout',
+                    'db_name' => 'SUM(affiliate_payout)',
+                ],
+                'affiliate_average_payout' => [
+                    'label' => 'Affiliate Average Payout',
+                    'db_name' => 'AVG(affiliate_payout)',
+                ],
+                'revenue_per_lead' => [
+                    'label' => 'Revenue Per Lead',
+                    'db_name' => 'AVG(lead_revenue)',
+                ],
+                'average_profit' => [
+                    'label' => 'Average Profit',
+                    'db_name' => 'AVG(lead_profit)',
+                ],
+            ];
+
+            $startDate = Carbon::parse($request->start_date);
+            $endDate = Carbon::parse($request->end_date);
+            $diffDays = $startDate->diffInDays($endDate);
+
+            switch (true) {
+                case ($diffDays <= 7):
+                    $groupBy = 'DATE(created_at)';
+                    $formattedColumn = 'DATE_FORMAT(created_at, "%a, %d")';
+                    break;
+                case ($diffDays <= 31):
+                    $groupBy = 'FLOOR(DATEDIFF(created_at, "' . $startDate->format('Y-m-d') . '") / 3)';
+                    $formattedColumn = 'DATE_FORMAT(created_at, "%a, %d")';
+                    break;
+                case ($diffDays <= 60):
+                    $groupBy = 'WEEK(created_at, 1)';
+                    $formattedColumn = 'DATE_FORMAT(created_at, "%a, %d, %b")';
+                    break;
+                case ($diffDays <= 92):
+                    $groupBy = 'MONTH(created_at)';
+                        $formattedColumn = 'DATE_FORMAT(created_at, "%M, %Y")';
+                    break;
+                default:
+                    $groupBy = 'YEAR(created_at)';
+                    $formattedColumn = 'DATE_FORMAT(created_at, "%Y")';
+            }
+
+            $performanceQueries[] = DB::raw($formattedColumn .' as day');
+
+            foreach ($request->event_values as $event_num => $event) {
+
+                //limit to 2 events
+                if ($event_num < 2 && array_key_exists($event, $performanceConfig)) {
+                    $performanceQueries[] = DB::raw($performanceConfig[$event]['db_name'] . ' as ' . $event);
+                }
+
+            }
+
+            $performanceData = DB::table('lead_reports')
+                                ->select($performanceQueries)
+                                ->groupBy(DB::raw($groupBy))
+                                ->limit(15)
+                                ->when(! empty($request->start_date) && ! empty($request->end_date), function ($query) use ($request) {
+                                    return $query->whereBetween('lead_reports.created_at', [$request->start_date, $request->end_date]);
+                                })
+                                ->orderBy('created_at', 'asc')
+                                //add other filters here
+                                ->get();
+
+            foreach ($request->event_values as $event_num => $event) {
+
+                    //limit to 2 events
+                    if ($event_num < 2 && array_key_exists($event, $performanceConfig)) {
+
+                        $graphData[$event_num]['name'] = $performanceConfig[$request->event_values[$event_num]]['label'];
+                        $graphData[$event_num]['data'] = collect($performanceData)->map(function ($item) use ($request, $event_num) {
+
+                            $itemVal = $item->{$request->event_values[$event_num]};
+
+                            return [
+                                'x' => $item->day,
+                                'y' => $itemVal,
+                            ];
+                        });
+
+                    }
+            }
+
+        }
+
+        return withSuccess($graphData);
     }
 
 }
