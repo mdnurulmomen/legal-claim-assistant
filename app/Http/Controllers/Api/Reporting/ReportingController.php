@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\ReportingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ReportingController extends Controller
@@ -30,6 +31,17 @@ class ReportingController extends Controller
         [$orderBy, $orderIn] = $reportingService->formatOrderByIn($request);
         $groupBy = $reportingService->formatGroupBy($request);
         [$relationalConditions, $conditions] = $reportingService->formatFilters($request);
+
+        $reportStart = Carbon::parse($request->start_date, $request->timezone);
+        $reportEnd = Carbon::parse($request->end_date, $request->timezone);
+
+        if ($request->timezone !== 'Europe/Amsterdam') {
+            $reportStart->setTimezone('Europe/Amsterdam');
+            $reportEnd->setTimezone('Europe/Amsterdam');
+        }
+
+        $reportStart = $reportStart->toDateTimeString();
+        $reportEnd = $reportEnd->toDateTimeString();
 
         $subQuery = LeadReport::selectRaw("
                         pl.name as platform_name,
@@ -78,6 +90,9 @@ class ReportingController extends Controller
                                 $query->$method($condition['column'], $condition['operator'], $condition['value']);
                             }
                         });
+                    })
+                    ->when(! empty($reportStart) && ! empty($reportEnd), function ($query) use ($reportStart, $reportEnd) {
+                        return $query->whereBetween('lead_reports.created_at', [$reportStart, $reportEnd]);
                     })
                     // ->when(! empty($request->start_date) && ! empty($request->end_date), function ($query) use ($request) {
                     //     return $query->whereBetween('lead_reports.created_at', [$request->start_date, $request->end_date]);

@@ -12,7 +12,6 @@ use Illuminate\Http\Response;
 
 class SiteSettingController extends Controller
 {
-
     /**
      * Retrieves site settings based on the provided slug.
      *
@@ -34,7 +33,6 @@ class SiteSettingController extends Controller
      */
     public function saveSiteSettings(SiteSettingRequest $request, SettingService $settingService): Response
     {
-
         $formattedData = $settingService->formatRequestData($request->validated());
 
         $setting = PageSetting::updateOrCreate(
