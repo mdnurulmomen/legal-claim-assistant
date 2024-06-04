@@ -36,6 +36,9 @@ class UserController extends Controller
                     })
                     ->with('adminRole:id,name')
                     ->where('role', 'admin')
+                    ->whereDoesntHave('adminRole', function ($query) {
+                        return $query->where('name', 'super_admin');
+                    })
                     ->latest('id')
                     ->paginate($limit);
 
