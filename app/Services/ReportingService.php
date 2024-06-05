@@ -96,6 +96,12 @@ class ReportingService
         }, $tabs, array_keys($tabs));
     }
 
+    /**
+     * Formats the filters from the request.
+     *
+     * @param Request $request
+     * @return array
+     */
     public function formatFilters(Request $request): array
     {
         $filters = $request->input('filters', '');
@@ -127,7 +133,18 @@ class ReportingService
         return [$relationalConditions, $formattedFilters];
     }
 
-    public function formatAdvanceConditionToSql($conditions){
+    /**
+     * Formats the advance condition to SQL.
+     *
+     * @param array $conditions The conditions to be formatted.
+     *                         The array should have the following keys:
+     *                         - 'rule': The rule of the condition.
+     *                         - 'column': The column of the condition.
+     *                         - 'value': The value of the condition.
+     * @return array
+     */
+    public function formatAdvanceConditionToSql(array $conditions): array
+    {
         if(in_array($conditions['rule'], ['equals', 'not_equals'])){
             $dbColumns = [
                 'platform' => 'lead_reports.list_id',
@@ -159,7 +176,16 @@ class ReportingService
         ]);
     }
 
-    public function convertConditionToSql($conditions)
+    /**
+     * Converts a condition array to a SQL condition array.
+     *
+     * @param array $conditions The condition array to be converted. It should have the following keys:
+     *                         - 'rule': The rule of the condition.
+     *                         - 'column': The column of the condition.
+     *                         - 'value': The value of the condition.
+     * @return array
+     */
+    public function convertConditionToSql(array $conditions): array
     {
         $condition = match($conditions['rule']){
             'contains' => $this->makeCondition($conditions['column'], 'like', '%' . $conditions['value'] . '%'),
@@ -177,7 +203,15 @@ class ReportingService
         return $condition;
     }
 
-    public function makeCondition($column, $operator, $value = null)
+    /**
+     * Creates a condition array with the given column, operator, and optional value.
+     *
+     * @param string $column
+     * @param string $operator
+     * @param string|int|null $value
+     * @return array
+     */
+    public function makeCondition(string $column, string $operator, string | int | null $value = null)
     {
         return [
             'column' => $column,
@@ -186,7 +220,14 @@ class ReportingService
         ];
     }
 
-    public function getConditionMethod(int $index, string $type = null)
+    /**
+     * Returns the condition method based on the given index and type.
+     *
+     * @param int $index
+     * @param string|null $type
+     * @return string
+     */
+    public function getConditionMethod(int $index, string $type = null): string
     {
         $method = $index == 0 ? 'where' : 'orWhere';
 
@@ -197,33 +238,15 @@ class ReportingService
         return $method;
     }
 
-    public function getConditionType(string $operator){
-        return in_array($operator, ['exists', 'does_not_exist']) ? $operator : null;
-    }
-
-    public function formatDate(Request $request, $isReturnDateObj = false)
+    /**
+     * Returns the condition type based on the given operator.
+     *
+     * @param string $operator
+     * @return string|null
+     */
+    public function getConditionType(string $operator): ?string
     {
-        $timezone = $request->timezone;
-        if(empty($timezone)){
-            $timezone = 'Europe/Amsterdam';
-        }
-
-        $reportStart = Carbon::parse($request->start_date, $timezone);
-        $reportEnd = Carbon::parse($request->end_date, $timezone);
-
-        if ($timezone !== 'Europe/Amsterdam') {
-            $reportStart->setTimezone('Europe/Amsterdam');
-            $reportEnd->setTimezone('Europe/Amsterdam');
-        }
-
-        if($isReturnDateObj){
-            return [$reportStart, $reportEnd];
-        }
-
-        $reportStart = $reportStart->toDateTimeString();
-        $reportEnd = $reportEnd->toDateTimeString();
-
-        return [$reportStart, $reportEnd];
+        return in_array($operator, ['exists', 'does_not_exist']) ? $operator : null;
     }
 
 }

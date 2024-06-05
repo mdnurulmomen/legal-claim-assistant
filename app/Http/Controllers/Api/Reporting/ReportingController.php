@@ -10,6 +10,7 @@ use App\Models\PlatformData;
 use App\Models\PlatformList;
 use App\Models\User;
 use App\Services\ReportingService;
+use App\Traits\CommonTrait;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\DB;
 
 class ReportingController extends Controller
 {
+    use CommonTrait;
 
     /**
      * Retrieves a paginated list of reporting data based on the given request parameters.
@@ -32,23 +34,7 @@ class ReportingController extends Controller
         $groupBy = $reportingService->formatGroupBy($request);
         [$relationalConditions, $conditions] = $reportingService->formatFilters($request);
 
-        // $timezone = $request->timezone;
-        // if(empty($timezone)){
-        //     $timezone = 'Europe/Amsterdam';
-        // }
-
-        // $reportStart = Carbon::parse($request->start_date, $timezone);
-        // $reportEnd = Carbon::parse($request->end_date, $timezone);
-
-        // if ($timezone !== 'Europe/Amsterdam') {
-        //     $reportStart->setTimezone('Europe/Amsterdam');
-        //     $reportEnd->setTimezone('Europe/Amsterdam');
-        // }
-
-        // $reportStart = $reportStart->toDateTimeString();
-        // $reportEnd = $reportEnd->toDateTimeString();
-
-        [$reportStart, $reportEnd] = $reportingService->formatDate($request);
+        [$reportStart, $reportEnd] = $this->formatStartEndDateWithTimezone($request->start_date, $request->end_date, $request->timezone);
 
         $subQuery = LeadReport::selectRaw("
                         pl.name as platform_name,
@@ -230,12 +216,10 @@ class ReportingController extends Controller
                 ],
             ];
 
-            $startDate = Carbon::parse($request->start_date);
-            $endDate = Carbon::parse($request->end_date);
+            [$startDate, $endDate] = $this->formatStartEndDateWithTimezone($request->start_date, $request->end_date, $request->timezone, true);
 
-            [$startDate, $endDate] = $reportingService->formatDate($request, true);
 
-            $diffDays = $startDate->diffInDays($endDate);
+            $diffDays = !empty($startDate) && !empty($endDate) ? $startDate->diffInDays($endDate) : 0;
 
             switch (true) {
                 case ($diffDays <= 2):
@@ -278,8 +262,8 @@ class ReportingController extends Controller
                                 ->select($performanceQueries)
                                 ->groupBy(DB::raw($groupBy))
                                 ->limit(15)
-                                ->when(! empty($request->start_date) && ! empty($request->end_date), function ($query) use ($request) {
-                                    return $query->whereBetween('lead_reports.created_at', [$request->start_date, $request->end_date]);
+                                ->when(! empty($startDate) && ! empty($endDate), function ($query) use ($startDate, $endDate) {
+                                    return $query->whereBetween('lead_reports.created_at', [$startDate, $endDate]);
                                 })
                                 ->orderBy('lead_reports.created_at', 'asc')
                                 ->leftJoin('platform_lists as pl', 'lead_reports.list_id', '=', 'pl.id')
