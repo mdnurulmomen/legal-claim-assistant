@@ -145,7 +145,7 @@ class DashboardController extends Controller
             ->leftJoin('affiliates', 'lead_reports.affiliate_id', '=', 'affiliates.user_id')
             ->select('users.name', 'affiliates.company_name as companyName', DB::raw('count(case when is_posted = 1 then 1 end) as totalPosted, count(case when buyer_id is not null and lead_id is not null then 1 end) as totalConvertedLeads, sum(affiliate_payout) as totalEarned'))
             ->whereBetween('lead_reports.created_at', [now()->startOfMonth(), now()->endOfDay()])
-            ->groupBy('affiliates.id')
+            ->groupBy('lead_reports.affiliate_id')
             ->orderBy('totalEarned', 'desc')
             ->limit(5)
             ->get();
