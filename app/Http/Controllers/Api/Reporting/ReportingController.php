@@ -37,15 +37,12 @@ class ReportingController extends Controller
         [$reportStart, $reportEnd] = $this->formatStartEndDateWithTimezone($request->start_date, $request->end_date, $request->timezone);
 
         $subQuery = LeadReport::selectRaw("
+                        lead_reports.id,
                         pl.name as platform_name,
                         buyers.name as buyer_name,
                         integrations.name as integration_name,
                         affiliate.name as affiliate_name,
                         lead_reports.affid,
-                        lead_reports.list_id,
-                        lead_reports.buyer_id,
-                        lead_reports.buyer_integration_id,
-                        lead_reports.affiliate_id,
                         COUNT(CASE WHEN lead_reports.is_posted = 1 THEN 1 END) as posted,
                         COUNT(CASE WHEN lead_reports.buyer_id IS NOT NULL AND lead_reports.is_posted = 1 THEN 1 END) as accepted,
                         COUNT(CASE WHEN lead_reports.buyer_id IS NULL AND lead_reports.is_posted = 1 THEN 1 END) as rejected,
@@ -87,12 +84,9 @@ class ReportingController extends Controller
                     ->when(! empty($reportStart) && ! empty($reportEnd), function ($query) use ($reportStart, $reportEnd) {
                         return $query->whereBetween('lead_reports.created_at', [$reportStart, $reportEnd]);
                     })
-                    // ->when(! empty($request->start_date) && ! empty($request->end_date), function ($query) use ($request) {
-                    //     return $query->whereBetween('lead_reports.created_at', [$request->start_date, $request->end_date]);
-                    // })
                     ->groupBy($groupBy);
 
-        $leads = DB::table(DB::raw("({$subQuery->toSql()}) as sub"))
+        $baseQuery = DB::table(DB::raw("({$subQuery->toSql()}) as sub"))
                             ->mergeBindings($subQuery->getQuery()) // Ensure bindings are merged correctly
                             ->selectRaw("
                                 sub.*,
@@ -125,8 +119,14 @@ class ReportingController extends Controller
                                         });
                                     }
                                 });
-                            })
-                            ->paginate($limit);
+                            });
+
+        if(! empty($request->is_total)) {
+            $leads = $reportingService->getReportTotals($baseQuery, $request);
+            return withSuccess($leads);
+        }
+
+        $leads = $baseQuery->paginate($limit);
 
         return withSuccessResourceList(ReportingResource::collection($leads));
     }
@@ -303,5 +303,4 @@ class ReportingController extends Controller
 
         return withSuccess($graphData);
     }
-
 }

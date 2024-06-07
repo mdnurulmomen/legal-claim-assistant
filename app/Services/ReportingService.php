@@ -2,6 +2,10 @@
 
 namespace App\Services;
 
+use App\Http\Controllers\Api\Reporting\Resources\ReportingResource;
+use App\Models\LeadReport;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -247,6 +251,30 @@ class ReportingService
     public function getConditionType(string $operator): ?string
     {
         return in_array($operator, ['exists', 'does_not_exist']) ? $operator : null;
+    }
+
+    public function getReportTotals(Builder $baseQuery, Request $request)
+    {
+        $leads = $baseQuery->lazyById(1000, 'id');
+        $totals = [
+            'platform_name' => 'Total',
+            'posted' => $leads->sum('posted'),
+            'accepted' => $leads->sum('accepted'),
+            'rejected' => $leads->sum('rejected'),
+            'accepted_cpl' => $leads->sum('accepted_cpl'),
+            'revenue' => $leads->sum('revenue'),
+            'profit' => $leads->sum('profit'),
+            'affiliate_payout' => $leads->sum('affiliate_payout'),
+            'revenue_per_lead' => $leads->sum('revenue_per_lead'),
+            'average_profit' => $leads->sum('average_profit'),
+            'affiliate_average_payout' => $leads->sum('affiliate_average_payout'),
+            'acceptance_rate' => $leads->sum('acceptance_rate'),
+            'acceptance_rate_cpl' => $leads->sum('acceptance_rate_cpl'),
+        ];
+
+        $totals = (object) $totals;
+
+        return new ReportingResource($totals);
     }
 
 }
