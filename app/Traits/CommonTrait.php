@@ -1,0 +1,45 @@
+<?php
+
+namespace App\Traits;
+
+use Illuminate\Support\Carbon;
+
+trait CommonTrait
+{
+    /**
+     * Formats the start and end dates with a given timezone.
+     *
+     * @param string|null $startDate
+     * @param string|null $endDate
+     * @param string|null $timezone
+     * @param bool $isReturnDateObj
+     * @return array
+     */
+    public function formatStartEndDateWithTimezone( string $startDate = null, string $endDate = null, string $timezone = null, bool $isReturnDateObj = false): array
+    {
+        if(empty($startDate) || empty($endDate)){
+            return [$startDate, $endDate];
+        }
+
+        if(empty($timezone)){
+            $timezone = 'Europe/Amsterdam';
+        }
+
+        $reportStart = Carbon::parse($startDate, $timezone);
+        $reportEnd = Carbon::parse($endDate, $timezone);
+
+        if ($timezone !== 'Europe/Amsterdam') {
+            $reportStart->setTimezone('Europe/Amsterdam');
+            $reportEnd->setTimezone('Europe/Amsterdam');
+        }
+
+        if($isReturnDateObj){
+            return [$reportStart, $reportEnd];
+        }
+
+        $reportStart = $reportStart->toDateTimeString();
+        $reportEnd = $reportEnd->toDateTimeString();
+
+        return [$reportStart, $reportEnd];
+    }
+}

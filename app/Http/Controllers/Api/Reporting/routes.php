@@ -9,8 +9,7 @@ Route::prefix('report')->as('report.')
     ->middleware('auth:sanctum')
     ->group(function ($route) {
         $route->get('list', 'reportingList')->name('list');
-        $route->get('report-tabs', 'getReportingTabs')->name('get-reporting-tabs');
-        $route->get('filter-dropdown-values', 'getFilterDropdownValues')->name('get-filter-dropdown-values');
-        $route->get('performance-data', 'getPerformanceData')->name('get-performance-data');
-        ;
+        $route->get('report-tabs', 'getReportingTabs')->name('get.reporting.tabs');
+        $route->get('filter-dropdown-values', 'getFilterDropdownValues')->name('get.filter.dropdown.values');
+        $route->get('performance-data', 'getPerformanceData')->name('get.performance.data');
     });
