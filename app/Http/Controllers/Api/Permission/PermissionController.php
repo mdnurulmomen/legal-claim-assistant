@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AdminRole;
 use App\Models\Menu;
 use App\Models\Permission;
+use App\Models\SavedReport;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -66,20 +67,26 @@ class PermissionController extends Controller
     public function getPermission(Request $request): Response
     {
         $auth = auth('sanctum')->user();
+        $data = [
+            'permissions' => [],
+            'saved_reports' => [],
+        ];
 
         if(! $auth){
-            return withSuccess([]);
+            return withSuccess($data);
         }
+
+        $data['saved_reports'] = SavedReport::whereUserId($auth->id)->select('id', 'title', 'uid')->get();
 
         if($auth->role === 'super_admin'){
-            return withSuccess([]);
+            return withSuccess($data);
         }
 
-        $permissions = Permission::where('permissions.admin_role_id', $auth->admin_role_id)
-                        ->select('permissions.id', 'menus.route_name')
-                        ->leftJoin('menus', 'permissions.menu_id', '=', 'menus.id')
-                        ->pluck('route_name');
+        $data['permissions'] = Permission::where('permissions.admin_role_id', $auth->admin_role_id)
+                                    ->select('permissions.id', 'menus.route_name')
+                                    ->leftJoin('menus', 'permissions.menu_id', '=', 'menus.id')
+                                    ->pluck('route_name');
 
-        return withSuccess($permissions);
+        return withSuccess($data);
     }
 }
