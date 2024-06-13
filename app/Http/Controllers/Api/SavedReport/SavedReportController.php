@@ -22,6 +22,7 @@ class SavedReportController extends Controller
 
         return withSuccess($savedReports);
     }
+
     /**
      * Store a new saved report.
      *
@@ -48,6 +49,23 @@ class SavedReportController extends Controller
     }
 
     /**
+     * Retrieves a saved report by its unique identifier.
+     *
+     * @param Request $request
+     * @param string $uid
+     * @return Response
+     */
+    public function showReport(Request $request, string $uid): Response
+    {
+        $report = SavedReport::where('uid', $uid)->first();
+        if(empty($report)){
+            return withError('Saved Report not found', 404);
+        }
+
+        return withSuccess(new SavedReportResource($report));
+    }
+
+    /**
      * Updates a saved report.
      *
      * @param SavedReportRequest $request
@@ -68,7 +86,7 @@ class SavedReportController extends Controller
             $report->update($request->validated());
 
             DB::commit();
-            return withSuccess('Saved Report updated successfully');
+            return withSuccess($report, 'Saved Report updated successfully');
         } catch (\Throwable $th) {
             DB::rollBack();
             return withError('Failed to update Saved Report', 400);
@@ -96,7 +114,7 @@ class SavedReportController extends Controller
             $report->delete();
 
             DB::commit();
-            return withSuccess('Saved Report deleted successfully');
+            return withSuccess(message: 'Saved Report deleted successfully');
 
         } catch (\Throwable $th) {
             DB::rollBack();
