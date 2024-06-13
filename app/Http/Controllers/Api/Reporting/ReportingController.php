@@ -143,6 +143,12 @@ class ReportingController extends Controller
         return withSuccess($reportingService->formatReportingTabs(Utility::$reportTabs));
     }
 
+    /**
+     * Retrieves the filter dropdown values based on the given request.
+     *
+     * @param Request $request
+     * @return Response
+     */
     public function getFilterDropdownValues(Request $request)
     {
         $lists = PlatformList::select('id as value', 'name as label')->get();

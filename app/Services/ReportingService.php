@@ -268,8 +268,8 @@ class ReportingService
             'revenue_per_lead' => $leads->sum('revenue_per_lead'),
             'average_profit' => $leads->sum('average_profit'),
             'affiliate_average_payout' => $leads->sum('affiliate_average_payout'),
-            'acceptance_rate' => $leads->sum('acceptance_rate'),
-            'acceptance_rate_cpl' => $leads->sum('acceptance_rate_cpl'),
+            'acceptance_rate' => $leads->avg('acceptance_rate'),
+            'acceptance_rate_cpl' => $leads->avg('acceptance_rate_cpl'),
         ];
 
         $totals = (object) $totals;
