@@ -15,7 +15,11 @@ class ReportingResource extends JsonResource
     public function toArray($request): array
     {
         return [
-            'platform_name' => $this->platform_name,
+            'platform_name' => $this->platform_name ?? '',
+            'buyer_name' => $this->buyer_name ?? '',
+            'integration_name' => $this->integration_name ?? '',
+            'affiliate_name' => $this->affiliate_name ?? '',
+            'affid' => $this->affid ?? '',
             'posted' => $this->posted,
             'accepted' => $this->accepted,
             'rejected' => $this->rejected,
@@ -25,9 +29,9 @@ class ReportingResource extends JsonResource
             'revenue' => $this->revenue,
             'profit' => $this->profit,
             'affiliate_payout' => $this->affiliate_payout,
-            'revenue_per_lead' => number_format($this->revenue_per_lead, 2),
-            'average_profit' => number_format($this->average_profit, 2),
-            'affiliate_average_payout' => number_format($this->affiliate_average_payout, 2)
+            'revenue_per_lead' => $this->revenue_per_lead,
+            'average_profit' => $this->average_profit,
+            'affiliate_average_payout' => $this->affiliate_average_payout
         ];
     }
 }

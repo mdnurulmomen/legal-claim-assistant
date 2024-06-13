@@ -17,4 +17,6 @@ Route::prefix('user')->as('user.')
         $route->post('update-my-info', 'updateMyInfo')->name('update-my-info');
         $route->post('update-my-email', 'updateMyEmail')->name('update-my-email');
         $route->post('update-my-password', 'updateMyPassword')->name('update-my-password');
+        
+        $route->get('partner-list', 'partnerList')->name('partner.list');
     });

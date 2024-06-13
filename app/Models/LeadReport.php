@@ -14,6 +14,7 @@ class LeadReport extends Model
         'lead_id',
         'list_id',
         'buyer_id',
+        'affid',
         'buyer_integration_id',
         'affiliate_specs_id',
         'sold_type',
@@ -24,6 +25,9 @@ class LeadReport extends Model
         'affiliate_payout',
         'lead_profit',
         'affiliate_margin',
-        'profit_margin'
+        'profit_margin',
+        'is_posted',
+        'page_source',
+        'affm_source_id'
     ];
 }

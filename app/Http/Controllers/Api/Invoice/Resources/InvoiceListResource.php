@@ -1,10 +1,11 @@
 <?php
 
-namespace App\Http\Controllers\Api\PlatformList\Resources;
+namespace App\Http\Controllers\Api\Invoice\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
-class PlatformListResource extends JsonResource
+class InvoiceListResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -18,11 +19,12 @@ class PlatformListResource extends JsonResource
             'id' => $this->id,
             'tag' => $this->tag,
             'name' => $this->name,
-            'campaign_name' => $this->campaign_name,
-            'total_leads' => number_format($this->total),
-            'sources' => array_unique(array_merge([$this->source] ?? [], $this->options['additional_sources'] ?? [])),
+            'monthly_net' => 'Monthly Net +'.$this->monthly_net,
+            'invoice_by' => $this->partner->partner?->company ?? $this->partner->name,
+            'amount' => minusBeforeDollarSign($this->currency, $this->amount),
             'status' => $this->status,
-            'updated_at' => $this->updated_at->diffForHumans(),
+            'listresult' => $this->listresult,
+            'file' => url(Storage::url($this->file)),
             'created_at' => $this->created_at->toDateTimeString()
         ];
     }

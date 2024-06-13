@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\User\Requests\UpdateBasicInfoRequest;
 use App\Http\Controllers\Api\User\Requests\UpdateMyEmailRequest;
 use App\Http\Controllers\Api\User\Requests\UpdateMyPasswordRequest;
 use App\Http\Controllers\Api\User\Resources\UserResource;
+use App\Http\Controllers\Api\User\Resources\PartnerSelectResource;
 use App\Http\Controllers\Controller;
 use App\Models\AdminRole;
 use App\Models\User;
@@ -36,6 +37,9 @@ class UserController extends Controller
                     })
                     ->with('adminRole:id,name')
                     ->where('role', 'admin')
+                    ->whereDoesntHave('adminRole', function ($query) {
+                        return $query->where('name', 'super_admin');
+                    })
                     ->latest('id')
                     ->paginate($limit);
 
@@ -167,6 +171,25 @@ class UserController extends Controller
 
         $user->update(['password' => $request->password]);
         return withSuccess(new AuthResource($user->refresh()), 'Password updated successfully');
+    }
+    
+    /**
+     * Retrieves a list of partners.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function partnerList()
+    {
+        $partners =  User::query()
+            ->where('users.role', '=', 'affiliate')
+            ->leftJoin('affiliates', 'users.id', '=', 'affiliates.user_id')
+            ->selectRaw("users.id as user_id")
+            ->selectRaw("affiliates.company_name as name")
+            ->selectRaw("users.workspace as workspace")
+            ->distinct()
+            ->get();
+       return withSuccessResourceList(PartnerSelectResource::collection($partners));
     }
 
 }

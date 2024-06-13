@@ -21,9 +21,9 @@ class AuthController extends Controller
      */
     public function login(LoginRequest $request): Response
     {
-        $user = User::where('email', $request->email)->first();
+        $user = User::where('email', $request->email)->where('role', 'admin')->first();
         if(empty($user)){
-            return withError('User not found', 404);
+            return withError('The provided credentials are incorrect.', 404);
         }
 
         if (! Hash::check($request->password, $user->password)) {

@@ -81,3 +81,26 @@ function customResponse(mixed $data, bool $success, int $status, string $message
 }
 
 //*******************Response Modifier End************************/
+
+
+/**
+ * Returns value after formatting currency and with $ sign.
+ *
+ * @param float $number
+ * @return int | float
+ */
+function minusBeforeDollarSign(string $currency, float $number)
+{
+    //if contains comma, remove it
+    if (strpos($number, ',') !== false) {
+
+        $senitized_number = str_replace(',', '', $number);
+
+        $formatted = $senitized_number < 0 ? '-'.$currency . number_format($senitized_number * (-1)) : $currency . $number;
+    } else {
+
+        $formatted = $number < 0 ? '-'.$currency . $number * (-1) : $currency . $number;
+    }
+
+    return $formatted;
+}
