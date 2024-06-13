@@ -39,12 +39,12 @@ class SavedReportController extends Controller
 
             DB::commit();
 
-            return withSuccess(new SavedReportResource($savedReport), 'Saved Report created successfully');
+            return withSuccess(new SavedReportResource($savedReport), 'Report created successfully');
 
         } catch (\Throwable $th) {
            DB::rollBack();
 
-           return withError('Failed to create Saved Report', 400);
+           return withError('Failed to create Report', 400);
         }
     }
 
@@ -59,7 +59,7 @@ class SavedReportController extends Controller
     {
         $report = SavedReport::where('uid', $uid)->first();
         if(empty($report)){
-            return withError('Saved Report not found', 404);
+            return withError('Report not found', 404);
         }
 
         return withSuccess(new SavedReportResource($report));
@@ -76,7 +76,7 @@ class SavedReportController extends Controller
     {
         $report = SavedReport::where('uid', $uid)->first();
         if(empty($report)){
-            return withError('Saved Report not found', 404);
+            return withError('Report not found', 404);
         }
 
         try {
@@ -86,7 +86,7 @@ class SavedReportController extends Controller
             $report->update($request->validated());
 
             DB::commit();
-            return withSuccess($report, 'Saved Report updated successfully');
+            return withSuccess($report, 'Report updated successfully');
         } catch (\Throwable $th) {
             DB::rollBack();
             return withError('Failed to update Saved Report', 400);
@@ -104,7 +104,7 @@ class SavedReportController extends Controller
     {
         $report = SavedReport::where('uid', $uid)->first();
         if(empty($report)){
-            return withError('Saved Report not found', 404);
+            return withError('Report not found', 404);
         }
 
         try {
@@ -114,12 +114,12 @@ class SavedReportController extends Controller
             $report->delete();
 
             DB::commit();
-            return withSuccess(message: 'Saved Report deleted successfully');
+            return withSuccess(message: 'Report deleted successfully');
 
         } catch (\Throwable $th) {
             DB::rollBack();
 
-            return withError('Failed to delete Saved Report', 400);
+            return withError('Failed to delete Report', 400);
         }
     }
 }
