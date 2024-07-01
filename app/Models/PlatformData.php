@@ -33,4 +33,8 @@ class PlatformData extends Model
         'page_source',
         'sold_type'
     ];
+
+    protected $casts = [
+        'datas' => 'array'
+    ];
 }

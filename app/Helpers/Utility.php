@@ -47,7 +47,8 @@ class Utility
      * @var array
      */
     public static $pageSlugs = [
-        'report' => 'Report'
+        'report' => 'Report',
+        'global_leads' => 'Global Leads',
     ];
 
 }
