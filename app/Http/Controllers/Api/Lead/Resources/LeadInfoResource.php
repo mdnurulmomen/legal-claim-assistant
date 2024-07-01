@@ -20,7 +20,9 @@ class LeadInfoResource extends JsonResource
             'email' => $this->email,
             'phone' => $this->phone,
             'revenue' => $this->revenue,
-            'payout' => $this->payout
+            'profit' => $this->profit,
+            'affiliate_payout' => $this->affiliate_payout,
+            'affiliate_margin' => $this->affiliate_margin
         ];
 
         return array_merge($leads, $this->datas);

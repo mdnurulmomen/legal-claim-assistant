@@ -6,12 +6,14 @@ use App\Http\Controllers\Api\Lead\Resources\LeadInfoResource;
 use App\Http\Controllers\Api\Lead\Resources\LeadResource;
 use App\Http\Controllers\Controller;
 use App\Models\Integration;
+use App\Models\LeadReport;
 use App\Models\PlatformData;
 use App\Models\PlatformList;
 use App\Services\LeadService;
 use App\Traits\CommonTrait;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 
 class LeadController extends Controller
 {
@@ -128,11 +130,26 @@ class LeadController extends Controller
                         'platform_datas.datas',
                         'platform_datas.email',
                         'platform_datas.phone',
-                        'platform_datas.revenue',
-                        'platform_datas.payout',
                         'integrations.name as buyer_name'
                     )
                     ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
+                    ->addSelect([
+                        'revenue' => LeadReport::select(DB::raw('sum(lead_reports.lead_revenue)'))
+                                        ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                        ->limit(1),
+
+                        'profit' => LeadReport::select(DB::raw('sum(lead_reports.lead_profit)'))
+                                        ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                        ->limit(1),
+
+                        'affiliate_payout' => LeadReport::select(DB::raw('sum(lead_reports.affiliate_payout)'))
+                                                ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                                ->limit(1),
+
+                        'affiliate_margin' => LeadReport::select(DB::raw('sum(lead_reports.affiliate_margin)'))
+                                                ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                                ->limit(1)
+                    ])
                     ->find($leadId);
 
         if(empty($leads)) {
