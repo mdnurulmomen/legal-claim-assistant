@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\PageSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -148,5 +149,35 @@ class LeadService extends ReportingService
             'operator' => $operator,
             'value' => $value
         ];
+    }
+
+    /**
+     * Filter data for export based on columns to keep.
+     *
+     * @param array $data
+     * @return array
+     */
+    public function filterDataForExport(array $data): array
+    {
+        $columnsToKeep = $this->getColumnsToKeep();
+        return array_intersect_key($data, array_flip($columnsToKeep));
+    }
+
+    /**
+     * Retrieves the columns to keep based on the global leads page settings.
+     *
+     * @return array
+     */
+    private function getColumnsToKeep(): array
+    {
+        $settings = PageSetting::query()
+                        ->where(['page' => 'global_leads', 'type' => 'customize_columns'])
+                        ->first();
+
+        if ($settings && ! empty($settings->data)) {
+            return $settings->data;
+        }
+
+        return $this->getSortFields();
     }
 }

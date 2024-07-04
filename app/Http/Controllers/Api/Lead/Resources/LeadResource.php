@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Api\Lead\Resources;
 
+use App\Services\LeadService;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
 
 class LeadResource extends JsonResource
 {
@@ -22,6 +22,12 @@ class LeadResource extends JsonResource
             'phone' => $this->phone
         ];
 
-        return array_merge($leads, $this->datas);
+        $data = array_merge($leads, $this->datas);
+
+        if (empty($request->is_export)){
+            return $data;
+        }
+
+        return (new LeadService())->filterDataForExport($data);
     }
 }
