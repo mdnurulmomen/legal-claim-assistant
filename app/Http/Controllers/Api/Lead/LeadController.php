@@ -9,11 +9,13 @@ use App\Models\Integration;
 use App\Models\LeadReport;
 use App\Models\PlatformData;
 use App\Models\PlatformList;
+use App\Services\ExcelService;
 use App\Services\LeadService;
 use App\Traits\CommonTrait;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LeadController extends Controller
 {
@@ -23,64 +25,69 @@ class LeadController extends Controller
      * Retrieves a paginated list of leads with associated buyer names.
      *
      * @param Request $request
-     * @return Response
+     * @return Response | string | StreamedResponse
      */
-    public function list(Request $request, LeadService $leadService): Response
+    public function list(Request $request, LeadService $leadService, ExcelService $excelService): Response | string | StreamedResponse
     {
         [$startDate, $endDate] = $this->formatStartEndDateWithTimezone($request->start_date, $request->end_date, $request->timezone);
         $conditions = $leadService->formatFilters($request);
 
-        $leads = PlatformData::query()
-                    ->select(
-                        'platform_datas.id',
-                        'platform_datas.datas',
-                        'platform_datas.email',
-                        'platform_datas.phone',
-                        'integrations.name as buyer_name'
-                    )
-                    ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
-                    ->when(! empty($startDate) && ! empty($endDate), function ($query) use ($startDate, $endDate) {
-                        return $query->whereBetween('platform_datas.created_at', [$startDate, $endDate]);
-                    })
-                    ->when(! empty($request->search_txt), function ($query) use ($request) {
-                        return $query->where(function ($query) use ($request) {
-                            return $query->whereAny(
-                                    [
-                                        'platform_datas.email',
-                                        'platform_datas.phone',
-                                        'integrations.name'
-                                    ],
-                                    'like',
-                                    '%' . $request->search_txt . '%');
-                                })
-                                ->orWhere('platform_datas.datas->first_name', 'like', '%' . $request->search_txt . '%')
-                                ->orWhere('platform_datas.datas->last_name', 'like', '%' . $request->search_txt . '%');
-                    })
-                    ->when(! empty($conditions), function ($query) use ($conditions, $leadService) {
-                        return $query->where(function ($query) use ($conditions, $leadService) {
-                            foreach ($conditions as $conditionKey => $conditionGroup) {
+        $leadQuery = PlatformData::query()
+                        ->select(
+                            'platform_datas.id',
+                            'platform_datas.datas',
+                            'platform_datas.email',
+                            'platform_datas.phone',
+                            'integrations.name as buyer_name'
+                        )
+                        ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
+                        ->when(! empty($startDate) && ! empty($endDate), function ($query) use ($startDate, $endDate) {
+                            return $query->whereBetween('platform_datas.created_at', [$startDate, $endDate]);
+                        })
+                        ->when(! empty($request->search_txt), function ($query) use ($request) {
+                            return $query->where(function ($query) use ($request) {
+                                return $query->whereAny(
+                                        [
+                                            'platform_datas.email',
+                                            'platform_datas.phone',
+                                            'integrations.name'
+                                        ],
+                                        'like',
+                                        '%' . $request->search_txt . '%');
+                                    })
+                                    ->orWhere('platform_datas.datas->first_name', 'like', '%' . $request->search_txt . '%')
+                                    ->orWhere('platform_datas.datas->last_name', 'like', '%' . $request->search_txt . '%');
+                        })
+                        ->when(! empty($conditions), function ($query) use ($conditions, $leadService) {
+                            return $query->where(function ($query) use ($conditions, $leadService) {
+                                foreach ($conditions as $conditionKey => $conditionGroup) {
 
-                                $method = $leadService->getConditionMethod($conditionKey);
+                                    $method = $leadService->getConditionMethod($conditionKey);
 
-                                $query->$method(function ($query2) use ($conditionGroup, $leadService) {
+                                    $query->$method(function ($query2) use ($conditionGroup, $leadService) {
 
-                                    foreach ($conditionGroup as $index => $condition) {
+                                        foreach ($conditionGroup as $index => $condition) {
 
-                                        $type = $leadService->getConditionType($condition['operator']);
-                                        $method2 = $leadService->getConditionMethod($index, $type);
+                                            $type = $leadService->getConditionType($condition['operator']);
+                                            $method2 = $leadService->getConditionMethod($index, $type);
 
-                                        if($type) {
-                                            $query2->$method2($condition['column']);
-                                            continue;
+                                            if($type) {
+                                                $query2->$method2($condition['column']);
+                                                continue;
+                                            }
+
+                                            $query2->$method2($condition['column'], $condition['operator'], $condition['value']);
                                         }
-
-                                        $query2->$method2($condition['column'], $condition['operator'], $condition['value']);
-                                    }
-                                });
-                            }
+                                    });
+                                }
+                            });
                         });
-                    })
-                    ->paginate($request->input('limit', 10));
+
+        if(! empty($request->is_export)){
+            return $excelService->formatLeadExportData($leadQuery);
+        }
+
+        $leads = $leadQuery->paginate($request->per_page);
 
         return withSuccessResourceList(LeadResource::collection($leads));
     }
