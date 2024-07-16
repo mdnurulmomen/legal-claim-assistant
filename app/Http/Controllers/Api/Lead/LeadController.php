@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Lead;
 
+use App\Http\Controllers\Api\Lead\Requests\UpdateLeadsRequest;
 use App\Http\Controllers\Api\Lead\Resources\LeadInfoResource;
 use App\Http\Controllers\Api\Lead\Resources\LeadResource;
 use App\Http\Controllers\Controller;
@@ -31,6 +32,7 @@ class LeadController extends Controller
     {
         [$startDate, $endDate] = $this->formatStartEndDateWithTimezone($request->start_date, $request->end_date, $request->timezone);
         $conditions = $leadService->formatFilters($request);
+        $excelFilters = $leadService->formatExcelFilters($request);
 
         $leadQuery = PlatformData::query()
                         ->select(
@@ -38,7 +40,7 @@ class LeadController extends Controller
                             'platform_datas.datas',
                             'platform_datas.email',
                             'platform_datas.phone',
-                            'integrations.name as buyer_name'
+                            'integrations.name as buyer_integration' // Buyer integration
                         )
                         ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
                         ->when(! empty($startDate) && ! empty($endDate), function ($query) use ($startDate, $endDate) {
@@ -57,6 +59,14 @@ class LeadController extends Controller
                                     })
                                     ->orWhere('platform_datas.datas->first_name', 'like', '%' . $request->search_txt . '%')
                                     ->orWhere('platform_datas.datas->last_name', 'like', '%' . $request->search_txt . '%');
+                        })
+                        ->when(! empty($excelFilters), function ($query) use ($excelFilters, $leadService) {
+                            return $query->where(function ($query) use ($excelFilters, $leadService) {
+                                foreach ($excelFilters as $key => $filter) {
+                                    $method = $leadService->getWhereInMethod($key);
+                                    $query->$method($filter['column'], $filter['values']);
+                                }
+                            });
                         })
                         ->when(! empty($conditions), function ($query) use ($conditions, $leadService) {
                             return $query->where(function ($query) use ($conditions, $leadService) {
@@ -164,5 +174,11 @@ class LeadController extends Controller
         }
 
         return withSuccess(new LeadInfoResource($leads));
+    }
+
+    public function updateLeads(UpdateLeadsRequest $request, LeadService $leadService)
+    {
+        $leadService->formatAndUpdateLeads($request);
+        return withSuccess('Leads updated successfully');
     }
 }

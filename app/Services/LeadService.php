@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\PageSetting;
+use App\Models\PlatformData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -29,6 +30,7 @@ class LeadService extends ReportingService
                 'headerName' => ucwords(str_replace('_', ' ', $header)),
                 'minWidth' => 200,
                 'hide' => ! in_array($header, $serialization),
+                'editable' => true
             ];
         })
         ->values()
@@ -73,6 +75,23 @@ class LeadService extends ReportingService
             "utm_content",
             "pageurl"
         ];
+    }
+
+    public function formatExcelFilters(Request $request)
+    {
+        $filters = $request->input('excel_filters', '');
+        if(empty($filters)){
+            return [];
+        }
+
+        $formattedFilters = [];
+        $filters = json_decode($filters, true);
+
+        foreach($filters as $filter){
+            $formattedFilters[] = $this->makeConditionWithoutOperator($filter['column'], $filter['values']);
+        }
+
+        return $formattedFilters;
     }
 
     /**
@@ -151,6 +170,14 @@ class LeadService extends ReportingService
         ];
     }
 
+    public function makeConditionWithoutOperator(string $column, array $values = [])
+    {
+        return [
+            'column' => "platform_datas.datas->" . $column,
+            'values' => $values
+        ];
+    }
+
     /**
      * Filter data for export based on columns to keep.
      *
@@ -171,7 +198,7 @@ class LeadService extends ReportingService
     private function getColumnsToKeep(): array
     {
         $settings = PageSetting::query()
-                        ->where(['page' => 'global_leads', 'type' => 'customize_columns'])
+                        ->where(['page' => 'global_leads', 'type' => 'customize_columns', 'user_id' => auth()->id()])
                         ->first();
 
         if ($settings && ! empty($settings->data)) {
@@ -179,5 +206,43 @@ class LeadService extends ReportingService
         }
 
         return $this->getSortFields();
+    }
+
+    /**
+     * Returns the appropriate "whereIn" or "orWhereIn" method based on the given index.
+     *
+     * @param int $index
+     * @return string
+     */
+    public function getWhereInMethod(int $index): string
+    {
+        return ($index == 0) ? 'whereIn' : 'orWhereIn';
+    }
+
+    public function formatAndUpdateLeads(Request $request)
+    {
+        $leads = collect($request->leads);
+        $leadIds = $leads->pluck('id')->all();
+        $now = now();
+        $updatedLeadsData = [];
+
+        $leadData = PlatformData::whereIn('id', $leadIds)->select('id', 'datas')->get();
+
+        foreach ($leadData as $lead) {
+            $newLead = $leads->where('id', $lead->id)->first();
+            unset($newLead['id']);
+
+            $updatedLeadsData[] = [
+                'id' => $lead->id,
+                'datas' => json_encode(array_merge($lead->datas, $newLead)),
+                'updated_at' => $now
+            ];
+        }
+
+        PlatformData::upsert(
+            $updatedLeadsData,
+            ['id'],
+            ['datas']
+        );
     }
 }
