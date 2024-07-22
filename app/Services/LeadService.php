@@ -219,30 +219,45 @@ class LeadService extends ReportingService
         return ($index == 0) ? 'whereIn' : 'orWhereIn';
     }
 
+    /**
+     * Updates the leads in the database based on the provided request.
+     *
+     * @param Request $request
+     * @return void
+     */
     public function formatAndUpdateLeads(Request $request)
     {
         $leads = collect($request->leads);
         $leadIds = $leads->pluck('id')->all();
-        $now = now();
         $updatedLeadsData = [];
 
         $leadData = PlatformData::whereIn('id', $leadIds)->select('id', 'datas')->get();
+        $updatableFields = ['datas'];
 
         foreach ($leadData as $lead) {
-            $newLead = $leads->where('id', $lead->id)->first();
+            $newLead = $leads->firstWhere('id', $lead->id);
             unset($newLead['id']);
 
-            $updatedLeadsData[] = [
+            $formattedLead = [
                 'id' => $lead->id,
                 'datas' => json_encode(array_merge($lead->datas, $newLead)),
-                'updated_at' => $now
             ];
+
+            foreach (['email', 'phone', 'affid'] as $field) {
+                if (! empty($newLead[$field])) {
+                    $formattedLead[$field] = $newLead[$field];
+                    $updatableFields[] = $field;
+                }
+            }
+
+            $updatedLeadsData[] = $formattedLead;
         }
 
         PlatformData::upsert(
             $updatedLeadsData,
             ['id'],
-            ['datas']
+            array_unique($updatableFields)
         );
     }
+
 }
