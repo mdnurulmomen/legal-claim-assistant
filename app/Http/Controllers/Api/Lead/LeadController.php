@@ -28,6 +28,9 @@ class LeadController extends Controller
      * Retrieves a paginated list of leads with associated buyer names.
      *
      * @param Request $request
+     * @param LeadService $leadService
+     * @param ExcelService $excelService
+     *
      * @return Response | string | StreamedResponse
      */
     public function list(Request $request, LeadService $leadService, ExcelService $excelService): Response | string | StreamedResponse

@@ -79,6 +79,8 @@ class LeadService extends ReportingService
 
     public function formatExcelFilters(Request $request)
     {
+        //Buyer Integration, Buyer name, Affiliate name, Lead Status
+
         $filters = $request->input('excel_filters', '');
         if(empty($filters)){
             return [];
@@ -88,10 +90,37 @@ class LeadService extends ReportingService
         $filters = json_decode($filters, true);
 
         foreach($filters as $filter){
-            $formattedFilters[] = $this->makeConditionWithoutOperator($filter['column'], $filter['values']);
+            $terms = match($filter['column']){
+                'buyer_integration' => [
+                    'column' => "integrations.name",
+                    'values' => $filter['values']
+                ],
+                'buyer_name' => [
+                    'column' => "buyers.name",
+                    'values' => $filter['values']
+                ],
+                'affiliate_name' => [
+                    'column' => "users.name",
+                    'values' => $filter['values']
+                ],
+                'lead_status' => [
+                    'column' => "platform_datas." . $filter['column'],
+                    'values' => $filter['values']
+                ],
+                default => $this->makeConditionWithoutOperator($filter['column'], $filter['values'])
+            };
+            $formattedFilters[] = $terms;
         }
 
         return $formattedFilters;
+    }
+
+    public function makeConditionWithoutOperator(string $column, array $values = [])
+    {
+        return [
+            'column' => "platform_datas.datas->" . $column,
+            'values' => $values
+        ];
     }
 
     /**
@@ -167,14 +196,6 @@ class LeadService extends ReportingService
             'column' => "platform_datas.datas->" . $column,
             'operator' => $operator,
             'value' => $value
-        ];
-    }
-
-    public function makeConditionWithoutOperator(string $column, array $values = [])
-    {
-        return [
-            'column' => "platform_datas.datas->" . $column,
-            'values' => $values
         ];
     }
 
