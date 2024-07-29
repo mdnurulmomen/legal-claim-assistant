@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\LeadReport;
 use App\Models\PageSetting;
+use App\Models\PlatformData;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -29,6 +32,7 @@ class LeadService extends ReportingService
                 'headerName' => ucwords(str_replace('_', ' ', $header)),
                 'minWidth' => 200,
                 'hide' => ! in_array($header, $serialization),
+                'editable' => true
             ];
         })
         ->values()
@@ -73,6 +77,58 @@ class LeadService extends ReportingService
             "utm_content",
             "pageurl"
         ];
+    }
+
+    public function formatExcelFilters(Request $request)
+    {
+        $filters = $request->input('excel_filters', '');
+        if(empty($filters)){
+            return [];
+        }
+
+        $formattedFilters = [];
+        $filters = json_decode($filters, true);
+
+        foreach($filters as $filter){
+            $terms = match($filter['column']){
+                'buyer_integration' => [
+                    'column' => "integrations.name",
+                    'values' => $filter['values']
+                ],
+                'buyer_name' => [
+                    'column' => "buyers.name",
+                    'values' => $filter['values']
+                ],
+                'affiliate_name' => [
+                    'column' => "users.name",
+                    'values' => $filter['values']
+                ],
+                'lead_status' => [
+                    'column' => "platform_datas." . $filter['column'],
+                    'values' => $filter['values']
+                ],
+                default => $this->makeConditionWithoutOperator($filter['column'], $filter['values'])
+            };
+            $formattedFilters[] = $terms;
+        }
+
+        return $formattedFilters;
+    }
+
+    public function makeConditionWithoutOperator(string $column, array $values = [])
+    {
+        $values = array_map('strtolower', $values);
+
+        return [
+            'column' => $column,
+            'values' => $values,
+            'is_json_column' => true
+        ];
+        // return [
+        //     'column' => "platform_datas.datas->" . $column,
+        //     'values' => $values,
+        //     'is_json_column' => true
+        // ];
     }
 
     /**
@@ -171,7 +227,7 @@ class LeadService extends ReportingService
     private function getColumnsToKeep(): array
     {
         $settings = PageSetting::query()
-                        ->where(['page' => 'global_leads', 'type' => 'customize_columns'])
+                        ->where(['page' => 'global_leads', 'type' => 'customize_columns', 'user_id' => auth()->id()])
                         ->first();
 
         if ($settings && ! empty($settings->data)) {
@@ -180,4 +236,154 @@ class LeadService extends ReportingService
 
         return $this->getSortFields();
     }
+
+    /**
+     * Returns the appropriate "whereIn" or "orWhereIn" method based on the given index.
+     *
+     * @param int $index
+     * @return string
+     */
+    public function getWhereInMethod(int $index, bool $isRaw = false): string
+    {
+        if($isRaw){
+            return ($index == 0) ? 'whereRaw' : 'orWhereRaw';
+        }
+        return ($index == 0) ? 'whereIn' : 'orWhereIn';
+    }
+
+    public function convertExcelFilterToSql($query, $excelFilters, )
+    {
+        return $query->where(function ($query) use ($excelFilters) {
+            foreach ($excelFilters as $key => $filter) {
+
+                $isJsonColumn = ! empty($filter['is_json_column']);
+
+                $method = $this->getWhereInMethod($key, $isJsonColumn);
+
+                if(! $isJsonColumn){
+                    $query->$method($filter['column'], $filter['values']);
+                    continue;
+                }
+
+                $column = $filter['column'];
+                $values = array_map('strtolower', $filter['values']);
+                $placeholders = implode(',', array_fill(0, count($filter['values']), '?'));
+
+                $query->$method('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.' . $column . '"))) IN (' . $placeholders . ')', $values);
+            }
+        });
+    }
+
+    public function convertFilterToSql($query, $conditions)
+    {
+        return $query->where(function ($query) use ($conditions) {
+            foreach ($conditions as $conditionKey => $conditionGroup) {
+
+                $method = $this->getConditionMethod($conditionKey);
+
+                $query->$method(function ($query2) use ($conditionGroup) {
+
+                    foreach ($conditionGroup as $index => $condition) {
+
+                        $type = $this->getConditionType($condition['operator']);
+                        $method2 = $this->getConditionMethod($index, $type);
+
+                        if($type) {
+                            $query2->$method2($condition['column']);
+                            continue;
+                        }
+
+                        $query2->$method2($condition['column'], $condition['operator'], $condition['value']);
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * Updates the leads in the database based on the provided request.
+     *
+     * @param Request $request
+     * @return void
+     */
+    public function formatAndUpdateLeads(Request $request)
+    {
+        $leads = collect($request->leads);
+        $leadIds = $leads->pluck('id')->all();
+        $updatedLeadsData = [];
+
+        $leadData = PlatformData::whereIn('id', $leadIds)->select('id', 'datas')->get();
+        $updatableFields = ['datas'];
+
+        $this->formatLeads($leadData, $leads, $updatedLeadsData, $updatableFields);
+
+        PlatformData::upsert(
+            $updatedLeadsData,
+            ['id'],
+            array_unique($updatableFields)
+        );
+
+        $this->updateLeadReports($updatedLeadsData);
+    }
+
+    public function updateLeadReports(array $updatedLeadsData)
+    {
+
+        $updatedLeadsData = collect($updatedLeadsData);
+        $leadIds = $updatedLeadsData->pluck('id')->all();
+        $leads = $updatedLeadsData->select(['id', 'affid']);
+        $formattedReports = [];
+
+        $reports = LeadReport::query()
+                    ->whereIn('lead_id', $leadIds)
+                    ->select('id', 'lead_id')
+                    ->get()
+                    ->groupBy('lead_id');
+
+        foreach($reports as $key => $reportData){
+            $lead = $leads->firstWhere('id', $key);
+            if(empty($lead)) continue;
+
+            unset($lead['id']);
+
+            $formattedReport = collect($reportData)
+                                    ->map(function($item) use ($lead) {
+                                        unset($item->lead_id);
+                                        return array_merge($item->toArray(), $lead);
+                                    })
+                                    ->all();
+
+            array_push($formattedReports, ... $formattedReport);
+        }
+
+        LeadReport::upsert(
+            $formattedReports,
+            ['id'],
+            ['affid']
+        );
+    }
+
+    public function formatLeads(EloquentCollection $leadData, Collection $leads, array &$updatedLeadsData, array &$updatableFields)
+    {
+        foreach ($leadData as $lead) {
+            $newLead = $leads->firstWhere('id', $lead->id);
+            unset($newLead['id']);
+
+            $formattedLead = [
+                'id' => $lead->id,
+                'datas' => json_encode(array_merge($lead->datas, $newLead)),
+            ];
+
+            foreach (['email', 'phone', 'affid', 'page_source'] as $field) {
+
+                if (empty($newLead[$field])) continue;
+
+                $formattedLead[$field] = $newLead[$field];
+                $updatableFields[] = $field;
+            }
+
+            $updatedLeadsData[] = $formattedLead;
+        }
+    }
+
 }

@@ -17,21 +17,21 @@ class PlatformData extends Model
         'affid',
         'phone',
         'email',
+        'buyer_integration_id',
+        'buyer_id',
+        'lead_status',
+        'affm_source_id',
+        'affiliate_specs_id',
+        'sold_type',
         'datas',
         'revenue',
         'payout',
         'cost',
         'is_retainer',
-        'affiliate_specs_id',
         'is_sold',
-        'buyer_integration_id',
-        'buyer_id',
-        'lead_status',
         'is_internal',
         'retained_date',
-        'affm_source_id',
         'page_source',
-        'sold_type'
     ];
 
     protected $casts = [
