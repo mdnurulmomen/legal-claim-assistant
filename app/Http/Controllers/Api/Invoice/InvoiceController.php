@@ -21,11 +21,11 @@ class InvoiceController extends Controller
     public function invoiceList(Request $request): Response
     {
         $invoices = Invoice::query();
-        
+
         $invoices = $invoices->whereHas('user', function($query){
             $query->where('role', 'affiliate');
         });
-        
+
         $invoices->when( $request->has('status') && (!empty($request->status) && $request->status != "all"), function ($query) use ($request) {
             $query_status = explode(',', $request->status);
 
@@ -66,7 +66,7 @@ class InvoiceController extends Controller
 
         return withSuccessResourceList(InvoiceListResource::collection($invoices));
     }
-    
+
 
     /**
      * Retrieves a invoice based on the request parameter tag.
@@ -77,13 +77,13 @@ class InvoiceController extends Controller
     public function invoiceByTag(Request $request, $tag): Response
     {
         $invoices = Invoice::where('tag', $tag)->get();
-        
+
         if($invoices){
             return withSuccessResourceList(InvoiceResource::collection($invoices));
         }
         return withError('Invalid Invoice request.');
     }
-    
+
     public function invoiceUpdate(Request $request, $tag)
     {
 
@@ -108,7 +108,7 @@ class InvoiceController extends Controller
                 $invoice->status == "Rejected";
             }
             $invoice->update();
-            
+
             return withSuccess('Updated Successfully');
         }
     }

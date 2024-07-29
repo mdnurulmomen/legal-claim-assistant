@@ -20,10 +20,12 @@ class InvoiceListResource extends JsonResource
             'tag' => $this->tag,
             'name' => $this->name,
             'monthly_net' => 'Monthly Net +'.$this->monthly_net,
-            'invoice_by' => $this->partner->partner?->company ?? $this->partner->name,
+            // 'invoice_by' => $this->partner->partner?->company ?? $this->partner->name,
+            'invoice_by' => '',
             'amount' => minusBeforeDollarSign($this->currency, $this->amount),
             'status' => $this->status,
-            'listresult' => $this->listresult,
+            // 'listresult' => $this->listresult,
+            'listresult' => [],
             'file' => url(Storage::url($this->file)),
             'created_at' => $this->created_at->toDateTimeString()
         ];
