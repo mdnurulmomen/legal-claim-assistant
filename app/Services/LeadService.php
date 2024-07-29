@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\LeadLog;
 use App\Models\LeadReport;
 use App\Models\PageSetting;
 use App\Models\PlatformData;
@@ -11,7 +12,6 @@ use Illuminate\Support\Collection;
 
 class LeadService extends ReportingService
 {
-
     /**
      * Formats an array of headers into a sorted and formatted array.
      *
@@ -124,11 +124,6 @@ class LeadService extends ReportingService
             'values' => $values,
             'is_json_column' => true
         ];
-        // return [
-        //     'column' => "platform_datas.datas->" . $column,
-        //     'values' => $values,
-        //     'is_json_column' => true
-        // ];
     }
 
     /**
@@ -145,7 +140,6 @@ class LeadService extends ReportingService
         }
 
         $filters = json_decode($filters, true);
-
         $formattedFilters = [];
 
         foreach($filters as $value){
@@ -257,7 +251,6 @@ class LeadService extends ReportingService
             foreach ($excelFilters as $key => $filter) {
 
                 $isJsonColumn = ! empty($filter['is_json_column']);
-
                 $method = $this->getWhereInMethod($key, $isJsonColumn);
 
                 if(! $isJsonColumn){
@@ -268,7 +261,6 @@ class LeadService extends ReportingService
                 $column = $filter['column'];
                 $values = array_map('strtolower', $filter['values']);
                 $placeholders = implode(',', array_fill(0, count($filter['values']), '?'));
-
                 $query->$method('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.' . $column . '"))) IN (' . $placeholders . ')', $values);
             }
         });
@@ -324,6 +316,47 @@ class LeadService extends ReportingService
         );
 
         $this->updateLeadReports($updatedLeadsData);
+        $this->updateLeadLogs($leads);
+    }
+
+    public function updateLeadLogs(Collection $leads)
+    {
+        $leadIds = $leads->pluck('id')->all();
+
+        $formattedData = [];
+
+        $leadLogs = LeadLog::whereIn('lead_id', $leadIds)
+                        ->select('id', 'lead_id', 'log_data')
+                        ->get()
+                        ->groupBy('lead_id');
+
+        foreach($leads as $lead){
+
+            if(empty($leadLogs[$lead['id']])) continue;
+
+            $leadLog = $leadLogs[$lead['id']][0];
+            $logData = $leadLog->log_data;
+            $originalPayload = $logData && $logData['original_payload'] ? $logData['original_payload'] : null;
+            if(empty($originalPayload)) continue;
+
+            foreach($lead as $key => $value){
+                if(! isset($originalPayload[$key])) continue;
+                $originalPayload[$key] = $value;
+            }
+
+            $logData['original_payload'] = $originalPayload;
+
+            $formattedData[] = [
+                'id' => $leadLog->id,
+                'log_data' => json_encode($logData)
+            ];
+        }
+
+        LeadLog::upsert(
+            $formattedData,
+            ['id'],
+            ['log_data']
+        );
     }
 
     public function updateLeadReports(array $updatedLeadsData)
