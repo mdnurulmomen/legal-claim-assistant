@@ -75,50 +75,27 @@ class LeadController extends Controller
                             return $query->whereBetween('platform_datas.created_at', [$startDate, $endDate]);
                         })
                         ->when(! empty($request->search_txt), function ($query) use ($request) {
-                            return $query->where(function ($query) use ($request) {
+
+                            $searchText = strtolower($request->search_txt);
+
+                            return $query->where(function ($query) use ($searchText) {
                                 return $query->whereAny(
                                             [
                                                 'platform_datas.email',
                                                 'platform_datas.phone',
                                                 'integrations.name'
                                             ],
-                                            'like', '%' . $request->search_txt . '%'
+                                            'like', "%{$searchText}%"
                                         );
                                     })
-                                    ->orWhere('platform_datas.datas->first_name', 'like', '%' . $request->search_txt . '%')
-                                    ->orWhere('platform_datas.datas->last_name', 'like', '%' . $request->search_txt . '%');
+                                    ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.first_name"))) LIKE ?', ["%{$searchText}%"])
+                                    ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.last_name"))) LIKE ?', ["%{$searchText}%"]);
                         })
                         ->when(! empty($excelFilters), function ($query) use ($excelFilters, $leadService) {
-                            return $query->where(function ($query) use ($excelFilters, $leadService) {
-                                foreach ($excelFilters as $key => $filter) {
-                                    $method = $leadService->getWhereInMethod($key);
-                                    $query->$method($filter['column'], $filter['values']);
-                                }
-                            });
+                            return $leadService->convertExcelFilterToSql($query, $excelFilters);
                         })
                         ->when(! empty($conditions), function ($query) use ($conditions, $leadService) {
-                            return $query->where(function ($query) use ($conditions, $leadService) {
-                                foreach ($conditions as $conditionKey => $conditionGroup) {
-
-                                    $method = $leadService->getConditionMethod($conditionKey);
-
-                                    $query->$method(function ($query2) use ($conditionGroup, $leadService) {
-
-                                        foreach ($conditionGroup as $index => $condition) {
-
-                                            $type = $leadService->getConditionType($condition['operator']);
-                                            $method2 = $leadService->getConditionMethod($index, $type);
-
-                                            if($type) {
-                                                $query2->$method2($condition['column']);
-                                                continue;
-                                            }
-
-                                            $query2->$method2($condition['column'], $condition['operator'], $condition['value']);
-                                        }
-                                    });
-                                }
-                            });
+                            return $leadService->convertFilterToSql($query, $conditions);
                         });
 
         if(! empty($request->is_export)){
