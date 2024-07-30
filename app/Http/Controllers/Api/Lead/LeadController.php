@@ -46,8 +46,11 @@ class LeadController extends Controller
                             'platform_datas.datas',
                             'platform_datas.email',
                             'platform_datas.phone',
+                            'platform_datas.buyer_integration_id',
                             'integrations.name as buyer_integration',
+                            'platform_datas.buyer_id',
                             'buyers.name as buyer_name',
+                            'platform_datas.affiliate_id',
                             'users.name as affiliate_name',
                             'platform_datas.lead_status'
                         )
@@ -223,6 +226,13 @@ class LeadController extends Controller
         }
     }
 
+    /**
+     * Retrieves the lead reports for a specific lead.
+     *
+     * @param Request $request
+     * @param int $leadId
+     * @return Response
+     */
     public function getLeadReports(Request $request, int $leadId): Response
     {
         $perPage = empty($request->per_page) ? 10 : $request->per_page;
@@ -245,6 +255,13 @@ class LeadController extends Controller
         return withSuccessResourceList(LeadReportResource::collection($reports));
     }
 
+    /**
+     * Deletes a lead report.
+     *
+     * @param Request $request
+     * @param int $reportId
+     * @return Response
+     */
     public function deleteReport(Request $request, int $reportId): Response
     {
         $leadReport = LeadReport::find($reportId);
@@ -256,12 +273,25 @@ class LeadController extends Controller
         return withSuccess('Lead Report deleted Successfully!');
     }
 
+    /**
+     * Store a lead report.
+     *
+     * @param StoreLeadReportRequest $request
+     * @return Response
+     */
     public function storeLeadReports(StoreLeadReportRequest $request): Response
     {
         LeadReport::create($request->validated());
         return withSuccess(message: 'Lead Created Successfully');
     }
 
+    /**
+     * Retrieves a single lead report based on the provided report ID.
+     *
+     * @param Request $request
+     * @param int $reportId
+     * @return Response
+     */
     public function getSingleReports(Request $request, int $reportId): Response
     {
         $report = LeadReport::query()
@@ -286,6 +316,13 @@ class LeadController extends Controller
         return withSuccess(new LeadReportResource($report));
     }
 
+    /**
+     * Updates a lead report based on the provided request and report ID.
+     *
+     * @param StoreLeadReportRequest $request
+     * @param int $reportId
+     * @return Response
+     */
     public function updateLeadReport(StoreLeadReportRequest $request, int $reportId): Response
     {
         $report = LeadReport::find($reportId);
@@ -298,5 +335,24 @@ class LeadController extends Controller
         }
 
         return withError('Lead Report Update Failed!');
+    }
+
+    /**
+     * Retrieves a list of buyer integrations based on the search text provided in the request.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function getBuyerIntegrations(Request $request): Response
+    {
+        $integrations = Integration::query()
+                            ->select('id as value', 'name as label')
+                            ->when(! empty($request->search_txt), function ($query) use ($request) {
+                                return $query->where('name', 'like', "%{$request->search_txt}%");
+                            })
+                            ->limit(50)
+                            ->get();
+
+        return withSuccess($integrations);
     }
 }

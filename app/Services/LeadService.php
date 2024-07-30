@@ -317,6 +317,8 @@ class LeadService extends ReportingService
 
         $this->updateLeadReports($updatedLeadsData);
         $this->updateLeadLogs($leads);
+
+        // abort(400, 'Custom Error');
     }
 
     public function updateLeadLogs(Collection $leads)
@@ -361,15 +363,15 @@ class LeadService extends ReportingService
 
     public function updateLeadReports(array $updatedLeadsData)
     {
-
+        $reportFields = ['affid', 'buyer_integration_id'];
         $updatedLeadsData = collect($updatedLeadsData);
         $leadIds = $updatedLeadsData->pluck('id')->all();
-        $leads = $updatedLeadsData->select(['id', 'affid']);
+        $leads = $updatedLeadsData->select(['id', ...$reportFields]);
         $formattedReports = [];
 
         $reports = LeadReport::query()
                     ->whereIn('lead_id', $leadIds)
-                    ->select('id', 'lead_id')
+                    ->select('id', 'lead_id', ...$reportFields)
                     ->get()
                     ->groupBy('lead_id');
 
@@ -389,10 +391,12 @@ class LeadService extends ReportingService
             array_push($formattedReports, ... $formattedReport);
         }
 
+        if(empty($formattedReports)) return;
+
         LeadReport::upsert(
             $formattedReports,
             ['id'],
-            ['affid']
+            $reportFields
         );
     }
 
@@ -407,7 +411,7 @@ class LeadService extends ReportingService
                 'datas' => json_encode(array_merge($lead->datas, $newLead)),
             ];
 
-            foreach (['email', 'phone', 'affid', 'page_source'] as $field) {
+            foreach (['email', 'phone', 'affid', 'buyer_integration_id', 'page_source'] as $field) {
 
                 if (empty($newLead[$field])) continue;
 
