@@ -6,6 +6,7 @@ use App\Models\LeadLog;
 use App\Models\LeadReport;
 use App\Models\PageSetting;
 use App\Models\PlatformData;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -79,6 +80,12 @@ class LeadService extends ReportingService
         ];
     }
 
+    /**
+     * Formats the Excel filters from the request.
+     *
+     * @param Request $request
+     * @return array
+     */
     public function formatExcelFilters(Request $request)
     {
         $filters = $request->input('excel_filters', '');
@@ -115,6 +122,15 @@ class LeadService extends ReportingService
         return $formattedFilters;
     }
 
+    /**
+     * Creates a condition array with the given column and values,
+     * with the 'is_json_column' key set to true. The values are
+     * transformed to lowercase.
+     *
+     * @param string $column
+     * @param array $values
+     * @return array
+     */
     public function makeConditionWithoutOperator(string $column, array $values = [])
     {
         $values = array_map('strtolower', $values);
@@ -245,7 +261,14 @@ class LeadService extends ReportingService
         return ($index == 0) ? 'whereIn' : 'orWhereIn';
     }
 
-    public function convertExcelFilterToSql($query, $excelFilters, )
+    /**
+     * Converts an array of Excel filters to SQL conditions for a given query.
+     *
+     * @param Builder $query
+     * @param array $excelFilters
+     * @return Builder
+     */
+    public function convertExcelFilterToSql(Builder $query, array $excelFilters, )
     {
         return $query->where(function ($query) use ($excelFilters) {
             foreach ($excelFilters as $key => $filter) {
@@ -266,7 +289,14 @@ class LeadService extends ReportingService
         });
     }
 
-    public function convertFilterToSql($query, $conditions)
+    /**
+     * Converts an array of filter conditions to a SQL query using Laravel's query builder.
+     *
+     * @param Builder $query
+     * @param array $conditions
+     * @return Builder
+     */
+    public function convertFilterToSql(Builder $query, array $conditions)
     {
         return $query->where(function ($query) use ($conditions) {
             foreach ($conditions as $conditionKey => $conditionGroup) {
@@ -321,6 +351,12 @@ class LeadService extends ReportingService
         // abort(400, 'Custom Error');
     }
 
+    /**
+     * Updates the lead logs for a collection of leads.
+     *
+     * @param Collection $leads
+     * @return void
+     */
     public function updateLeadLogs(Collection $leads)
     {
         $leadIds = $leads->pluck('id')->all();
@@ -400,6 +436,15 @@ class LeadService extends ReportingService
         );
     }
 
+    /**
+     * Formats an array of lead data and updates the given arrays with the formatted data.
+     *
+     * @param EloquentCollection $leadData
+     * @param Collection $leads
+     * @param array
+     * @param array
+     * @return void
+     */
     public function formatLeads(EloquentCollection $leadData, Collection $leads, array &$updatedLeadsData, array &$updatableFields)
     {
         foreach ($leadData as $lead) {
