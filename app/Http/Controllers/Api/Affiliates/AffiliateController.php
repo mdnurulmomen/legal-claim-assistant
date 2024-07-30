@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Api\Affiliates;
 
+use App\Http\Controllers\Api\Affiliates\Requests\CreateOrUpdateAffiliateRequest;
 use App\Http\Controllers\Api\Affiliates\Resources\AffiliateResource;
+use App\Http\Controllers\Api\Affiliates\Resources\SingleAffiliateResource;
 use App\Http\Controllers\Controller;
 use App\Models\Affiliate;
 use App\Models\User;
@@ -55,7 +57,7 @@ class AffiliateController extends Controller
      * @param int $id
      * @return Response
      */
-    public function affiliate(Request $request, $id): Response
+    public function affiliate(Request $request, $id)
     {
         $affiliate = User::query()
             ->where('role', 'affiliate')
@@ -63,7 +65,7 @@ class AffiliateController extends Controller
             ->withCount('postingDocs')
             ->findOrFail($id);
 
-        return withSuccessResource(new AffiliateResource($affiliate));
+        return withSuccess(new SingleAffiliateResource($affiliate));
     }
 
     /**
@@ -73,14 +75,67 @@ class AffiliateController extends Controller
      * @param int $id
      * @return Response
      */
-    public function update(Request $request, $id): Response
+    public function update(CreateOrUpdateAffiliateRequest $request, $id)
+    {
+        $user = User::query()
+            ->where('role', 'affiliate')
+            ->withCount('postingDocs')
+            ->findOrFail($id);
+
+        $user->update($request->validated());
+
+
+        $user->affiliate()->update($request->only([
+            'company_name',
+            'country',
+            'address',
+            'zip',
+        ]));
+
+
+        return withSuccess(new AffiliateResource($user));
+    }
+
+    /**
+     * Store a new affiliate.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function create(CreateOrUpdateAffiliateRequest $request)
+    {
+
+        // create user with affiliate role and create aff with user_id and other data country, company_name, zip, address
+        $affiliate = User::create($request->validated());
+        $affiliate->affiliate()->create($request->only(
+            [
+                'company_name',
+                'country',
+                'address',
+                'zip',]
+        ));
+
+        // return with success response
+        return withSuccess(new AffiliateResource($affiliate->load('affiliate')), 'Affiliate created successfully');
+    }
+
+    /**
+     * Activate or deactivate the affiliate based on the provided ID.
+     *
+     * @param Request $request
+     * @param int $id
+     * @return Response
+     */
+    public function toggleStatus(Request $request, $id)
     {
         $affiliate = User::query()
             ->where('role', 'affiliate')
             ->findOrFail($id);
 
-        $affiliate->update($request->all());
+        $affiliate->update([
+            'status' => !$affiliate->status
+        ]);
 
-        return withSuccessResource(new AffiliateResource($affiliate));
+        return withSuccess(new AffiliateResource($affiliate));
     }
 }

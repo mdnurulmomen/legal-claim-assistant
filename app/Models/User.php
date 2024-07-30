@@ -84,7 +84,7 @@ class User extends Authenticatable
     /**
      * Get the affiliate record associated partner_platform_connections.
      */
-    public function postingDocs(): HasMany
+    public function postingDocs(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(partnerPlatformConnections::class);
     }

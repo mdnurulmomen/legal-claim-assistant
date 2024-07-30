@@ -9,4 +9,6 @@ Route::prefix('affiliates')->as('affiliate.')
         $route->get('index', 'affiliates')->name('index');
         $route->get('show/{id}', 'affiliate')->name('show');
         $route->put('update/{id}', 'update')->name('update');
+        $route->post('create', 'store')->name('store');
+        $route->put('affiliate-status/{id}', 'toggleStatus')->name('toggle-status');
     });

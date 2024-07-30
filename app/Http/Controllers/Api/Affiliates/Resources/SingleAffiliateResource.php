@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\Affiliates\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class AffiliateResource extends JsonResource
+class SingleAffiliateResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -22,12 +22,18 @@ class AffiliateResource extends JsonResource
             'email' => $this->email,
             'phone' => $this->phone,
             'company_name' => $this->affiliate?->company_name,
-            'address' => $this->affiliate?->address,
             'country' => $this->affiliate?->country,
-            'total_posting_docs' => $this->posting_docs_count,
+            'address' => $this->affiliate?->address,
+            'zip' => $this->affiliate?->zip,
+//            'bank_name' => $this->affiliate?->bank_name,
+//            'bank_account_name' => $this->affiliate?->bank_account_name,
+//            'bank_account_number' => $this->affiliate?->bank_account_number,
+//            'bank_swift_code' => $this->affiliate?->bank_swift_code,
+//            'vat_number' => $this->affiliate?->vat_number,
             'status' => $this->status,
             'affid' => $this->data['affid'] ?? null,
-            'created_at' => $this->created_at->toDateTimeString()
+            'workspace' => $this->workspace,
+            'is_test' => $this->is_test,
         ];
     }
 }
