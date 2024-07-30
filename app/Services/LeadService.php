@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Integration;
 use App\Models\LeadLog;
 use App\Models\LeadReport;
 use App\Models\PageSetting;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class LeadService extends ReportingService
 {
@@ -333,17 +335,26 @@ class LeadService extends ReportingService
         $leads = collect($request->leads);
         $leadIds = $leads->pluck('id')->all();
         $updatedLeadsData = [];
-
-        $leadData = PlatformData::whereIn('id', $leadIds)->select('id', 'datas')->get();
         $updatableFields = ['datas'];
 
-        $this->formatLeads($leadData, $leads, $updatedLeadsData, $updatableFields);
+        $buyerIntegrationIds = $leads->pluck('buyer_integration_id')->all();
+        $integrations = Integration::whereIn('id', $buyerIntegrationIds)
+                            ->select('id', 'buyer_id', 'buyer_unique_id')
+                            ->get();
 
-        PlatformData::upsert(
-            $updatedLeadsData,
-            ['id'],
-            array_unique($updatableFields)
-        );
+        $leadData = PlatformData::whereIn('id', $leadIds)->select('id', 'datas')->get();
+
+        $this->formatLeads($leadData, $leads, $updatedLeadsData, $updatableFields, $integrations);
+
+        if(count($updatedLeadsData) > 0){
+            PlatformData::upsert(
+                $updatedLeadsData,
+                ['id'],
+                array_unique($updatableFields)
+            );
+        }
+
+        // info(json_encode(array_unique($updatableFields)));
 
         $this->updateLeadReports($updatedLeadsData);
         $this->updateLeadLogs($leads);
@@ -399,7 +410,7 @@ class LeadService extends ReportingService
 
     public function updateLeadReports(array $updatedLeadsData)
     {
-        $reportFields = ['affid', 'buyer_integration_id'];
+        $reportFields = ['affid', 'buyer_integration_id', 'buyer_id'];
         $updatedLeadsData = collect($updatedLeadsData);
         $leadIds = $updatedLeadsData->pluck('id')->all();
         $leads = $updatedLeadsData->select(['id', ...$reportFields]);
@@ -412,7 +423,7 @@ class LeadService extends ReportingService
                     ->groupBy('lead_id');
 
         foreach($reports as $key => $reportData){
-            $lead = $leads->firstWhere('id', $key);
+            $lead = $leads->firstWhere('id', $key); // Requested Leads
             if(empty($lead)) continue;
 
             unset($lead['id']);
@@ -445,27 +456,61 @@ class LeadService extends ReportingService
      * @param array
      * @return void
      */
-    public function formatLeads(EloquentCollection $leadData, Collection $leads, array &$updatedLeadsData, array &$updatableFields)
+    public function formatLeads(
+        EloquentCollection $leadData,
+        Collection $leads,
+        array &$updatedLeadsData,
+        array &$updatableFields,
+        EloquentCollection $integrations
+    )
     {
+        $integrationsGrouped = $integrations->groupBy('id');
+
         foreach ($leadData as $lead) {
             $newLead = $leads->firstWhere('id', $lead->id);
             unset($newLead['id']);
 
             $formattedLead = [
                 'id' => $lead->id,
-                'datas' => json_encode(array_merge($lead->datas, $newLead)),
+                'datas' => array_merge($lead->datas, $newLead),
             ];
 
             foreach (['email', 'phone', 'affid', 'buyer_integration_id', 'page_source'] as $field) {
 
-                if (empty($newLead[$field])) continue;
+                if (! array_key_exists($field, $newLead)) continue;
 
-                $formattedLead[$field] = $newLead[$field];
+                $formattedLead[$field] = $newLead[$field] ?? '';
                 $updatableFields[] = $field;
             }
 
+            $isBuyerIntegrationId = array_key_exists('buyer_integration_id', $formattedLead);
+
+            if($isBuyerIntegrationId){
+                $buyerIntegrationId = $formattedLead['buyer_integration_id'] ?? null;
+                $integration = ! empty($integrationsGrouped[$buyerIntegrationId]) ?$integrationsGrouped[$buyerIntegrationId][0] : null;
+                $formattedLead['buyer_id'] = $integration ? $integration->buyer_id : null;
+
+                if(! empty($integration) && isset($formattedLead['datas']['lead_buyer'])){
+                    $formattedLead['datas']['lead_buyer'] = $integration->buyer_unique_id;
+                }
+                $updatableFields[] = 'buyer_id';
+            }
+
+            $formattedLead['datas'] = json_encode($formattedLead['datas']);
             $updatedLeadsData[] = $formattedLead;
         }
+    }
+
+    /**
+     * Updates the 'created_at' field of a lead report in the database with the given report ID and date.
+     *
+     * @param int $reportId
+     * @param string $date
+     * @return void
+     */
+    public function updateReportData(int $reportId, string $date): void
+    {
+        DB::table('lead_reports')->where('id', $reportId)->update(['created_at' => $date]);
     }
 
 }

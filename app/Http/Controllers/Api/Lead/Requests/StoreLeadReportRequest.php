@@ -43,7 +43,8 @@ class StoreLeadReportRequest extends FormRequest
             'profit_margin' => ['nullable', 'numeric'],
             'is_posted' => ['nullable', 'boolean'],
             'page_source' => ['nullable', 'string', 'max:255'],
-            'affm_source_id' => ['nullable', 'integer']
+            'affm_source_id' => ['nullable', 'integer'],
+            'created_at' => ['required', 'date']
         ];
     }
 

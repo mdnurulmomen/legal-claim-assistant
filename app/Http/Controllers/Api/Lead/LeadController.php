@@ -248,7 +248,8 @@ class LeadController extends Controller
                             'affiliate_payout',
                             'lead_profit',
                             'affiliate_margin',
-                            'profit_margin'
+                            'profit_margin',
+                            'created_at'
                         )
                         ->paginate($perPage);
 
@@ -276,13 +277,25 @@ class LeadController extends Controller
     /**
      * Store a lead report.
      *
-     * @param StoreLeadReportRequest $request
+     * @param StoreLeadReportRequest $requestj
+     * @param LeadService $leadService
      * @return Response
      */
-    public function storeLeadReports(StoreLeadReportRequest $request): Response
+    public function storeLeadReports(StoreLeadReportRequest $request, LeadService $leadService): Response
     {
-        LeadReport::create($request->validated());
-        return withSuccess(message: 'Lead Created Successfully');
+        try {
+
+            DB::beginTransaction();
+            $report = LeadReport::create($request->validated());
+            $leadService->updateReportData($report->id, $request->created_at);
+            DB::commit();
+
+            return withSuccess(message: 'Lead Created Successfully');
+
+        } catch (\Throwable $th) {
+            info($th->getMessage());
+            return withError('Lead Report Creation Failed');
+        }
     }
 
     /**
@@ -305,7 +318,8 @@ class LeadController extends Controller
                             'affiliate_payout',
                             'lead_profit',
                             'affiliate_margin',
-                            'profit_margin'
+                            'profit_margin',
+                            'created_at'
                         )
                         ->find($reportId);
 
@@ -323,18 +337,28 @@ class LeadController extends Controller
      * @param int $reportId
      * @return Response
      */
-    public function updateLeadReport(StoreLeadReportRequest $request, int $reportId): Response
+    public function updateLeadReport(StoreLeadReportRequest $request, int $reportId, LeadService $leadService): Response
     {
         $report = LeadReport::find($reportId);
         if(empty($report)){
             return withError('Invalid Report Id Provided');
         }
 
+        try {
+
+            DB::beginTransaction();
+            $report->update($request->validated());
+            $leadService->updateReportData($report->id, $request->created_at);
+            DB::commit();
+
+            return withSuccess(message: 'Lead Report Updated Successfully!');
+        } catch (\Throwable $th) {
+            info($th->getMessage());
+            return withError('Lead Report Update Failed!');
+        }
         if($report->update($request->validated())){
             return withSuccess(message: 'Lead Report Updated Successfully!');
         }
-
-        return withError('Lead Report Update Failed!');
     }
 
     /**
