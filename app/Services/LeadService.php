@@ -490,10 +490,10 @@ class LeadService extends ReportingService
 
             if($isBuyerIntegrationId){
                 $buyerIntegrationId = $formattedLead['buyer_integration_id'] ?? null;
-                $integration = ! empty($integrationsGrouped[$buyerIntegrationId]) ?$integrationsGrouped[$buyerIntegrationId][0] : null;
+                $integration = ! empty($integrationsGrouped[$buyerIntegrationId]) ? $integrationsGrouped[$buyerIntegrationId][0] : null;
                 $formattedLead['buyer_id'] = $integration ? $integration->buyer_id : null;
 
-                if(! empty($integration) && isset($formattedLead['datas']['lead_buyer'])){
+                if(! empty($integration)){
                     $formattedLead['datas']['lead_buyer'] = $integration->buyer_unique_id;
                 }
                 $updatableFields[] = 'buyer_id';
@@ -516,9 +516,18 @@ class LeadService extends ReportingService
         $date = empty($request->created_at) ? now() : Carbon::parse($request->created_at)->startOfDay();
         if(! empty($request->is_retainer) && ! empty($request->created_at)){
             $date = Carbon::parse($request->created_at)->midDay();
+            $this->updatePlatformData($request->lead_id, ['retained_date' => $date]);
         }
 
-        DB::table('lead_reports')->where('id', $reportId)->update(['created_at' => $date]);
+        DB::table('lead_reports')->where('id', $reportId)
+            ->where('created_at', '!=', $date)
+            ->update(['created_at' => $date]);
+
+        $isRetained = $this->hasAnyRetainedLead($request->lead_id, $reportId);
+
+        if(empty($request->is_retainer) && !$isRetained){
+            $this->updatePlatformData($request->lead_id, ['retained_date' => null]);
+        }
     }
 
     /**
@@ -532,30 +541,28 @@ class LeadService extends ReportingService
     public function updateLeadStatus(int $leadId, int $reportId, bool $isRetainer): void
     {
         if($isRetainer){
-            $this->updateStatus($leadId, 'Retained');
+            $this->updatePlatformData($leadId, ['lead_status' => 'Retained']);
             return;
         }
 
-        $isRetained = LeadReport::where('id', '!=', $reportId)
-                            ->where('lead_id', $leadId)
-                            ->where('is_retainer', '>', 0)
-                            ->exists();
-
+        $isRetained = $this->hasAnyRetainedLead($leadId, $reportId);
         if($isRetained) return;
 
-        $this->updateStatus($leadId, 'Pending');
+        $this->updatePlatformData($leadId, [
+            'lead_status' => 'Pending',
+            'retained_date' => null
+        ]);
     }
 
-    /**
-     * Updates the status of a lead in the database with the given lead ID and status.
-     *
-     * @param int $leadId
-     * @param string $status
-     * @return void
-     */
-    public function updateStatus(int $leadId, string $status): void
+    public function hasAnyRetainedLead(int $leadId, int $reportId): bool
     {
-        PlatformData::where('id', $leadId)->update(['lead_status' => $status]);
+        return LeadReport::query()
+                ->when(! empty($reportId), function($query) use ($reportId) {
+                    return $query->where('id', '!=', $reportId);
+                })
+                ->where('lead_id', $leadId)
+                ->where('is_retainer', '>', 0)
+                ->exists();
     }
 
     /**
@@ -573,5 +580,39 @@ class LeadService extends ReportingService
         unset($requestData['show_in_portal']);
 
         return $requestData;
+    }
+
+    /**
+     * Updates the revenue and payout for a lead in the database.
+     *
+     * @param int $leadId The ID of the lead.
+     * @return void
+     */
+    public function updateRevenuePayout(int $leadId): void
+    {
+        $report = LeadReport::where('lead_id', $leadId)
+                    ->select(
+                        DB::raw("SUM(lead_revenue) as revenue"),
+                        DB::raw("SUM(affiliate_payout) as payout")
+                    )
+                    ->groupBy('lead_id')
+                    ->first();
+
+        $this->updatePlatformData($leadId, [
+            'revenue' => (float) $report->revenue,
+            'payout' => (float) $report->payout
+        ]);
+    }
+
+    /**
+     * Updates the platform data for a given ID.
+     *
+     * @param int $id The ID of the platform data.
+     * @param mixed $data The data to update.
+     * @return void
+     */
+    public function updatePlatformData(int $id, $data): void
+    {
+        PlatformData::where('id', $id)->update($data);
     }
 }

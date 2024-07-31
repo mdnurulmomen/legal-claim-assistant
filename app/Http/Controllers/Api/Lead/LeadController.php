@@ -261,23 +261,35 @@ class LeadController extends Controller
      *
      * @param Request $request
      * @param int $reportId
+     * @param LeadService $leadService
      * @return Response
      */
-    public function deleteReport(Request $request, int $reportId): Response
+    public function deleteReport(Request $request, int $reportId, LeadService $leadService): Response
     {
-        $leadReport = LeadReport::find($reportId);
-        if(empty($leadReport)){
+        $report = LeadReport::find($reportId);
+        if(empty($report)){
             return withError('Lead Report not found!');
         }
 
-        $leadReport->delete();
-        return withSuccess('Lead Report deleted Successfully!');
+        try {
+
+            DB::beginTransaction();
+            $leadService->updateLeadStatus($report->lead_id, $reportId, false);
+            $report->delete();
+            $leadService->updateRevenuePayout($report->lead_id);
+            DB::commit();
+
+            return withSuccess('Lead Report deleted Successfully!');
+        } catch (\Throwable $th) {
+            info($th->getMessage());
+            return withError('Lead Report Deletion Failed!');
+        }
     }
 
     /**
      * Store a lead report.
      *
-     * @param StoreLeadReportRequest $requestj
+     * @param StoreLeadReportRequest $request
      * @param LeadService $leadService
      * @return Response
      */
@@ -290,6 +302,7 @@ class LeadController extends Controller
             $report = LeadReport::create($formattedData);
             $leadService->updateReportData($report->id, $request);
             $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer);
+            $leadService->updateRevenuePayout($request->lead_id);
             DB::commit();
 
             return withSuccess(message: 'Lead Created Successfully');
@@ -354,6 +367,7 @@ class LeadController extends Controller
             $report->update($formattedData);
             $leadService->updateReportData($report->id, $request);
             $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer);
+            $leadService->updateRevenuePayout($request->lead_id);
             DB::commit();
 
             return withSuccess(message: 'Lead Report Updated Successfully!');
