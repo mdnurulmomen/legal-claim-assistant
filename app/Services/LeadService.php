@@ -211,7 +211,7 @@ class LeadService extends ReportingService
      * @param string|int|null $value
      * @return array
      */
-    public function makeCondition(string $column, string $operator, string | int | null $value = null)
+    public function makeCondition(string $column, string $operator, string | int | null $value = null): array
     {
         return [
             'column' => "platform_datas.datas->" . $column,
@@ -271,7 +271,7 @@ class LeadService extends ReportingService
      * @param array $excelFilters
      * @return Builder
      */
-    public function convertExcelFilterToSql(Builder $query, array $excelFilters, )
+    public function convertExcelFilterToSql(Builder $query, array $excelFilters)
     {
         return $query->where(function ($query) use ($excelFilters) {
             foreach ($excelFilters as $key => $filter) {
@@ -331,7 +331,7 @@ class LeadService extends ReportingService
      * @param Request $request
      * @return void
      */
-    public function formatAndUpdateLeads(Request $request)
+    public function formatAndUpdateLeads(Request $request): void
     {
         $leads = collect($request->leads);
         $leadIds = $leads->pluck('id')->all();
@@ -365,7 +365,7 @@ class LeadService extends ReportingService
      * @param Collection $leads
      * @return void
      */
-    public function updateLeadLogs(Collection $leads)
+    public function updateLeadLogs(Collection $leads): void
     {
         $leadIds = $leads->pluck('id')->all();
 
@@ -411,7 +411,7 @@ class LeadService extends ReportingService
      * @param array $updatedLeadsData
      * @return void
      */
-    public function updateLeadReports(array $updatedLeadsData)
+    public function updateLeadReports(array $updatedLeadsData): void
     {
         $reportFields = ['affid', 'buyer_integration_id', 'buyer_id'];
         $updatedLeadsData = collect($updatedLeadsData);
@@ -465,7 +465,7 @@ class LeadService extends ReportingService
         array &$updatedLeadsData,
         array &$updatableFields,
         EloquentCollection $integrations
-    )
+    ): void
     {
         $integrationsGrouped = $integrations->groupBy('id');
 
@@ -492,10 +492,7 @@ class LeadService extends ReportingService
                 $buyerIntegrationId = $formattedLead['buyer_integration_id'] ?? null;
                 $integration = ! empty($integrationsGrouped[$buyerIntegrationId]) ? $integrationsGrouped[$buyerIntegrationId][0] : null;
                 $formattedLead['buyer_id'] = $integration ? $integration->buyer_id : null;
-
-                if(! empty($integration)){
-                    $formattedLead['datas']['lead_buyer'] = $integration->buyer_unique_id;
-                }
+                $formattedLead['datas']['lead_buyer'] = $integration ? $integration->buyer_unique_id : null;
                 $updatableFields[] = 'buyer_id';
             }
 
@@ -513,10 +510,20 @@ class LeadService extends ReportingService
      */
     public function updateReportData(int $reportId, Request $request): void
     {
+        $leadData = [
+            'retained_date' => null,
+            'is_retainer' => 0
+        ];
+
         $date = empty($request->created_at) ? now() : Carbon::parse($request->created_at)->startOfDay();
+
         if(! empty($request->is_retainer) && ! empty($request->created_at)){
             $date = Carbon::parse($request->created_at)->midDay();
-            $this->updatePlatformData($request->lead_id, ['retained_date' => $date]);
+            $leadData['retained_date'] = $date;
+            if(! empty($request->show_in_portal)){
+                $leadData['is_retainer'] = 1;
+            }
+            $this->updatePlatformData($request->lead_id, $leadData);
         }
 
         DB::table('lead_reports')->where('id', $reportId)
@@ -526,7 +533,7 @@ class LeadService extends ReportingService
         $isRetained = $this->hasAnyRetainedLead($request->lead_id, $reportId);
 
         if(empty($request->is_retainer) && !$isRetained){
-            $this->updatePlatformData($request->lead_id, ['retained_date' => null]);
+            $this->updatePlatformData($request->lead_id, $leadData);
         }
     }
 

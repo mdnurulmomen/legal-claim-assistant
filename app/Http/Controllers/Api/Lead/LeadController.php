@@ -333,6 +333,7 @@ class LeadController extends Controller
                             'lead_profit',
                             'affiliate_margin',
                             'profit_margin',
+                            'sold_type',
                             'created_at'
                         )
                         ->find($reportId);
