@@ -283,15 +283,16 @@ class LeadController extends Controller
      */
     public function storeLeadReports(StoreLeadReportRequest $request, LeadService $leadService): Response
     {
-        try {
+        $formattedData = $leadService->formatReportRequest($request->validated());
 
+        try {
             DB::beginTransaction();
-            $report = LeadReport::create($request->validated());
+            $report = LeadReport::create($formattedData);
             $leadService->updateReportData($report->id, $request->created_at);
+            $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer);
             DB::commit();
 
             return withSuccess(message: 'Lead Created Successfully');
-
         } catch (\Throwable $th) {
             info($th->getMessage());
             return withError('Lead Report Creation Failed');
@@ -335,6 +336,7 @@ class LeadController extends Controller
      *
      * @param StoreLeadReportRequest $request
      * @param int $reportId
+     * @param LeadService $leadService
      * @return Response
      */
     public function updateLeadReport(StoreLeadReportRequest $request, int $reportId, LeadService $leadService): Response
@@ -344,20 +346,20 @@ class LeadController extends Controller
             return withError('Invalid Report Id Provided');
         }
 
+        $formattedData = $leadService->formatReportRequest($request->validated());
+
         try {
 
             DB::beginTransaction();
-            $report->update($request->validated());
+            $report->update($formattedData);
             $leadService->updateReportData($report->id, $request->created_at);
+            $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer);
             DB::commit();
 
             return withSuccess(message: 'Lead Report Updated Successfully!');
         } catch (\Throwable $th) {
             info($th->getMessage());
             return withError('Lead Report Update Failed!');
-        }
-        if($report->update($request->validated())){
-            return withSuccess(message: 'Lead Report Updated Successfully!');
         }
     }
 

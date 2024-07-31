@@ -408,6 +408,12 @@ class LeadService extends ReportingService
         );
     }
 
+    /**
+     * Updates the lead reports in the database based on the provided updated leads data.
+     *
+     * @param array $updatedLeadsData
+     * @return void
+     */
     public function updateLeadReports(array $updatedLeadsData)
     {
         $reportFields = ['affid', 'buyer_integration_id', 'buyer_id'];
@@ -513,4 +519,57 @@ class LeadService extends ReportingService
         DB::table('lead_reports')->where('id', $reportId)->update(['created_at' => $date]);
     }
 
+    /**
+     * Updates the status of a lead based on the given parameters.
+     *
+     * @param int $leadId
+     * @param int $reportId
+     * @param bool $isRetainer
+     * @return void
+     */
+    public function updateLeadStatus(int $leadId, int $reportId, bool $isRetainer): void
+    {
+        if($isRetainer){
+            $this->updateStatus($leadId, 'Retained');
+            return;
+        }
+
+        $isRetained = LeadReport::where('id', '!=', $reportId)
+                            ->where('lead_id', $leadId)
+                            ->where('is_retainer', '>', 0)
+                            ->exists();
+
+        if($isRetained) return;
+
+        $this->updateStatus($leadId, 'Pending');
+    }
+
+    /**
+     * Updates the status of a lead in the database with the given lead ID and status.
+     *
+     * @param int $leadId
+     * @param string $status
+     * @return void
+     */
+    public function updateStatus(int $leadId, string $status): void
+    {
+        PlatformData::where('id', $leadId)->update(['lead_status' => $status]);
+    }
+
+    /**
+     * Formats the report request data.
+     *
+     * @param array $requestData
+     * @return array
+     */
+    public function formatReportRequest(array $requestData): array
+    {
+        if(! empty($requestData['show_in_portal'])){
+            $requestData['is_retainer'] = 2;
+        }
+
+        unset($requestData['show_in_portal']);
+
+        return $requestData;
+    }
 }

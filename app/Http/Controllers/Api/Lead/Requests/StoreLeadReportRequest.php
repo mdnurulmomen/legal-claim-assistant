@@ -34,6 +34,7 @@ class StoreLeadReportRequest extends FormRequest
             'affiliate_specs_id' => ['nullable', 'integer'],
             'sold_type' => ['nullable', 'string'],
             'is_retainer' => ['nullable', 'boolean'],
+            'show_in_portal' => ['nullable', 'boolean'],
             'is_paid' => ['nullable', 'boolean'],
             'is_internal' => ['nullable', 'boolean'],
             'lead_revenue' => ['nullable', 'numeric'],
