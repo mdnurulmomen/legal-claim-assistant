@@ -2,16 +2,20 @@
 
 namespace App\Services;
 
+use App\Models\Integration;
+use App\Models\LeadLog;
 use App\Models\LeadReport;
 use App\Models\PageSetting;
 use App\Models\PlatformData;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class LeadService extends ReportingService
 {
-
     /**
      * Formats an array of headers into a sorted and formatted array.
      *
@@ -79,6 +83,12 @@ class LeadService extends ReportingService
         ];
     }
 
+    /**
+     * Formats the Excel filters from the request.
+     *
+     * @param Request $request
+     * @return array
+     */
     public function formatExcelFilters(Request $request)
     {
         $filters = $request->input('excel_filters', '');
@@ -115,6 +125,15 @@ class LeadService extends ReportingService
         return $formattedFilters;
     }
 
+    /**
+     * Creates a condition array with the given column and values,
+     * with the 'is_json_column' key set to true. The values are
+     * transformed to lowercase.
+     *
+     * @param string $column
+     * @param array $values
+     * @return array
+     */
     public function makeConditionWithoutOperator(string $column, array $values = [])
     {
         $values = array_map('strtolower', $values);
@@ -124,11 +143,6 @@ class LeadService extends ReportingService
             'values' => $values,
             'is_json_column' => true
         ];
-        // return [
-        //     'column' => "platform_datas.datas->" . $column,
-        //     'values' => $values,
-        //     'is_json_column' => true
-        // ];
     }
 
     /**
@@ -145,7 +159,6 @@ class LeadService extends ReportingService
         }
 
         $filters = json_decode($filters, true);
-
         $formattedFilters = [];
 
         foreach($filters as $value){
@@ -198,7 +211,7 @@ class LeadService extends ReportingService
      * @param string|int|null $value
      * @return array
      */
-    public function makeCondition(string $column, string $operator, string | int | null $value = null)
+    public function makeCondition(string $column, string $operator, string | int | null $value = null): array
     {
         return [
             'column' => "platform_datas.datas->" . $column,
@@ -251,13 +264,19 @@ class LeadService extends ReportingService
         return ($index == 0) ? 'whereIn' : 'orWhereIn';
     }
 
-    public function convertExcelFilterToSql($query, $excelFilters, )
+    /**
+     * Converts an array of Excel filters to SQL conditions for a given query.
+     *
+     * @param Builder $query
+     * @param array $excelFilters
+     * @return Builder
+     */
+    public function convertExcelFilterToSql(Builder $query, array $excelFilters)
     {
         return $query->where(function ($query) use ($excelFilters) {
             foreach ($excelFilters as $key => $filter) {
 
                 $isJsonColumn = ! empty($filter['is_json_column']);
-
                 $method = $this->getWhereInMethod($key, $isJsonColumn);
 
                 if(! $isJsonColumn){
@@ -268,13 +287,19 @@ class LeadService extends ReportingService
                 $column = $filter['column'];
                 $values = array_map('strtolower', $filter['values']);
                 $placeholders = implode(',', array_fill(0, count($filter['values']), '?'));
-
                 $query->$method('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.' . $column . '"))) IN (' . $placeholders . ')', $values);
             }
         });
     }
 
-    public function convertFilterToSql($query, $conditions)
+    /**
+     * Converts an array of filter conditions to a SQL query using Laravel's query builder.
+     *
+     * @param Builder $query
+     * @param array $conditions
+     * @return Builder
+     */
+    public function convertFilterToSql(Builder $query, array $conditions)
     {
         return $query->where(function ($query) use ($conditions) {
             foreach ($conditions as $conditionKey => $conditionGroup) {
@@ -306,42 +331,102 @@ class LeadService extends ReportingService
      * @param Request $request
      * @return void
      */
-    public function formatAndUpdateLeads(Request $request)
+    public function formatAndUpdateLeads(Request $request): void
     {
         $leads = collect($request->leads);
         $leadIds = $leads->pluck('id')->all();
         $updatedLeadsData = [];
-
-        $leadData = PlatformData::whereIn('id', $leadIds)->select('id', 'datas')->get();
         $updatableFields = ['datas'];
 
-        $this->formatLeads($leadData, $leads, $updatedLeadsData, $updatableFields);
+        $buyerIntegrationIds = $leads->pluck('buyer_integration_id')->all();
+        $integrations = Integration::whereIn('id', $buyerIntegrationIds)
+                            ->select('id', 'buyer_id', 'buyer_unique_id')
+                            ->get();
 
-        PlatformData::upsert(
-            $updatedLeadsData,
-            ['id'],
-            array_unique($updatableFields)
-        );
+        $leadData = PlatformData::whereIn('id', $leadIds)->select('id', 'datas')->get();
+
+        $this->formatLeads($leadData, $leads, $updatedLeadsData, $updatableFields, $integrations);
+
+        if(count($updatedLeadsData) > 0){
+            PlatformData::upsert(
+                $updatedLeadsData,
+                ['id'],
+                array_unique($updatableFields)
+            );
+        }
 
         $this->updateLeadReports($updatedLeadsData);
+        $this->updateLeadLogs($leads);
     }
 
-    public function updateLeadReports(array $updatedLeadsData)
+    /**
+     * Updates the lead logs for a collection of leads.
+     *
+     * @param Collection $leads
+     * @return void
+     */
+    public function updateLeadLogs(Collection $leads): void
     {
+        $leadIds = $leads->pluck('id')->all();
 
+        $formattedData = [];
+
+        $leadLogs = LeadLog::whereIn('lead_id', $leadIds)
+                        ->select('id', 'lead_id', 'log_data')
+                        ->get()
+                        ->groupBy('lead_id');
+
+        foreach($leads as $lead){
+
+            if(empty($leadLogs[$lead['id']])) continue;
+
+            $leadLog = $leadLogs[$lead['id']][0];
+            $logData = $leadLog->log_data;
+            $originalPayload = $logData && $logData['original_payload'] ? $logData['original_payload'] : null;
+            if(empty($originalPayload)) continue;
+
+            foreach($lead as $key => $value){
+                if(! isset($originalPayload[$key])) continue;
+                $originalPayload[$key] = $value;
+            }
+
+            $logData['original_payload'] = $originalPayload;
+
+            $formattedData[] = [
+                'id' => $leadLog->id,
+                'log_data' => json_encode($logData)
+            ];
+        }
+
+        LeadLog::upsert(
+            $formattedData,
+            ['id'],
+            ['log_data']
+        );
+    }
+
+    /**
+     * Updates the lead reports in the database based on the provided updated leads data.
+     *
+     * @param array $updatedLeadsData
+     * @return void
+     */
+    public function updateLeadReports(array $updatedLeadsData): void
+    {
+        $reportFields = ['affid', 'buyer_integration_id', 'buyer_id'];
         $updatedLeadsData = collect($updatedLeadsData);
         $leadIds = $updatedLeadsData->pluck('id')->all();
-        $leads = $updatedLeadsData->select(['id', 'affid']);
+        $leads = $updatedLeadsData->select(['id', ...$reportFields]);
         $formattedReports = [];
 
         $reports = LeadReport::query()
                     ->whereIn('lead_id', $leadIds)
-                    ->select('id', 'lead_id')
+                    ->select('id', 'lead_id', ...$reportFields)
                     ->get()
                     ->groupBy('lead_id');
 
         foreach($reports as $key => $reportData){
-            $lead = $leads->firstWhere('id', $key);
+            $lead = $leads->firstWhere('id', $key); // Requested Leads
             if(empty($lead)) continue;
 
             unset($lead['id']);
@@ -356,34 +441,185 @@ class LeadService extends ReportingService
             array_push($formattedReports, ... $formattedReport);
         }
 
+        if(empty($formattedReports)) return;
+
         LeadReport::upsert(
             $formattedReports,
             ['id'],
-            ['affid']
+            $reportFields
         );
     }
 
-    public function formatLeads(EloquentCollection $leadData, Collection $leads, array &$updatedLeadsData, array &$updatableFields)
+    /**
+     * Formats an array of lead data and updates the given arrays with the formatted data.
+     *
+     * @param EloquentCollection $leadData
+     * @param Collection $leads
+     * @param array
+     * @param array
+     * @return void
+     */
+    public function formatLeads(
+        EloquentCollection $leadData,
+        Collection $leads,
+        array &$updatedLeadsData,
+        array &$updatableFields,
+        EloquentCollection $integrations
+    ): void
     {
+        $integrationsGrouped = $integrations->groupBy('id');
+
         foreach ($leadData as $lead) {
             $newLead = $leads->firstWhere('id', $lead->id);
             unset($newLead['id']);
 
             $formattedLead = [
                 'id' => $lead->id,
-                'datas' => json_encode(array_merge($lead->datas, $newLead)),
+                'datas' => array_merge($lead->datas, $newLead),
             ];
 
-            foreach (['email', 'phone', 'affid', 'page_source'] as $field) {
+            foreach (['email', 'phone', 'affid', 'buyer_integration_id', 'page_source'] as $field) {
 
-                if (empty($newLead[$field])) continue;
+                if (! array_key_exists($field, $newLead)) continue;
 
-                $formattedLead[$field] = $newLead[$field];
+                $formattedLead[$field] = $newLead[$field] ?? '';
                 $updatableFields[] = $field;
             }
 
+            $isBuyerIntegrationId = array_key_exists('buyer_integration_id', $formattedLead);
+
+            if($isBuyerIntegrationId){
+                $buyerIntegrationId = $formattedLead['buyer_integration_id'] ?? null;
+                $integration = ! empty($integrationsGrouped[$buyerIntegrationId]) ? $integrationsGrouped[$buyerIntegrationId][0] : null;
+                $formattedLead['buyer_id'] = $integration ? $integration->buyer_id : null;
+                $formattedLead['datas']['lead_buyer'] = $integration ? $integration->buyer_unique_id : null;
+                $updatableFields[] = 'buyer_id';
+            }
+
+            $formattedLead['datas'] = json_encode($formattedLead['datas']);
             $updatedLeadsData[] = $formattedLead;
         }
     }
 
+    /**
+     * Updates the 'created_at' field of a lead report in the database with the given report ID and date.
+     *
+     * @param int $reportId
+     * @param string $date
+     * @return void
+     */
+    public function updateReportData(int $reportId, Request $request): void
+    {
+        $leadData = [
+            'retained_date' => null,
+            'is_retainer' => 0
+        ];
+
+        $date = empty($request->created_at) ? now() : Carbon::parse($request->created_at)->startOfDay();
+
+        if(! empty($request->is_retainer) && ! empty($request->created_at)){
+            $date = Carbon::parse($request->created_at)->midDay();
+            $leadData['retained_date'] = $date;
+            if(! empty($request->show_in_portal)){
+                $leadData['is_retainer'] = 1;
+            }
+            $this->updatePlatformData($request->lead_id, $leadData);
+        }
+
+        DB::table('lead_reports')->where('id', $reportId)
+            ->where('created_at', '!=', $date)
+            ->update(['created_at' => $date]);
+
+        $isRetained = $this->hasAnyRetainedLead($request->lead_id, $reportId);
+
+        if(empty($request->is_retainer) && !$isRetained){
+            $this->updatePlatformData($request->lead_id, $leadData);
+        }
+    }
+
+    /**
+     * Updates the status of a lead based on the given parameters.
+     *
+     * @param int $leadId
+     * @param int $reportId
+     * @param bool $isRetainer
+     * @return void
+     */
+    public function updateLeadStatus(int $leadId, int $reportId, bool $isRetainer): void
+    {
+        if($isRetainer){
+            $this->updatePlatformData($leadId, ['lead_status' => 'Retained']);
+            return;
+        }
+
+        $isRetained = $this->hasAnyRetainedLead($leadId, $reportId);
+        if($isRetained) return;
+
+        $this->updatePlatformData($leadId, [
+            'lead_status' => 'Pending',
+            'retained_date' => null
+        ]);
+    }
+
+    public function hasAnyRetainedLead(int $leadId, int $reportId): bool
+    {
+        return LeadReport::query()
+                ->when(! empty($reportId), function($query) use ($reportId) {
+                    return $query->where('id', '!=', $reportId);
+                })
+                ->where('lead_id', $leadId)
+                ->where('is_retainer', '>', 0)
+                ->exists();
+    }
+
+    /**
+     * Formats the report request data.
+     *
+     * @param array $requestData
+     * @return array
+     */
+    public function formatReportRequest(array $requestData): array
+    {
+        if(! empty($requestData['show_in_portal'])){
+            $requestData['is_retainer'] = 2;
+        }
+
+        unset($requestData['show_in_portal']);
+
+        return $requestData;
+    }
+
+    /**
+     * Updates the revenue and payout for a lead in the database.
+     *
+     * @param int $leadId The ID of the lead.
+     * @return void
+     */
+    public function updateRevenuePayout(int $leadId): void
+    {
+        $report = LeadReport::where('lead_id', $leadId)
+                    ->select(
+                        DB::raw("SUM(lead_revenue) as revenue"),
+                        DB::raw("SUM(affiliate_payout) as payout")
+                    )
+                    ->groupBy('lead_id')
+                    ->first();
+
+        $this->updatePlatformData($leadId, [
+            'revenue' => (float) $report->revenue,
+            'payout' => (float) $report->payout
+        ]);
+    }
+
+    /**
+     * Updates the platform data for a given ID.
+     *
+     * @param int $id The ID of the platform data.
+     * @param mixed $data The data to update.
+     * @return void
+     */
+    public function updatePlatformData(int $id, $data): void
+    {
+        PlatformData::where('id', $id)->update($data);
+    }
 }
