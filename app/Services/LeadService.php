@@ -10,6 +10,7 @@ use App\Models\PlatformData;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -354,12 +355,8 @@ class LeadService extends ReportingService
             );
         }
 
-        // info(json_encode(array_unique($updatableFields)));
-
         $this->updateLeadReports($updatedLeadsData);
         $this->updateLeadLogs($leads);
-
-        // abort(400, 'Custom Error');
     }
 
     /**
@@ -514,8 +511,13 @@ class LeadService extends ReportingService
      * @param string $date
      * @return void
      */
-    public function updateReportData(int $reportId, string $date): void
+    public function updateReportData(int $reportId, Request $request): void
     {
+        $date = empty($request->created_at) ? now() : Carbon::parse($request->created_at)->startOfDay();
+        if(! empty($request->is_retainer) && ! empty($request->created_at)){
+            $date = Carbon::parse($request->created_at)->midDay();
+        }
+
         DB::table('lead_reports')->where('id', $reportId)->update(['created_at' => $date]);
     }
 
