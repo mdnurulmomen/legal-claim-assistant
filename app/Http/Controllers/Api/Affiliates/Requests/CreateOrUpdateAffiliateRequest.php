@@ -52,6 +52,7 @@ class CreateOrUpdateAffiliateRequest extends FormRequest
             'country' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string', 'max:255'],
             'zip' => ['required', 'string', 'max:255'],
+            'role' => ['required', 'string', Rule::in(['affiliate'])],
         ];
     }
 

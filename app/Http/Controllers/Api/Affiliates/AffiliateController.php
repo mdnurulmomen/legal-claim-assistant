@@ -21,7 +21,7 @@ class AffiliateController extends Controller
      */
     public function affiliates(Request $request)
     {
-        $limit = $request->input('limit', 10);
+        $limit = $request->input('limit', 100);
         $orderBy = $request->input('order_by');
         $orderIn = $request->input('order_in');
 
@@ -31,21 +31,15 @@ class AffiliateController extends Controller
             ->with('affiliate')
             ->withCount('postingDocs')
             ->when(!empty($request->search_txt), function ($query) use ($request) {
-                return $query->whereAny([
-                    'name',
-                    'email',
-                    'phone',
-                    'company_name',
-                ], 'like', '%' . $request->search_txt . '%');
+                return $query->whereAny(['name','email','username'], 'like', "%{$request->search_txt}%");
             })
             ->when(!empty($orderBy) && !empty($orderIn), function ($query) use ($orderBy, $orderIn) {
                 return $query->orderBy($orderBy, $orderIn);
             }, function ($query) {
                 return $query->orderBy('id', 'desc');
             })
+            ->latest('id')
             ->paginate($limit);
-
-        Log::info('Affiliates retrieved successfully.', ['affiliates' => $affiliates]);
 
         return withSuccessResourceList(AffiliateResource::collection($affiliates));
     }
@@ -84,16 +78,29 @@ class AffiliateController extends Controller
 
         $user->update($request->validated());
 
+        // check if affiliate exists
+        if (!$user->affiliate) {
 
-        $user->affiliate()->update($request->only([
-            'company_name',
-            'country',
-            'address',
-            'zip',
-        ]));
+            // create affiliate if not
+            $user->affiliate()->create($request->only([
+                'company_name',
+                'country',
+                'address',
+                'zip',
+            ]));
+        } else {
+
+            // update affiliate
+            $user->affiliate()->update($request->only([
+                'company_name',
+                'country',
+                'address',
+                'zip',
+            ]));
+        }
 
 
-        return withSuccess(new AffiliateResource($user));
+        return withSuccess(new SingleAffiliateResource($user->load('affiliate')), 'Affiliate updated successfully');
     }
 
     /**
