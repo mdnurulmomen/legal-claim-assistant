@@ -41,6 +41,12 @@ class LeadInfoResource extends JsonResource
             ]);
         }
 
+        if(array_key_exists('list_id', $this->datas)){
+            $leads['test_list_id'] = $this->datas['list_id'];
+        }
+
+        // unset($this->datas['list_id']);
+
         return array_merge($leads, $this->datas);
     }
 }
