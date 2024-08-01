@@ -14,6 +14,8 @@ class LeadInfoResource extends JsonResource
      */
     public function toArray($request): array
     {
+        $datas = $this->datas;
+
         $leads = [
             'id' => $this->id,
             'buyer_integration' => $this->buyer_integration,
@@ -42,11 +44,9 @@ class LeadInfoResource extends JsonResource
         }
 
         if(array_key_exists('list_id', $this->datas)){
-            $leads['test_list_id'] = $this->datas['list_id'];
+            unset($datas['list_id']);
         }
 
-        // unset($this->datas['list_id']);
-
-        return array_merge($leads, $this->datas);
+        return array_merge($leads, $datas);
     }
 }
