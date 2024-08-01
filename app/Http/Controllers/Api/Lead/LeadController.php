@@ -52,11 +52,13 @@ class LeadController extends Controller
                             'buyers.name as buyer_name',
                             'platform_datas.affiliate_id',
                             'users.name as affiliate_name',
-                            'platform_datas.lead_status'
+                            'platform_datas.lead_status',
+                            'platform_lists.name as list_name',
                         )
                         ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
                         ->leftJoin('buyers', 'buyers.id', '=', 'platform_datas.buyer_id')
                         ->leftJoin('users', 'users.id', '=', 'platform_datas.affiliate_id')
+                        ->leftJoin('platform_lists', 'platform_lists.id', '=', 'platform_datas.list_id')
                         ->addSelect([
                             'revenue' => LeadReport::select(DB::raw('sum(lead_reports.lead_revenue)'))
                                             ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
@@ -86,13 +88,14 @@ class LeadController extends Controller
                                             [
                                                 'platform_datas.email',
                                                 'platform_datas.phone',
-                                                'integrations.name'
+                                                'integrations.name',
                                             ],
                                             'like', "%{$searchText}%"
-                                        );
-                                    })
-                                    ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.first_name"))) LIKE ?', ["%{$searchText}%"])
-                                    ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.last_name"))) LIKE ?', ["%{$searchText}%"]);
+                                        )
+                                        ->orWhereRaw('LOWER(datas) like ?', ["%{$searchText}%"]);
+                                        // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.first_name"))) LIKE ?', ["%{$searchText}%"])
+                                    // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.last_name"))) LIKE ?', ["%{$searchText}%"]);
+                            });
                         })
                         ->when(! empty($excelFilters), function ($query) use ($excelFilters, $leadService) {
                             return $leadService->convertExcelFilterToSql($query, $excelFilters);
