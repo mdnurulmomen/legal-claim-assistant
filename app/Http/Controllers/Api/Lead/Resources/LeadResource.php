@@ -23,6 +23,7 @@ class LeadResource extends JsonResource
             'buyer_name' => $this->buyer_name,
             'affiliate_id' => $this->affiliate_id,
             'affiliate_name' => $this->affiliate_name,
+            'list_name' => $this->list_name,
             'lead_status' => $this->lead_status,
             'revenue' => $this->revenue,
             'profit' => $this->profit,
