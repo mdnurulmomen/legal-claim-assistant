@@ -120,10 +120,14 @@ class ReportingService
 
         foreach($filters as $value){
             $conditions = [];
+            $relationalTerms = [];
 
             foreach($value as $item){
+                if(empty($item['column']) || empty($item['rule']) || empty($item['value'])){
+                    continue;
+                }
                 if(in_array($item['column'], ['platform', 'buyer', 'buyer_integration', 'affiliate', 'affid'])){
-                    $relationalConditions[] = $this->formatAdvanceConditionToSql($item);
+                    $relationalTerms[] = $this->formatAdvanceConditionToSql($item);
                     continue;
                 }
                 $conditions[] = $this->convertConditionToSql($item);
@@ -131,6 +135,10 @@ class ReportingService
 
             if(count($conditions) > 0){
                 $formattedFilters[] = $conditions;
+            }
+
+            if(count($relationalTerms) > 0){
+                $relationalConditions[] = $relationalTerms;
             }
         }
 
