@@ -10,4 +10,5 @@ Route::prefix('platform')->as('platform.')
     ->group(function ($route) {
         $route->get('list', 'platformList')->name('list');
         $route->get('get-source-list', 'getSourceList')->name('get-source-list');
+        $route->get('integrations/{platformId}', 'getIntegrations')->name('integrations');
     });
