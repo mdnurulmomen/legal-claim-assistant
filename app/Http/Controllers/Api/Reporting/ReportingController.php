@@ -76,8 +76,7 @@ class ReportingController extends Controller
                     ->when(! empty($relationalConditions), function ($query) use ($relationalConditions, $reportingService) {
                         return $query->where(function ($query) use ($relationalConditions, $reportingService) {
                             foreach ($relationalConditions as $conditionKey => $conditionGroup) {
-                                $primMethod = $reportingService->getConditionMethod($conditionKey);
-                                $query->$primMethod(function ($query2) use ($conditionGroup, $reportingService) {
+                                $query->where(function ($query2) use ($conditionGroup, $reportingService) {
                                     foreach ($conditionGroup as $index => $condition) {
                                         $method = $reportingService->getConditionMethod($index);
                                         $query2->$method($condition['column'], $condition['operator'], $condition['value']);
@@ -104,10 +103,7 @@ class ReportingController extends Controller
                             ->when(! empty($conditions), function ($query) use ($conditions, $reportingService) {
                                 return $query->where(function ($query) use ($conditions, $reportingService) {
                                     foreach ($conditions as $conditionKey => $conditionGroup) {
-
-                                        $primMethod = $reportingService->getConditionMethod($conditionKey);
-
-                                        $query->$primMethod(function ($query2) use ($conditionGroup, $reportingService) {
+                                        $query->where(function ($query2) use ($conditionGroup, $reportingService) {
 
                                             foreach ($conditionGroup as $index => $condition) {
 
@@ -284,8 +280,7 @@ class ReportingController extends Controller
                                 ->when(! empty($relationalConditions), function ($query) use ($relationalConditions, $reportingService) {
                                     return $query->where(function ($query) use ($relationalConditions, $reportingService) {
                                         foreach ($relationalConditions as $conditionKey => $conditionGroup) {
-                                            $primMethod = $reportingService->getConditionMethod($conditionKey);
-                                            $query->$primMethod(function ($query2) use ($conditionGroup, $reportingService) {
+                                            $query->where(function ($query2) use ($conditionGroup, $reportingService) {
                                                 foreach ($conditionGroup as $index => $condition) {
                                                     $method = $reportingService->getConditionMethod($index);
                                                     $query2->$method($condition['column'], $condition['operator'], $condition['value']);
