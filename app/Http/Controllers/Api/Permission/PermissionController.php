@@ -71,6 +71,8 @@ class PermissionController extends Controller
             return withSuccess([]);
         }
 
+        return withSuccess([]);
+
         if($auth->role === 'super_admin'){
             return withSuccess([]);
         }
