@@ -75,9 +75,13 @@ class ReportingController extends Controller
                     })
                     ->when(! empty($relationalConditions), function ($query) use ($relationalConditions, $reportingService) {
                         return $query->where(function ($query) use ($relationalConditions, $reportingService) {
-                            foreach ($relationalConditions as $index => $condition) {
-                                $method = $reportingService->getConditionMethod($index);
-                                $query->$method($condition['column'], $condition['operator'], $condition['value']);
+                            foreach ($relationalConditions as $conditionKey => $conditionGroup) {
+                                $query->where(function ($query2) use ($conditionGroup, $reportingService) {
+                                    foreach ($conditionGroup as $index => $condition) {
+                                        $method = $reportingService->getConditionMethod($index);
+                                        $query2->$method($condition['column'], $condition['operator'], $condition['value']);
+                                    }
+                                });
                             }
                         });
                     })
@@ -99,22 +103,19 @@ class ReportingController extends Controller
                             ->when(! empty($conditions), function ($query) use ($conditions, $reportingService) {
                                 return $query->where(function ($query) use ($conditions, $reportingService) {
                                     foreach ($conditions as $conditionKey => $conditionGroup) {
-
-                                        $method = $reportingService->getConditionMethod($conditionKey);
-
-                                        $query->$method(function ($query2) use ($conditionGroup, $reportingService) {
+                                        $query->where(function ($query2) use ($conditionGroup, $reportingService) {
 
                                             foreach ($conditionGroup as $index => $condition) {
 
                                                 $type = $reportingService->getConditionType($condition['operator']);
-                                                $method2 = $reportingService->getConditionMethod($index, $type);
+                                                $method = $reportingService->getConditionMethod($index, $type);
 
                                                 if($type) {
-                                                    $query2->$method2($condition['column']);
+                                                    $query2->$method($condition['column']);
                                                     continue;
                                                 }
 
-                                                $query2->$method2($condition['column'], $condition['operator'], $condition['value']);
+                                                $query2->$method($condition['column'], $condition['operator'], $condition['value']);
                                             }
                                         });
                                     }
@@ -278,9 +279,13 @@ class ReportingController extends Controller
                                 ->leftJoin('users as affiliate', 'lead_reports.affiliate_id', '=', 'affiliate.id')
                                 ->when(! empty($relationalConditions), function ($query) use ($relationalConditions, $reportingService) {
                                     return $query->where(function ($query) use ($relationalConditions, $reportingService) {
-                                        foreach ($relationalConditions as $index => $condition) {
-                                            $method = $reportingService->getConditionMethod($index);
-                                            $query->$method($condition['column'], $condition['operator'], $condition['value']);
+                                        foreach ($relationalConditions as $conditionKey => $conditionGroup) {
+                                            $query->where(function ($query2) use ($conditionGroup, $reportingService) {
+                                                foreach ($conditionGroup as $index => $condition) {
+                                                    $method = $reportingService->getConditionMethod($index);
+                                                    $query2->$method($condition['column'], $condition['operator'], $condition['value']);
+                                                }
+                                            });
                                         }
                                     });
                                 })
