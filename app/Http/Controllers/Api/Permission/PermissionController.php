@@ -78,6 +78,7 @@ class PermissionController extends Controller
 
         $data['saved_reports'] = SavedReport::whereUserId($auth->id)->select('id', 'title', 'uid')->get();
 
+
         if($auth->role === 'super_admin'){
             return withSuccess($data);
         }
