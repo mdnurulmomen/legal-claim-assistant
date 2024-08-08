@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Affiliates;
 
+use App\Helpers\Utility;
 use App\Http\Controllers\Api\Affiliates\Requests\CreateOrUpdateAffiliateRequest;
 use App\Http\Controllers\Api\Affiliates\Resources\AffiliateResource;
 use App\Http\Controllers\Api\Affiliates\Resources\SingleAffiliateResource;
@@ -21,17 +22,34 @@ class AffiliateController extends Controller
      */
     public function affiliates(Request $request)
     {
-        $limit = $request->input('limit', 100);
+        $limit = $request->input('limit', 10);
         $orderBy = $request->input('order_by');
         $orderIn = $request->input('order_in');
+        $status = array_search($request->input('status'), Utility::$userStatus);
 
         // user role is affiliate and load relationship affiliate
         $affiliates = User::query()
             ->where('role', 'affiliate')
             ->with('affiliate')
             ->withCount('postingDocs')
+            ->when(!empty($status), function ($query) use ($status) {
+                return $query->where('status', $status);
+            })
             ->when(!empty($request->search_txt), function ($query) use ($request) {
-                return $query->whereAny(['name','email','username'], 'like', "%{$request->search_txt}%");
+//                return $query->whereAny(['name', 'email', 'username'], 'like', "%{$request->search_txt}%");
+
+                $searchTxt = "%{$request->search_txt}%";
+
+                return $query->where(function ($query) use ($searchTxt) {
+                    $query->where('name', 'like', $searchTxt)
+                        ->orWhere('email', 'like', $searchTxt)
+                        ->orWhere('username', 'like', $searchTxt)
+                        ->orWhereHas('affiliate', function ($query) use ($searchTxt) {
+                            $query->where('country', 'like', $searchTxt)
+                                ->orWhere('company_name', 'like', $searchTxt);
+                        });
+                });
+
             })
             ->when(!empty($orderBy) && !empty($orderIn), function ($query) use ($orderBy, $orderIn) {
                 return $query->orderBy($orderBy, $orderIn);
@@ -87,6 +105,11 @@ class AffiliateController extends Controller
                 'country',
                 'address',
                 'zip',
+                'bank_name',
+                'bank_account_name',
+                'bank_account_number',
+                'bank_swift_code',
+                'vat_number',
             ]));
         } else {
 
@@ -96,6 +119,11 @@ class AffiliateController extends Controller
                 'country',
                 'address',
                 'zip',
+                'bank_name',
+                'bank_account_name',
+                'bank_account_number',
+                'bank_swift_code',
+                'vat_number',
             ]));
         }
 
@@ -119,7 +147,13 @@ class AffiliateController extends Controller
                 'company_name',
                 'country',
                 'address',
-                'zip',]
+                'zip',
+                'bank_name',
+                'bank_account_name',
+                'bank_account_number',
+                'bank_swift_code',
+                'vat_number',
+            ]
         ));
 
         // return with success response

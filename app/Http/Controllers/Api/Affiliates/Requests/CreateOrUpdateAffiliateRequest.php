@@ -47,12 +47,17 @@ class CreateOrUpdateAffiliateRequest extends FormRequest
                             return $query->ignore($this->id);
                         })
                     ],
-            'workspace' => ['nullable', 'string', 'max:255'],
+//            'workspace' => ['nullable', 'string', 'max:255'],
             'company_name' => ['required', 'string', 'max:255'],
             'country' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string', 'max:255'],
             'zip' => ['required', 'string', 'max:255'],
             'role' => ['required', 'string', Rule::in(['affiliate'])],
+            'bank_name' => ['required', 'string', 'max:255'],
+            'bank_account_name' => ['required', 'string', 'max:255'],
+            'bank_account_number' => ['required', 'string', 'max:255'],
+            'bank_swift_code' => ['required', 'string', 'max:255'],
+            'vat_number' => ['required', 'string', 'max:255'],
         ];
     }
 
