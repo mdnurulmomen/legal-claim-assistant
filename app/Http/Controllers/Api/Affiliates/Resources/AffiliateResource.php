@@ -27,7 +27,7 @@ class AffiliateResource extends JsonResource
             'total_posting_docs' => $this->posting_docs_count ?? $this->postingDocs->count(),
             'status' => $this->status,
             'affid' => $this->data['affid'] ?? null,
-            'created_at' => $this->created_at->toDateTimeString(),
+            'created_at' => $this->created_at->toDateTimeString() ?? null,
             'bank_name' => $this->affiliate?->bank_name,
             'bank_account_name' => $this->affiliate?->bank_account_name,
             'bank_account_number' => $this->affiliate?->bank_account_number,
