@@ -39,7 +39,7 @@ class LeadController extends Controller
         [$startDate, $endDate] = $this->formatStartEndDateWithTimezone($request->start_date, $request->end_date, $request->timezone);
         $conditions = $leadService->formatFilters($request);
         $excelFilters = $leadService->formatExcelFilters($request);
-        $perPage = empty($request->per_page) ? 10 : $request->per_page;
+        $perPage = empty($request->limit) ? 10 : $request->limit;
 
         $leadQuery = PlatformData::query()
                         ->select(
@@ -242,7 +242,7 @@ class LeadController extends Controller
      */
     public function getLeadReports(Request $request, int $leadId): Response
     {
-        $perPage = empty($request->per_page) ? 10 : $request->per_page;
+        $perPage = empty($request->limit) ? 10 : $request->limit;
 
         $reports = LeadReport::where('lead_id', $leadId)
                         ->select(
