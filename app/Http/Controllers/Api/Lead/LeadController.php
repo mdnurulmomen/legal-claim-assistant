@@ -54,6 +54,7 @@ class LeadController extends Controller
                             'users.name as affiliate_name',
                             'platform_datas.lead_status',
                             'platform_lists.name as list_name',
+                            'platform_datas.created_at'
                         )
                         ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
                         ->leftJoin('buyers', 'buyers.id', '=', 'platform_datas.buyer_id')
