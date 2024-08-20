@@ -156,7 +156,11 @@ class ReportingController extends Controller
         $buyers = DB::table('buyers')->select('id as value', 'name as label')->get();
         $affiliates = User::select('id as value', 'name as label')->where('role', 'affiliate')->get();
         $affIds = LeadReport::select('affid as value', 'affid as label')->whereNotNull('affid')->groupBy('affid')->get();
-        $buyer_integrations = DB::table('integrations')->select('id as value', 'name as label')->get();
+
+        $buyer_integrations = DB::table('integrations')
+                                ->leftJoin('platform_lists', 'integrations.list_id', '=', 'platform_lists.id')
+                                ->select('integrations.id as value', DB::raw("CONCAT(integrations.name , ' ( ', platform_lists.name, ' )') as label"))
+                                ->get();
 
         return withSuccess(compact('lists', 'buyers', 'buyer_integrations', 'affiliates', 'affIds'));
     }
