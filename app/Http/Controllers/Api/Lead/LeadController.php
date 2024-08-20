@@ -308,13 +308,14 @@ class LeadController extends Controller
         try {
             DB::beginTransaction();
             $report = LeadReport::create($formattedData);
-            $leadService->updateReportData($report->id, $request);
+            $leadService->updateReportData($report, $request, $formattedData);
             $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer);
             $leadService->updateRevenuePayout($request->lead_id);
             DB::commit();
 
             return withSuccess(message: 'Lead Created Successfully');
         } catch (\Throwable $th) {
+            DB::rollBack();
             info($th->getMessage());
             return withError('Lead Report Creation Failed');
         }
@@ -375,7 +376,6 @@ class LeadController extends Controller
 
             DB::beginTransaction();
             $report->update($formattedData);
-            // Duplicate LeadReport
             $leadService->updateReportData($clonedReport, $request, $formattedData);
             $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer);
             $leadService->updateRevenuePayout($request->lead_id);
@@ -383,6 +383,7 @@ class LeadController extends Controller
 
             return withSuccess(message: 'Lead Report Updated Successfully!');
         } catch (\Throwable $th) {
+            DB::rollBack();
             info($th->getMessage());
             return withError('Lead Report Update Failed!');
         }

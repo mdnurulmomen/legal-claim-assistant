@@ -606,7 +606,7 @@ class LeadService extends ReportingService
 
         $this->updatePlatformData($leadId, [
             'revenue' => (float) $report->revenue,
-            'payout' => (float) $report->payout
+            'payout' => (float) $report->revenue - (float) $report->payout
         ]);
     }
 
