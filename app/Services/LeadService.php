@@ -508,31 +508,30 @@ class LeadService extends ReportingService
      * @param string $date
      * @return void
      */
-    public function updateReportData(int $reportId, Request $request): void
+    public function updateReportData(LeadReport $report, Request $request, array $formattedData): void
     {
         $leadData = [
             'retained_date' => null,
-            'is_retainer' => 0
+            'is_retainer' => $formattedData['is_retainer']
         ];
 
+        $isReportUpdatable = $report->is_retainer != $formattedData['is_retainer'];
         $date = empty($request->created_at) ? now() : Carbon::parse($request->created_at)->startOfDay();
 
-        if(! empty($request->is_retainer) && ! empty($request->created_at)){
+        if($isReportUpdatable && ! empty($request->is_retainer) && ! empty($request->created_at)){
             $date = Carbon::parse($request->created_at)->midDay();
             $leadData['retained_date'] = $date;
-            if(! empty($request->show_in_portal)){
-                $leadData['is_retainer'] = 1;
-            }
-            $this->updatePlatformData($request->lead_id, $leadData);
         }
 
-        DB::table('lead_reports')->where('id', $reportId)
+        if($isReportUpdatable && empty($request->is_retainer)){
+            $leadData['retained_date'] = null;
+        }
+
+        DB::table('lead_reports')->where('id', $report->id)
             ->where('created_at', '!=', $date)
             ->update(['created_at' => $date]);
 
-        $isRetained = $this->hasAnyRetainedLead($request->lead_id, $reportId);
-
-        if(empty($request->is_retainer) && !$isRetained){
+        if($isReportUpdatable){
             $this->updatePlatformData($request->lead_id, $leadData);
         }
     }

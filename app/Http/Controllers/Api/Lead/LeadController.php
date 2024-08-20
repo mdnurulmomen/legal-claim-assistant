@@ -369,12 +369,14 @@ class LeadController extends Controller
         }
 
         $formattedData = $leadService->formatReportRequest($request->validated());
+        $clonedReport = $report->replicate();
 
         try {
 
             DB::beginTransaction();
             $report->update($formattedData);
-            $leadService->updateReportData($report->id, $request);
+            // Duplicate LeadReport
+            $leadService->updateReportData($clonedReport, $request, $formattedData);
             $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer);
             $leadService->updateRevenuePayout($request->lead_id);
             DB::commit();
