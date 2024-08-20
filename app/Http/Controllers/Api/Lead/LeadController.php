@@ -15,6 +15,7 @@ use App\Models\PlatformList;
 use App\Services\ExcelService;
 use App\Services\LeadService;
 use App\Traits\CommonTrait;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -77,6 +78,9 @@ class LeadController extends Controller
                                                     ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
                                                     ->limit(1)
                         ])
+                        ->when(! empty($request->platform_id), function($query) use ($request) {
+                            return $query->where('platform_datas.list_id', $request->platform_id);
+                        })
                         ->when(! empty($startDate) && ! empty($endDate), function ($query) use ($startDate, $endDate) {
                             return $query->whereBetween('platform_datas.created_at', [$startDate, $endDate]);
                         })
@@ -98,10 +102,10 @@ class LeadController extends Controller
                                     // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.last_name"))) LIKE ?', ["%{$searchText}%"]);
                             });
                         })
-                        ->when(! empty($excelFilters), function ($query) use ($excelFilters, $leadService) {
+                        ->when(! empty($excelFilters), function (Builder $query) use ($excelFilters, $leadService) {
                             return $leadService->convertExcelFilterToSql($query, $excelFilters);
                         })
-                        ->when(! empty($conditions), function ($query) use ($conditions, $leadService) {
+                        ->when(! empty($conditions), function (Builder $query) use ($conditions, $leadService) {
                             return $leadService->convertFilterToSql($query, $conditions);
                         });
 
