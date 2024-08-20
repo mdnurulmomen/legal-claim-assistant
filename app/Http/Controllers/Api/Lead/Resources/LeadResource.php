@@ -30,7 +30,8 @@ class LeadResource extends JsonResource
             'affiliate_payout' => $this->affiliate_payout,
             'affiliate_margin' => $this->affiliate_margin,
             'email' => $this->email,
-            'phone' => $this->phone
+            'phone' => $this->phone,
+            'timestamp' => $this->created_at ? $this->created_at->format('Y-m-d H:i') : ''
         ];
 
         $data = array_merge($leads, $this->datas);

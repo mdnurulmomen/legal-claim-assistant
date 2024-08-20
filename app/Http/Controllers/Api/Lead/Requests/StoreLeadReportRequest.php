@@ -29,7 +29,7 @@ class StoreLeadReportRequest extends FormRequest
             'lead_id' => ['required', 'integer', Rule::exists('platform_datas', 'id')],
             'list_id' => ['required', 'integer', Rule::exists('platform_lists', 'id')],
             'buyer_id' => ['nullable', 'integer', Rule::exists('buyers', 'id')],
-            'affid' => ['nullable', 'string', 'max:255'],
+            'affid' => ['required', 'max:255'],
             'buyer_integration_id' => ['nullable', 'integer', Rule::exists('integrations', 'id')],
             'affiliate_specs_id' => ['nullable', 'integer'],
             'sold_type' => ['nullable', 'string'],
