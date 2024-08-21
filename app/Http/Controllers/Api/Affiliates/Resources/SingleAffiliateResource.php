@@ -35,7 +35,7 @@ class SingleAffiliateResource extends JsonResource
             'affid' => $this->data['affid'] ?? null,
 //            'workspace' => $this->workspace,
             'is_test' => $this->is_test,
-            'total_posting_docs' => $this->postingDocs->count(),
+            'total_posting_docs' => $this->posting_docs_count
         ];
     }
 }

@@ -25,7 +25,7 @@ class AffiliateResource extends JsonResource
             'company_name' => $this->affiliate?->company_name,
             'address' => $this->affiliate?->address,
             'country' => $this->affiliate?->country,
-            'total_posting_docs' => $this->posting_docs_count ?? $this->postingDocs->count(),
+            'total_posting_docs' => $this->posting_docs_count,
             'status' => $this->status,
             'affid' => $this->data['affid'] ?? null,
             'created_at' => $this->created_at?->toDateTimeString() ?? null,
