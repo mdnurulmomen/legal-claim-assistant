@@ -14,7 +14,7 @@ class PlatformListResource extends JsonResource
      */
     public function toArray($request): array
     {
-        return [
+        $data = [
             'id' => $this->id,
             'tag' => $this->tag,
             'name' => $this->name,
@@ -25,5 +25,11 @@ class PlatformListResource extends JsonResource
             'updated_at' => $this->updated_at->diffForHumans(),
             'created_at' => $this->created_at->toDateTimeString()
         ];
+
+        if( ! empty($this->integrations) ) {
+            $data['integrations'] = $this->integrations;
+        }
+
+        return $data;
     }
 }

@@ -37,9 +37,12 @@ class LeadController extends Controller
     public function list(Request $request, LeadService $leadService, ExcelService $excelService): Response | string | StreamedResponse
     {
         [$startDate, $endDate] = $this->formatStartEndDateWithTimezone($request->start_date, $request->end_date, $request->timezone);
-        $conditions = $leadService->formatFilters($request);
+        [$relationalConditions, $conditions] = $leadService->formatFilters($request);
         $excelFilters = $leadService->formatExcelFilters($request);
         $perPage = empty($request->limit) ? 10 : $request->limit;
+
+        info(json_encode($relationalConditions));
+        info(json_encode($conditions));
 
         $leadQuery = PlatformData::query()
                         ->select(
@@ -104,6 +107,9 @@ class LeadController extends Controller
                         })
                         ->when(! empty($excelFilters), function (Builder $query) use ($excelFilters, $leadService) {
                             return $leadService->convertExcelFilterToSql($query, $excelFilters);
+                        })
+                        ->when(! empty($relationalConditions), function (Builder $query) use ($relationalConditions, $leadService) {
+                            return $leadService->convertRelationalFilterToSql($query, $relationalConditions);
                         })
                         ->when(! empty($conditions), function (Builder $query) use ($conditions, $leadService) {
                             return $leadService->convertFilterToSql($query, $conditions);
