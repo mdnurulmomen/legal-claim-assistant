@@ -34,9 +34,7 @@ class AffiliateController extends Controller
             ->where('role', 'affiliate')
             ->with('affiliate')
             ->withCount('postingDocs')
-            ->when(!empty($status), function ($query) use ($status) {
-                return $query->where('status', $status);
-            })
+
             ->when(!empty($request->search_txt), function ($query) use ($request) {
 //                return $query->whereAny(['name', 'email', 'username'], 'like', "%{$request->search_txt}%");
 
@@ -52,6 +50,9 @@ class AffiliateController extends Controller
                         });
                 });
 
+            })
+            ->when(!empty($status), function ($query) use ($status) {
+                return $query->where('status', $status);
             })
             ->when(!empty($orderBy) && !empty($orderIn), function ($query) use ($orderBy, $orderIn) {
                 return $query->orderBy($orderBy, $orderIn);
