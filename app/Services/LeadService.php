@@ -155,25 +155,40 @@ class LeadService extends ReportingService
     {
         $filters = $request->input('filters', '');
         if(empty($filters)){
-            return [];
+            return [[], []];
         }
 
         $filters = json_decode($filters, true);
         $formattedFilters = [];
+        $relationalConditions = [];
 
         foreach($filters as $value){
             $conditions = [];
+            $relationalTerms = [];
 
             foreach($value as $item){
+                if(empty($item['column']) || empty($item['rule']) || empty($item['value'])){
+                    continue;
+                }
+
+                if(in_array($item['column'], ['list_name', 'buyer_name', 'buyer_integration', 'affiliate_name', 'affid'])){
+                    $relationalTerms[] = $this->formatAdvanceConditionToSql($item);
+                    continue;
+                }
+
                 $conditions[] = $this->convertConditionToSql($item);
             }
 
             if(count($conditions) > 0){
                 $formattedFilters[] = $conditions;
             }
+
+            if(count($relationalTerms) > 0){
+                $relationalConditions[] = $relationalTerms;
+            }
         }
 
-        return $formattedFilters;
+        return [$relationalConditions, $formattedFilters];
     }
 
     /**
@@ -185,19 +200,19 @@ class LeadService extends ReportingService
      *                         - 'value': The value of the condition.
      * @return array
      */
-    public function convertConditionToSql(array $conditions): array
+    public function convertConditionToSql(array $conditions, bool $isRelational = false): array
     {
         $condition = match($conditions['rule']){
-            'contains' => $this->makeCondition($conditions['column'], 'like', '%' . $conditions['value'] . '%'),
-            'does_not_contain' => $this->makeCondition($conditions['column'], 'not like', '%' . $conditions['value'] . '%'),
-            'begins_with' => $this->makeCondition($conditions['column'], 'like', $conditions['value'] . '%'),
-            'does_not_begin_with' => $this->makeCondition($conditions['column'], 'not like', $conditions['value'] . '%'),
-            'greater_than' => $this->makeCondition($conditions['column'], '>', $conditions['value']),
-            'less_than' => $this->makeCondition($conditions['column'], '<', $conditions['value']),
-            'equals' => $this->makeCondition($conditions['column'], '=', $conditions['value']),
-            'not_equals' => $this->makeCondition($conditions['column'], '!=', $conditions['value']),
-            'exists' => $this->makeCondition($conditions['column'], 'exists'),
-            'does_not_exist' => $this->makeCondition($conditions['column'], 'does_not_exist'),
+            'contains' => $this->makeCondition($conditions['column'], 'like', ('%' . $conditions['value'] . '%'), $isRelational),
+            'does_not_contain' => $this->makeCondition($conditions['column'], 'not like', ('%' . $conditions['value'] . '%'), $isRelational),
+            'begins_with' => $this->makeCondition($conditions['column'], 'like', ($conditions['value'] . '%'), $isRelational),
+            'does_not_begin_with' => $this->makeCondition($conditions['column'], 'not like', ($conditions['value'] . '%'), $isRelational),
+            'greater_than' => $this->makeCondition($conditions['column'], '>', $conditions['value'], $isRelational),
+            'less_than' => $this->makeCondition($conditions['column'], '<', $conditions['value'], $isRelational),
+            'equals' => $this->makeCondition($conditions['column'], '=', $conditions['value'], $isRelational),
+            'not_equals' => $this->makeCondition($conditions['column'], '!=', $conditions['value'], $isRelational),
+            'exists' => $this->makeCondition($conditions['column'], 'exists', null, $isRelational),
+            'does_not_exist' => $this->makeCondition($conditions['column'], 'does_not_exist', null, $isRelational),
             default => []
         };
         return $condition;
@@ -211,10 +226,10 @@ class LeadService extends ReportingService
      * @param string|int|null $value
      * @return array
      */
-    public function makeCondition(string $column, string $operator, string | int | null $value = null): array
+    public function makeCondition(string $column, string $operator, string | int | null $value = null, bool $isRelational = false): array
     {
         return [
-            'column' => "platform_datas.datas->" . $column,
+            'column' => $isRelational ? $column : ("platform_datas.datas->" . $column),
             'operator' => $operator,
             'value' => $value
         ];
@@ -304,21 +319,40 @@ class LeadService extends ReportingService
         return $query->where(function ($query) use ($conditions) {
             foreach ($conditions as $conditionKey => $conditionGroup) {
 
-                $method = $this->getConditionMethod($conditionKey);
-
-                $query->$method(function ($query2) use ($conditionGroup) {
+                $query->where(function ($query2) use ($conditionGroup) {
 
                     foreach ($conditionGroup as $index => $condition) {
 
                         $type = $this->getConditionType($condition['operator']);
-                        $method2 = $this->getConditionMethod($index, $type);
+                        $method = $this->getConditionMethod($index, $type);
 
                         if($type) {
-                            $query2->$method2($condition['column']);
+                            $query2->$method($condition['column']);
                             continue;
                         }
 
-                        $query2->$method2($condition['column'], $condition['operator'], $condition['value']);
+                        $query2->$method($condition['column'], $condition['operator'], $condition['value']);
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * Converts an array of relational filter conditions to a SQL query using Laravel's query builder.
+     *
+     * @param Builder $query
+     * @param array $relationalConditions
+     * @return Builder
+     */
+    public function convertRelationalFilterToSql(Builder $query, array $relationalConditions): Builder
+    {
+        return $query->where(function ($query) use ($relationalConditions) {
+            foreach ($relationalConditions as $conditionKey => $conditionGroup) {
+                $query->where(function ($query2) use ($conditionGroup) {
+                    foreach ($conditionGroup as $index => $condition) {
+                        $method = $this->getConditionMethod($index);
+                        $query2->$method($condition['column'], $condition['operator'], $condition['value']);
                     }
                 });
             }
@@ -620,5 +654,52 @@ class LeadService extends ReportingService
     public function updatePlatformData(int $id, $data): void
     {
         PlatformData::where('id', $id)->update($data);
+    }
+
+    /**
+     * Formats an advance condition for a lead report query.
+     *
+     * If the condition's rule is 'equals' or 'not_equals', the condition's value is compared
+     * to a column in the platform data table. Otherwise, the condition's value is compared
+     * to a column in the related table specified by the condition's column.
+     *
+     * @param array $conditions The condition to be formatted.
+     *                          The array should have the following keys:
+     *                          - 'rule': The rule of the condition.
+     *                          - 'column': The column of the condition.
+     *                          - 'value': The value of the condition.
+     * @return array
+     */
+    public function formatAdvanceConditionToSql(array $conditions): array
+    {
+        if(in_array($conditions['rule'], ['equals', 'not_equals'])){
+            $dbColumns = [
+                'list_name' => 'platform_datas.list_id',
+                'buyer_name' => 'platform_datas.buyer_id',
+                'buyer_integration' => 'platform_datas.buyer_integration_id',
+                'affiliate_name' => 'platform_datas.affiliate_id',
+                'affid' => 'platform_datas.affid'
+            ];
+
+            return $this->convertConditionToSql([
+                'column' => $dbColumns[$conditions['column']],
+                'rule' => $conditions['rule'],
+                'value' => $conditions['value']
+            ], isRelational: true);
+        }
+
+        $columns = [
+            'list_name' => 'platform_lists.name',
+            'buyer_name' => 'buyers.name',
+            'buyer_integration' => 'integrations.name',
+            'affiliate_name' => 'users.name',
+            'affid' => 'platform_datas.affid'
+        ];
+
+        return $this->convertConditionToSql([
+            'column' => $columns[$conditions['column']],
+            'rule' => $conditions['rule'],
+            'value' => $conditions['value']
+        ], isRelational: true);
     }
 }
