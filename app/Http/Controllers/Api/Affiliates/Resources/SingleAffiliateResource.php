@@ -18,6 +18,7 @@ class SingleAffiliateResource extends JsonResource
             'id' => $this->id,
             'logo' => $this->logo,
             'username' => $this->username,
+            'affids' => $this->data['affids'] ?? [],
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phone,

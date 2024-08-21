@@ -97,7 +97,41 @@ class AffiliateController extends Controller
             ->withCount('postingDocs')
             ->findOrFail($id);
 
-        $user->update($request->validated());
+        //additional validation on affid
+        //find users where they have the same affid on data->affids
+        $existingAffids = User::query()
+            ->where('role', 'affiliate')
+            ->where('id', '!=', $id)
+            ->where(function ($query) use ($request) {
+                foreach ($request->affids as $affid) {
+                    $query->orWhereJsonContains('data->affids', $affid);
+                }
+            })
+            ->first();
+
+        if ($existingAffids) {
+            return withError('Affiliate IDs are already assigned to another affiliate');
+        }
+
+        //get the validated data
+        $validatedData = $request->validated();
+
+        //get current data
+        $userData = $user->data;
+
+        //unset the old affids
+        unset($userData['affids']);
+
+        //set the new affids
+        $userData['affids'] = $request->affids;
+
+        //manipulate the request data and assign the new data
+        $validatedData = array_merge($validatedData, ['data' => $userData]);
+
+        //unset the affids from the validated data
+        unset($validatedData['affids']);
+
+        $user->update($validatedData);
 
         // check if affiliate exists
         if (!$user->affiliate) {
@@ -144,7 +178,34 @@ class AffiliateController extends Controller
     {
 
         // create user with affiliate role and create aff with user_id and other data country, company_name, zip, address
-        $affiliate = User::create($request->validated());
+
+        //additional validation on affid
+        //find users where they have the same affid on data->affids
+        $existingAffids = User::query()
+            ->where('role', 'affiliate')
+            ->where(function ($query) use ($request) {
+                foreach ($request->affids as $affid) {
+                    $query->orWhereJsonContains('data->affids', $affid);
+                }
+            })
+            ->first();
+
+        if ($existingAffids) {
+            return withError('Affiliate IDs are already assigned to another affiliate');
+        }
+
+        //get the validated data
+        $validatedData = $request->validated();
+
+        //manipulate the request data and assign the new data
+        $validatedData = array_merge($validatedData, ['data' => [
+            'affids' => $validatedData['affids']
+        ]]);
+
+        //unset the affids from the validated data
+        unset($validatedData['affids']);
+
+        $affiliate = User::create($validatedData);
         $affiliate->affiliate()->create($request->only(
             [
                 'company_name',
