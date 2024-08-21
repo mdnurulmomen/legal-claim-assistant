@@ -8,9 +8,11 @@ use App\Http\Controllers\Api\Affiliates\Resources\AffiliateResource;
 use App\Http\Controllers\Api\Affiliates\Resources\SingleAffiliateResource;
 use App\Http\Controllers\Controller;
 use App\Models\Affiliate;
+use App\Models\Impersonation;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class AffiliateController extends Controller
 {
@@ -178,5 +180,32 @@ class AffiliateController extends Controller
         ]);
 
         return withSuccess(new AffiliateResource($affiliate));
+    }
+
+    /**
+     * Impersonation of the affiliate based on the provided ID.
+     * @param Request $request
+     * @param int $id
+     * @return Response
+     */
+
+    public function impersonate(Request $request, $id)
+    {
+        //check if the user is an affiliate
+        $affiliate = User::query()
+            ->where('role', 'affiliate')
+            ->findOrFail($id);
+
+        //create a new impersonation record
+        $impersonation = new Impersonation();
+        $impersonation->accessKey = Str::random(60);
+        $impersonation->impersonator_id = auth()->user()->id;
+        $impersonation->user_id = $id;
+        $impersonation->save();
+
+        //redirect to the impersonation url
+        $url = "https://legalclaimassistant.support/auth/impersonate?accessKey=" . $impersonation->accessKey;
+
+        return withSuccess(['url' => $url], 'Impersonation started successfully');
     }
 }

@@ -11,4 +11,6 @@ Route::prefix('affiliates')->as('affiliate.')
         $route->put('update/{id}', 'update')->name('update');
         $route->post('create', 'create')->name('store');
         $route->put('affiliate-status/{id}', 'toggleStatus')->name('toggle-status');
+
+        $route->post('impersonate/{id}', 'impersonate')->name('impersonate');
     });
