@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\PlatformList\PlatformIntegrationController;
 use App\Http\Controllers\Api\PlatformList\PlatformListController;
 use Illuminate\Support\Facades\Route;
 
@@ -11,4 +12,12 @@ Route::prefix('platform')->as('platform.')
         $route->get('list', 'platformList')->name('list');
         $route->get('get-source-list', 'getSourceList')->name('get-source-list');
         $route->get('integrations/{platformId}', 'getIntegrations')->name('integrations');
+        $route->get('show/{platformId}', 'showPlatform')->name('show');
     });
+
+// Route::prefix('platform/integrations')->as('platform.integrations.')
+//     ->controller(PlatformIntegrationController::class)
+//     ->middleware('auth:sanctum')
+//     ->group(function ($route) {
+//         $route->get('list', 'platformList')->name('list');
+//     });

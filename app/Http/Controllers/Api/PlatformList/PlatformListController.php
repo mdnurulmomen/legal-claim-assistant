@@ -86,4 +86,14 @@ class PlatformListController extends Controller
         return withSuccess(IntegrationResource::collection($integrations));
     }
 
+    public function showPlatform(Request $request, int $platformId): Response
+    {
+        $platform = PlatformList::find($platformId);
+        if(empty($platform)) {
+            return withError('Platform not found');
+        }
+
+        return withSuccess(new PlatformListResource($platform));
+    }
+
 }
