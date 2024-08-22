@@ -84,8 +84,12 @@ class User extends Authenticatable
     /**
      * Get the affiliate record associated partner_platform_connections.
      */
-    public function postingDocs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    /* // public function postingDocs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    // {
+    //     return $this->hasMany(partnerPlatformConnections::class);
+    // } */
+    public function postingDocs(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
     {
-        return $this->hasMany(partnerPlatformConnections::class);
+        return $this->hasManyThrough(partnerPlatformConnections::class, User::class, 'master_user_id', 'user_id', 'id', 'id');
     }
 }

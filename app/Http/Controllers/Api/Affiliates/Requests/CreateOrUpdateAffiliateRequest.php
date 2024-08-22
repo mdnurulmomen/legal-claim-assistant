@@ -26,6 +26,7 @@ class CreateOrUpdateAffiliateRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'affids' => ['required', 'array'],
             'name' => ['required', 'string', 'max:255'],
             'email' => [
                         'required', 'string', 'email', 'max:255',

@@ -89,7 +89,7 @@ function customResponse(mixed $data, bool $success, int $status, string $message
  * @param float $number
  * @return int | float
  */
-function minusBeforeDollarSign(?string $currency = '', float $number)
+function minusBeforeDollarSign(?string $currency = '', float $number = 0)
 {
     //if contains comma, remove it
     if (strpos($number, ',') !== false) {
