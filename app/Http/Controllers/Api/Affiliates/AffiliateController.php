@@ -51,7 +51,7 @@ class AffiliateController extends Controller
                 });
 
             })
-            ->when(!empty($status), function ($query) use ($status) {
+            ->when($status !== false, function ($query) use ($status) {
                 return $query->where('status', $status);
             })
             ->when(!empty($orderBy) && !empty($orderIn), function ($query) use ($orderBy, $orderIn) {
