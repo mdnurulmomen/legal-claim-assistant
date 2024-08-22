@@ -42,11 +42,21 @@ class IntegrationSettingRequest extends FormRequest
                 'auth' => ['nullable', 'boolean'],
                 'phone_format' => ['nullable', 'string'],
                 'save_data' => ['nullable', 'array'],
-                'custom_maps' => ['nullable', 'array'],
+                'custom_params' => ['nullable', 'array'],
             ],
             'mapping' => [
                 'maps' => ['required', 'array'],
             ],
+            'static_fields' => [
+                'custom_maps' => ['required', 'array'],
+            ],
+            'filters' => [
+                'filter' => ['required', 'array'],
+            ],
+            'converted_filters' => [
+                'convert_maps' => ['required', 'array'],
+            ],
+
             default => []
         };
 
