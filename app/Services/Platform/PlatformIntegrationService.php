@@ -24,7 +24,7 @@ class PlatformIntegrationService
      * @return array
      * @throws \Illuminate\Http\Exceptions\HttpResponseException If the integration is not found.
      */
-    public function formatConfigurationData(Request $request, PlatformList $platform): array
+    public function formatSettingData(Request $request, PlatformList $platform): array
     {
         $validatedData = $request->validated();
 

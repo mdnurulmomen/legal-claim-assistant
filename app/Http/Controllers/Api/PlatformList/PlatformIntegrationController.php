@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\PlatformList;
 
 use App\Helpers\PlatformHandler;
-use App\Http\Controllers\Api\PlatformList\Requests\ConfigurationRequest;
+use App\Http\Controllers\Api\PlatformList\Requests\IntegrationSettingRequest;
 use App\Http\Controllers\Controller;
 use App\Models\PlatformList;
 use App\Services\Platform\PlatformIntegrationService;
@@ -51,7 +51,7 @@ class PlatformIntegrationController extends Controller
         return withSuccess($this->convertToMultiDimensionalArray($integrationMethods, isValueUpperCase: true));
     }
 
-    public function saveIntegration(ConfigurationRequest $request, int $platformId, PlatformIntegrationService $integrationService): Response
+    public function saveIntegration(IntegrationSettingRequest $request, int $platformId, PlatformIntegrationService $integrationService): Response
     {
         if(! isset($request->index) || $request->index < 0) {
             return withError('Invalid index');
@@ -63,7 +63,7 @@ class PlatformIntegrationController extends Controller
         }
 
         try {
-            $integrations = $integrationService->formatConfigurationData($request, $platform);
+            $integrations = $integrationService->formatSettingData($request, $platform);
             $platform->integrations = $integrations;
             $platform->save();
             return withSuccess(message: 'Configuration saved successfully');
