@@ -56,6 +56,13 @@ class IntegrationSettingRequest extends FormRequest
             'converted_filters' => [
                 'convert_maps' => ['required', 'array'],
             ],
+            'payout_settings' => [
+                'payout' => ['required', 'array'],
+                'buyer_payout_by_affid' => ['required', 'array'],
+            ],
+            'caps_controller' => [
+                'caps' => ['required', 'array']
+            ],
 
             default => []
         };

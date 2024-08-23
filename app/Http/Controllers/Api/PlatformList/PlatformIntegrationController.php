@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\PlatformList;
 
 use App\Helpers\PlatformHandler;
+use App\Http\Controllers\Api\PlatformList\Requests\AddOrEditIntegrationRequest;
 use App\Http\Controllers\Api\PlatformList\Requests\IntegrationSettingRequest;
 use App\Http\Controllers\Controller;
 use App\Models\PlatformList;
@@ -51,6 +52,26 @@ class PlatformIntegrationController extends Controller
         return withSuccess($this->convertToMultiDimensionalArray($integrationMethods, isValueUpperCase: true));
     }
 
+    /**
+     * Returns the cap durations in a multi-dimensional array format.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function capDurations(Request $request): Response
+    {
+        $capDurations = PlatformHandler::$capDurations;
+        return withSuccess($this->convertToMultiDimensionalArray($capDurations));
+    }
+
+    /**
+     * Saves the integration settings for the given platform ID.
+     *
+     * @param IntegrationSettingRequest $request
+     * @param int $platformId
+     * @param PlatformIntegrationService $integrationService
+     * @return Response
+     */
     public function saveIntegration(IntegrationSettingRequest $request, int $platformId, PlatformIntegrationService $integrationService): Response
     {
         if(! isset($request->index) || $request->index < 0) {
@@ -70,5 +91,20 @@ class PlatformIntegrationController extends Controller
         } catch (\Throwable $th) {
             return withError($th->getMessage());
         }
+    }
+
+    public function storeIntegration(AddOrEditIntegrationRequest $request, int $platformId, PlatformIntegrationService $integrationService)
+    {
+        $platform = PlatformList::select('id', 'integrations')->find($platformId);
+        if(empty($platform)) {
+            return withError('Invalid platform Id provided');
+        }
+
+        $isExist = $integrationService->checkExists($request, $platform);
+        if($isExist) {
+            return withError('Integration already exists');
+        }
+
+
     }
 }

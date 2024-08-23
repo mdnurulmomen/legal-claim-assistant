@@ -22,5 +22,7 @@ Route::prefix('platform-integrations')->as('platform.integrations.')
         $route->get('number-formats', 'numberFormats')->name('number-formats');
         $route->get('buyer-types', 'buyerTypes')->name('buyer-types');
         $route->get('integration-methods', 'integrationMethods')->name('integration-methods');
+        $route->get('cap-durations', 'capDurations')->name('cap-durations');
         $route->post('save-integration/{platformId}/{settingType}', 'saveIntegration')->name('save-integration');
+        $route->post('store-integration/{platformId}', 'storeIntegration')->name('store-integration');
     });

@@ -39,8 +39,12 @@ class PlatformIntegrationService
         return $integrations;
     }
 
-    public function savePlatformIntegration(int $id, array $integrationData, int $index): void
+    public function checkExists(Request $request, PlatformList $platform): bool
     {
-        PlatformList::where('id', $id)->update(["integrations->{$index}" => json_encode($integrationData)]);
+        $integrations = collect($platform->integrations);
+
+        return $integrations->contains(function ($item) use ($request) {
+                        return strtolower($item['name']) === strtolower($request->name);
+                    });
     }
 }

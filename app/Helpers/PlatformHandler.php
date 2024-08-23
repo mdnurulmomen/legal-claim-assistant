@@ -37,4 +37,14 @@ class PlatformHandler
         'get' => 'GET',
         'post' => 'POST'
     ];
+
+    /**
+     * Cap Durations
+     *
+     * @var array
+     */
+    public static $capDurations = [
+        'daily' => 'Daily',
+        'weekly' => 'Weekly'
+    ];
 }
