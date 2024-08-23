@@ -92,14 +92,36 @@ class LeadController extends Controller
                             $searchText = strtolower($request->search_txt);
 
                             return $query->where(function ($query) use ($searchText) {
-                                return $query->whereAny(
-                                            [
-                                                'platform_datas.email',
-                                                'platform_datas.phone',
-                                                'integrations.name',
-                                            ],
-                                            'like', "%{$searchText}%"
-                                        )
+
+                                //default improved search column
+                                $searchCol = null;
+
+                                //improved search lead algorithm
+                                if (substr($searchText, 0, 2) === '+1' || is_numeric($searchText) && strlen($searchText) > 9 && strlen($searchText) < 12) {
+
+                                    try {
+                                        $searchText = phone($searchText, 'US')->formatE164();
+                                        $searchCol = 'platform_datas.phone';
+                                    } catch (\Throwable $th) {
+                                        //throw $th;
+                                    }
+
+                                } else if (filter_var($searchText, FILTER_VALIDATE_EMAIL)) {
+                                    $searchCol = 'platform_datas.email';
+                                }
+
+                                if ($searchCol) {
+                                    return $query->where($searchCol, $searchText);
+                                }
+
+                                return $query
+                                // ->whereAny(
+                                //             [
+                                //                 'platform_datas.email',
+                                //                 'platform_datas.phone'
+                                //             ],
+                                //             'like', "%{$searchText}%"
+                                //         )
                                         ->orWhereRaw('LOWER(datas) like ?', ["%{$searchText}%"]);
                                         // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.first_name"))) LIKE ?', ["%{$searchText}%"])
                                     // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.last_name"))) LIKE ?', ["%{$searchText}%"]);
