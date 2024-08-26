@@ -40,14 +40,7 @@ class PlatformListPingController extends Controller
                 abort(404);
             }
 
-        } 
-        /*
-        else {
-
-            // default time fetching
-            $start_date =  Carbon::now()->startOfMonth()->toDateTimeString();
-            $end_date = Carbon::now()->endOfMonth()->toDateTimeString();
-        }*/
+        }     
 
         //init query
         $platformPingQuery = PlatformPings::query();
@@ -61,15 +54,31 @@ class PlatformListPingController extends Controller
 
         //for seaerching
         if ($request->has('search_txt')) {
+            
            $platformPingQuery = $platformPingQuery->where(function ($query) use ($request) { 
-                $query->orWhere('users.name', 'like', '%' . $request->search_txt . '%');
-                $query->orWhere('platform_lists.name', 'like', '%' . $request->search_txt . '%');
+               //improved search lead algorithm
+                if (substr($request->search_txt, 0, 2) === '+1' || is_numeric($request->search_txt) && strlen($request->search_txt) > 9 && strlen($request->search_txt) < 12) {
+                    
+                    try { 
+                        $searchText = phone($request->search_txt, 'US')->formatE164();
+                        $query->where('platform_pings.phone', '=', $searchText);
+                        
+                    } catch (\Throwable $th) {
+                        //throw $th;
+                    }
+
+                } else {
+                    
+                    $query->orWhere('users.name', 'like', '%' . $request->search_txt . '%');
+                    $query->orWhere('platform_lists.name', 'like', '%' . $request->search_txt . '%');
+                    $query->orWhere('platform_pings.ping_id', 'like', '%' . $request->search_txt . '%');
+                } 
             });
         }
 
         //additional filters
         if(!empty($request->list)) {
-            $platformPingQuery = $platformPingQuery->whereIn('platform_pings.list_id', array_keys($request->list));
+            $platformPingQuery = $platformPingQuery->whereIn('platform_pings.list_id', $request->list);
         }
 
         //affiliate filter
