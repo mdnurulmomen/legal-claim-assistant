@@ -93,6 +93,44 @@ class PlatformIntegrationController extends Controller
         }
     }
 
+    /**
+     * Saves the full integration data for the given platform ID.
+     *
+     * @param IntegrationSettingRequest $request
+     * @param int $platformId
+     * @param PlatformIntegrationService $integrationService
+     * @return Response
+     */
+    public function saveFullIntegration(IntegrationSettingRequest $request, int $platformId, PlatformIntegrationService $integrationService)
+    {
+        $platform = PlatformList::select('id', 'integrations')->find($platformId);
+        if(empty($platform)) {
+            return withError('Platform not found');
+        }
+
+        try {
+            $integrations = $integrationService->formatSettingData($request, $platform);
+            $platform->integrations = $integrations;
+            $platform->save();
+            return withSuccess(message: 'Integration saved successfully');
+        } catch (\Throwable $th) {
+            return withError($th->getMessage());
+        }
+    }
+
+    public function updateIntegration(Request $request, int $platformId, PlatformIntegrationService $integrationService)
+    {
+        $platform = PlatformList::select('id', 'integrations')->find($platformId);
+        if(empty($platform)) {
+            return withError('Platform not found');
+        }
+
+        $formattedData = $integrationService->formatIntegrationOrderData($request, $platform);
+        $platform->integrations = $formattedData;
+        $platform->save();
+        return withSuccess(message: 'Integration order and status updated successfully');
+    }
+
     public function storeIntegration(AddOrEditIntegrationRequest $request, int $platformId, PlatformIntegrationService $integrationService)
     {
         $platform = PlatformList::select('id', 'integrations')->find($platformId);

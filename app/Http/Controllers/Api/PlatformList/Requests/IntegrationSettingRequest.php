@@ -24,9 +24,29 @@ class IntegrationSettingRequest extends FormRequest
      */
     public function rules(): array
     {
-        $settingType = $this->route('settingType');
-
-        return $this->getRulesByType($settingType);
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'internal_buyer' => ['nullable', 'boolean'],
+            'buyer_profile' => ['required', 'integer'],
+            'alias' => ['nullable', 'string'],
+            'buyer_type' => ['required', 'string'],
+            'curl.url' => ['required', 'string'],
+            'curl.method' => ['required', 'string'],
+            'auth' => ['nullable'],
+            'phone_format' => ['required', 'string'],
+            'save_data' => ['required', 'array'],
+            'custom_params' => ['nullable', 'array'],
+            'ping' => ['required', 'array'],
+            'ping.triggers' => ['required', 'array'],
+            'ping.payout.params' => ['required', 'string', 'max:255'],
+            'maps' => ['required', 'array'],
+            'custom_maps' => ['nullable', 'array'],
+            'filter' => ['nullable', 'array'],
+            'convert_maps' => ['nullable', 'array'],
+            'payout' => ['required', 'array'],
+            'buyer_payout_by_affid' => ['nullable', 'array'],
+            'caps' => ['nullable', 'array']
+        ];
     }
 
     public function getRulesByType($settingType): array
@@ -91,6 +111,11 @@ class IntegrationSettingRequest extends FormRequest
      */
     public function messages(): array
     {
-        return [];
+        return [
+            'ping.triggers' => 'Please select at least one ping trigger.',
+            'ping.payout.params' => 'Please enter Ping Payout Parameter.',
+            'curl.url' => 'Please enter a valid endpoint.',
+            'curl.method' => 'Please enter a valid HTTP method.',
+        ];
     }
 }
