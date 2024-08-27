@@ -43,6 +43,33 @@ class LeadService extends ReportingService
         ->all();
     }
 
+    public function formatSearchColumn(Request $request)
+    {
+        $searchText = $request->search_txt;
+        $searchCol = null;
+
+        if(empty($searchText)){
+            return $searchCol;
+        }
+
+        if (substr($searchText, 0, 2) === '+1' || is_numeric($searchText) && strlen($searchText) > 9 && strlen($searchText) < 12) {
+
+            try {
+                $searchText = phone($searchText, 'US')->formatE164();
+                $searchCol = 'platform_datas.phone';
+            } catch (\Throwable $th) {
+                //throw $th;
+            }
+
+        } else if (filter_var($searchText, FILTER_VALIDATE_EMAIL)) {
+            $searchCol = 'platform_datas.email';
+        }
+
+        // if ($searchCol) {
+        //     return $query->where($searchCol, $searchText);
+        // }
+    }
+
     /**
      * Returns an array of sort fields used for sorting lead data.
      *

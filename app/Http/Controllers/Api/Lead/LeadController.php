@@ -41,9 +41,6 @@ class LeadController extends Controller
         $excelFilters = $leadService->formatExcelFilters($request);
         $perPage = empty($request->limit) ? 10 : $request->limit;
 
-        info(json_encode($relationalConditions));
-        info(json_encode($conditions));
-
         $leadQuery = PlatformData::query()
                         ->select(
                             'platform_datas.id',
@@ -132,8 +129,13 @@ class LeadController extends Controller
      */
     public function getLeadHeaders(Request $request, LeadService $leadService): Response
     {
+        $platformId = $request->platform_id;
+
         $platformDataColumns = PlatformList::query()
                                 ->whereNotNull('lead_headers')
+                                ->when(! empty($platformId), function ($query) use ($platformId) {
+                                    return $query->where('id', $platformId);
+                                })
                                 ->pluck('lead_headers')
                                 ->flatten()
                                 ->unique()
@@ -144,6 +146,9 @@ class LeadController extends Controller
         $integrations = Integration::query()
                             ->select('buyer_unique_id', 'buyer_headers')
                             ->whereNotNull('buyer_headers')
+                            ->when(! empty($platformId), function ($query) use ($platformId) {
+                                return $query->where('list_id', $platformId);
+                            })
                             ->get();
 
 
