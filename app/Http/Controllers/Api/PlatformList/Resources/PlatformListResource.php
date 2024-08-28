@@ -22,13 +22,12 @@ class PlatformListResource extends JsonResource
             'total_leads' => number_format($this->total),
             'sources' => array_unique(array_merge([$this->source] ?? [], $this->options['additional_sources'] ?? [])),
             'status' => $this->status,
-            'updated_at' => $this->updated_at->diffForHumans(),
-            'created_at' => $this->created_at->toDateTimeString()
+            'cv_trigger' => $this->cv_trigger ?? [],
+            'integrations' => $this->integrations,
+            'lead_headers' => $this->lead_headers ?? [],
+            'updated_at' => $this->updated_at ? $this->updated_at->diffForHumans() : '',
+            'created_at' => $this->created_at ? $this->created_at->toDateTimeString() : ''
         ];
-
-        if( ! empty($this->integrations) ) {
-            $data['integrations'] = $this->integrations;
-        }
 
         return $data;
     }
