@@ -42,4 +42,22 @@ trait CommonTrait
 
         return [$reportStart, $reportEnd];
     }
+
+    /**
+     * Converts a one-dimensional associative array into a two-dimensional array.
+     *
+     * @param array $array
+     * @return array
+     */
+    public function convertToMultiDimensionalArray(array $array, bool $isValueUpperCase = false): array
+    {
+        $result = [];
+        foreach ($array as $key => $value) {
+            $result[] = [
+                'label' => $value,
+                'value' => $isValueUpperCase ? strtoupper($value) : $key
+            ];
+        }
+        return $result;
+    }
 }

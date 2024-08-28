@@ -41,9 +41,6 @@ class LeadController extends Controller
         $excelFilters = $leadService->formatExcelFilters($request);
         $perPage = empty($request->limit) ? 10 : $request->limit;
 
-        info(json_encode($relationalConditions));
-        info(json_encode($conditions));
-
         $leadQuery = PlatformData::query()
                         ->select(
                             'platform_datas.id',
@@ -114,7 +111,7 @@ class LeadController extends Controller
                                     return $query->where($searchCol, $searchText);
                                 }
 
-                                return $query
+                                return $query->orWhereRaw('LOWER(datas) like ?', ["%{$searchText}%"]);
                                 // ->whereAny(
                                 //             [
                                 //                 'platform_datas.email',
@@ -122,7 +119,7 @@ class LeadController extends Controller
                                 //             ],
                                 //             'like', "%{$searchText}%"
                                 //         )
-                                        ->orWhereRaw('LOWER(datas) like ?', ["%{$searchText}%"]);
+
                                         // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.first_name"))) LIKE ?', ["%{$searchText}%"])
                                     // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.last_name"))) LIKE ?', ["%{$searchText}%"]);
                             });
@@ -154,18 +151,26 @@ class LeadController extends Controller
      */
     public function getLeadHeaders(Request $request, LeadService $leadService): Response
     {
+        $platformId = $request->platform_id;
+
         $platformDataColumns = PlatformList::query()
                                 ->whereNotNull('lead_headers')
+                                ->when(! empty($platformId), function ($query) use ($platformId) {
+                                    return $query->where('id', $platformId);
+                                })
                                 ->pluck('lead_headers')
                                 ->flatten()
                                 ->unique()
                                 ->values();
 
-        $platformDataColumns = $leadService->formatHeaders($platformDataColumns);
+        $platformDataColumns = $leadService->formatHeaders($platformDataColumns, $platformId);
 
         $integrations = Integration::query()
                             ->select('buyer_unique_id', 'buyer_headers')
                             ->whereNotNull('buyer_headers')
+                            ->when(! empty($platformId), function ($query) use ($platformId) {
+                                return $query->where('list_id', $platformId);
+                            })
                             ->get();
 
 

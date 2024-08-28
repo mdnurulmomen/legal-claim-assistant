@@ -22,7 +22,7 @@ class LeadService extends ReportingService
      * @param Collection $headers
      * @return array
      */
-    public function formatHeaders(Collection $headers): array
+    public function formatHeaders(Collection $headers, int $platformId): array
     {
         $serialization = $this->getSortFields();
 
@@ -30,6 +30,9 @@ class LeadService extends ReportingService
             $index = array_search($item, $serialization);
             return $index === false ? PHP_INT_MAX : $index;
         })
+        // ->reject(function ($item) use ($platformId) {
+        //     return !empty($platformId) && $item === 'list';
+        // })
         ->map(function ($header) use ($serialization) {
             return [
                 'field' => $header,
@@ -41,6 +44,31 @@ class LeadService extends ReportingService
         })
         ->values()
         ->all();
+    }
+
+    public function formatSearchColumn(Request $request)
+    {
+        $searchText = $request->search_txt;
+        $searchCol = null;
+
+        if(empty($searchText)){
+            return $searchCol;
+        }
+
+        if (substr($searchText, 0, 2) === '+1' || is_numeric($searchText) && strlen($searchText) > 9 && strlen($searchText) < 12) {
+
+            try {
+                $searchText = phone($searchText, 'US')->formatE164();
+                $searchCol = 'platform_datas.phone';
+            } catch (\Throwable $th) {
+                //throw $th;
+            }
+
+        } else if (filter_var($searchText, FILTER_VALIDATE_EMAIL)) {
+            $searchCol = 'platform_datas.email';
+        }
+
+        return $searchCol;
     }
 
     /**

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\PlatformList;
 
-use App\Http\Controllers\Api\PlatformList\Resources\IntegrationResource;
 use App\Http\Controllers\Api\PlatformList\Resources\PlatformListResource;
 use App\Http\Controllers\Controller;
 use App\Models\Integration;
@@ -80,15 +79,32 @@ class PlatformListController extends Controller
     public function getIntegrations(Request $request, int $platformId): Response
     {
         $integrations = Integration::where('list_id', $platformId)
-                            ->select('id', 'name')
+                            ->select('id as value', 'name as label')
                             ->get();
 
-        return withSuccess(IntegrationResource::collection($integrations));
+        return withSuccess($integrations);
     }
 
     public function showPlatform(Request $request, int $platformId): Response
     {
-        $platform = PlatformList::find($platformId);
+        $platform = PlatformList::query()
+                        ->select(
+                            'id',
+                            'tag',
+                            'name',
+                            'total',
+                            'campaign_name',
+                            'options',
+                            'source',
+                            'status',
+                            'cv_trigger',
+                            'integrations',
+                            'lead_headers',
+                            'updated_at',
+                            'created_at'
+                        )
+                        ->find($platformId);
+
         if(empty($platform)) {
             return withError('Platform not found');
         }
