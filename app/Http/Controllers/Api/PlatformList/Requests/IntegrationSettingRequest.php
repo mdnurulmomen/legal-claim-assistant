@@ -24,7 +24,7 @@ class IntegrationSettingRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'internal_buyer' => ['nullable', 'boolean'],
             'buyer_profile' => ['required', 'integer'],
@@ -37,16 +37,25 @@ class IntegrationSettingRequest extends FormRequest
             'save_data' => ['required', 'array'],
             'custom_params' => ['nullable', 'array'],
             'ping' => ['required', 'array'],
-            'ping.triggers' => ['required', 'array'],
-            'ping.payout.params' => ['required', 'string', 'max:255'],
+            'ping.required' => ['sometimes', 'boolean'],
+            'ping.triggers' => ['nullable', 'array'],
+            'ping.payout.params' => ['nullable', 'string', 'max:255'],
             'maps' => ['required', 'array'],
             'custom_maps' => ['nullable', 'array'],
             'filter' => ['nullable', 'array'],
             'convert_maps' => ['nullable', 'array'],
             'payout' => ['required', 'array'],
             'buyer_payout_by_affid' => ['nullable', 'array'],
-            'caps' => ['nullable', 'array']
+            'caps' => ['nullable', 'array'],
+            'cv_trigger' => ['nullable', 'array']
         ];
+
+        if($this->ping['required']) {
+            $rules['ping.triggers'] = ['required', 'array'];
+            $rules['ping.payout.params'] = ['required', 'string', 'max:255'];
+        }
+
+        return $rules;
     }
 
     public function getRulesByType($settingType): array

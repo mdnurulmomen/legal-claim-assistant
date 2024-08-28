@@ -103,14 +103,17 @@ class PlatformIntegrationController extends Controller
      */
     public function saveFullIntegration(IntegrationSettingRequest $request, int $platformId, PlatformIntegrationService $integrationService)
     {
-        $platform = PlatformList::select('id', 'integrations')->find($platformId);
+        $platform = PlatformList::select('id', 'integrations', 'cv_trigger')->find($platformId);
         if(empty($platform)) {
             return withError('Platform not found');
         }
 
         try {
             $integrations = $integrationService->formatSettingData($request, $platform);
+            $cvTriggers = $integrationService->formatTriggersData($request, $platform);
+
             $platform->integrations = $integrations;
+            $platform->cv_trigger = $cvTriggers;
             $platform->save();
             return withSuccess(message: 'Integration saved successfully');
         } catch (\Throwable $th) {

@@ -22,7 +22,7 @@ class LeadService extends ReportingService
      * @param Collection $headers
      * @return array
      */
-    public function formatHeaders(Collection $headers): array
+    public function formatHeaders(Collection $headers, int $platformId): array
     {
         $serialization = $this->getSortFields();
 
@@ -30,6 +30,9 @@ class LeadService extends ReportingService
             $index = array_search($item, $serialization);
             return $index === false ? PHP_INT_MAX : $index;
         })
+        // ->reject(function ($item) use ($platformId) {
+        //     return !empty($platformId) && $item === 'list';
+        // })
         ->map(function ($header) use ($serialization) {
             return [
                 'field' => $header,
@@ -65,9 +68,7 @@ class LeadService extends ReportingService
             $searchCol = 'platform_datas.email';
         }
 
-        // if ($searchCol) {
-        //     return $query->where($searchCol, $searchText);
-        // }
+        return $searchCol;
     }
 
     /**

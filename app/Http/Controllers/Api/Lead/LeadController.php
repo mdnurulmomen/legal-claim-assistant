@@ -111,7 +111,7 @@ class LeadController extends Controller
                                     return $query->where($searchCol, $searchText);
                                 }
 
-                                return $query
+                                return $query->orWhereRaw('LOWER(datas) like ?', ["%{$searchText}%"]);
                                 // ->whereAny(
                                 //             [
                                 //                 'platform_datas.email',
@@ -119,7 +119,7 @@ class LeadController extends Controller
                                 //             ],
                                 //             'like', "%{$searchText}%"
                                 //         )
-                                        ->orWhereRaw('LOWER(datas) like ?', ["%{$searchText}%"]);
+
                                         // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.first_name"))) LIKE ?', ["%{$searchText}%"])
                                     // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.last_name"))) LIKE ?', ["%{$searchText}%"]);
                             });
@@ -163,7 +163,7 @@ class LeadController extends Controller
                                 ->unique()
                                 ->values();
 
-        $platformDataColumns = $leadService->formatHeaders($platformDataColumns);
+        $platformDataColumns = $leadService->formatHeaders($platformDataColumns, $platformId);
 
         $integrations = Integration::query()
                             ->select('buyer_unique_id', 'buyer_headers')

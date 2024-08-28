@@ -97,6 +97,7 @@ class PlatformListController extends Controller
                             'options',
                             'source',
                             'status',
+                            'cv_trigger',
                             'integrations',
                             'lead_headers',
                             'updated_at',
