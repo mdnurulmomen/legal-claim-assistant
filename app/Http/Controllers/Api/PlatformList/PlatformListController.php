@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\PlatformList;
 
 use App\Http\Controllers\Api\PlatformList\Resources\PlatformListResource;
 use App\Http\Controllers\Controller;
+use App\Models\Buyer;
 use App\Models\Integration;
 use App\Models\PlatformList;
 use Illuminate\Http\Request;
@@ -69,20 +70,13 @@ class PlatformListController extends Controller
         return withSuccess($platformSource);
     }
 
-    /**
-     * Retrieves a list of integrations based on the given platform ID.
-     *
-     * @param Request $request
-     * @param int $platformId
-     * @return Response
-     */
-    public function getIntegrations(Request $request, int $platformId): Response
+    public function buyerList(Request $request, int $platformId): Response
     {
-        $integrations = Integration::where('list_id', $platformId)
+        $buyers = Buyer::query()
                             ->select('id as value', 'name as label')
                             ->get();
 
-        return withSuccess($integrations);
+        return withSuccess($buyers);
     }
 
     public function showPlatform(Request $request, int $platformId): Response
