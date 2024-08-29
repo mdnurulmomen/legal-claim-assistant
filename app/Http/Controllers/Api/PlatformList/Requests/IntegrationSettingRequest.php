@@ -25,7 +25,7 @@ class IntegrationSettingRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string'],
             'internal_buyer' => ['nullable', 'boolean'],
             'buyer_profile' => ['required', 'integer'],
             'alias' => ['nullable', 'string'],
@@ -39,7 +39,7 @@ class IntegrationSettingRequest extends FormRequest
             'ping' => ['required', 'array'],
             'ping.required' => ['sometimes', 'boolean'],
             'ping.triggers' => ['nullable', 'array'],
-            'ping.payout.params' => ['nullable', 'string', 'max:255'],
+            'ping.payout.params' => ['nullable', 'string'],
             'maps' => ['required', 'array'],
             'custom_maps' => ['nullable', 'array'],
             'filter' => ['nullable', 'array'],
@@ -52,7 +52,7 @@ class IntegrationSettingRequest extends FormRequest
 
         if($this->ping['required']) {
             $rules['ping.triggers'] = ['required', 'array'];
-            $rules['ping.payout.params'] = ['required', 'string', 'max:255'];
+            $rules['ping.payout.params'] = ['required', 'string'];
         }
 
         return $rules;

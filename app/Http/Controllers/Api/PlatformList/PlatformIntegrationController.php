@@ -49,7 +49,7 @@ class PlatformIntegrationController extends Controller
     public function integrationMethods(Request $request): Response
     {
         $integrationMethods = PlatformHandler::$integrationMethods;
-        return withSuccess($this->convertToMultiDimensionalArray($integrationMethods, isValueUpperCase: true));
+        return withSuccess($this->convertToMultiDimensionalArray($integrationMethods));
     }
 
     /**

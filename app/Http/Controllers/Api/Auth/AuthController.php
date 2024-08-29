@@ -32,12 +32,11 @@ class AuthController extends Controller
 
         auth()->login($user);
 
-        $token = $user->createToken('auth_token', ['*'], now()->addDay())->plainTextToken;
+        $token = $user->createToken('auth_token', ['*'], now()->addWeeks(1))->plainTextToken;
         $user->access_token = $token;
 
         return withSuccess(new AuthResource($user), 'Logged in successfully');
     }
-
 
     /**
      * Logout the user by deleting their current access token.
