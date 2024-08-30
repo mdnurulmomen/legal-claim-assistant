@@ -163,7 +163,7 @@ class LeadController extends Controller
                                 ->unique()
                                 ->values();
 
-        $platformDataColumns = $leadService->formatHeaders($platformDataColumns, $platformId);
+        $platformDataColumns = $leadService->formatHeaders($platformDataColumns);
 
         $integrations = Integration::query()
                             ->select('buyer_unique_id', 'buyer_headers')
