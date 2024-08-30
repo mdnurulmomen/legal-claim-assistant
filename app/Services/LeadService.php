@@ -22,7 +22,7 @@ class LeadService extends ReportingService
      * @param Collection $headers
      * @return array
      */
-    public function formatHeaders(Collection $headers, int $platformId): array
+    public function formatHeaders(Collection $headers): array
     {
         $serialization = $this->getSortFields();
 
