@@ -17,4 +17,5 @@ Route::prefix('leads')->as('leads.')
         $route->get('single-reports/{reportId}', 'getSingleReports')->name('single.reports');
         $route->put('update-lead-report/{reportId}', 'updateLeadReport')->name('update.lead-report');
         $route->get('buyer-integrations', 'getBuyerIntegrations')->name('buyer-integrations');
+        $route->get('get-integrations', 'getIntegrations')->name('get-integrations');
     });

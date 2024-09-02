@@ -440,4 +440,25 @@ class LeadController extends Controller
 
         return withSuccess($integrations);
     }
+
+    public function getIntegrations(Request $request): Response
+    {
+        $platformId = $request->platform_id;
+        $searchText = strtolower($request->search_txt);
+
+        $integrations = Integration::query()
+                            ->select('buyer_unique_id', 'buyer_headers')
+                            ->whereNotNull('buyer_headers')
+                            ->when(! empty($searchText), function ($query) use ($searchText) {
+                                return $query->where('buyer_unique_id', 'like', "%{$searchText}%")
+                                            ->orWhereRaw('LOWER(buyer_headers) like ?', ["%{$searchText}%"]);
+                            })
+                            ->when(! empty($platformId), function ($query) use ($platformId) {
+                                return $query->where('list_id', $platformId);
+                            })
+                            ->limit(10)
+                            ->get();
+
+        return withSuccess($integrations);
+    }
 }
