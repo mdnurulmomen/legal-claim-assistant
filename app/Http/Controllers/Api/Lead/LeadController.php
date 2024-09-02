@@ -84,45 +84,8 @@ class LeadController extends Controller
                         ->when(! empty($startDate) && ! empty($endDate), function ($query) use ($startDate, $endDate) {
                             return $query->whereBetween('platform_datas.created_at', [$startDate, $endDate]);
                         })
-                        ->when(! empty($request->search_txt), function ($query) use ($request) {
-
-                            $searchText = strtolower($request->search_txt);
-
-                            return $query->where(function ($query) use ($searchText) {
-
-                                //default improved search column
-                                $searchCol = null;
-
-                                //improved search lead algorithm
-                                if (substr($searchText, 0, 2) === '+1' || is_numeric($searchText) && strlen($searchText) > 9 && strlen($searchText) < 12) {
-
-                                    try {
-                                        $searchText = phone($searchText, 'US')->formatE164();
-                                        $searchCol = 'platform_datas.phone';
-                                    } catch (\Throwable $th) {
-                                        //throw $th;
-                                    }
-
-                                } else if (filter_var($searchText, FILTER_VALIDATE_EMAIL)) {
-                                    $searchCol = 'platform_datas.email';
-                                }
-
-                                if ($searchCol) {
-                                    return $query->where($searchCol, $searchText);
-                                }
-
-                                return $query->orWhereRaw('LOWER(datas) like ?', ["%{$searchText}%"]);
-                                // ->whereAny(
-                                //             [
-                                //                 'platform_datas.email',
-                                //                 'platform_datas.phone'
-                                //             ],
-                                //             'like', "%{$searchText}%"
-                                //         )
-
-                                        // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.first_name"))) LIKE ?', ["%{$searchText}%"])
-                                    // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.last_name"))) LIKE ?', ["%{$searchText}%"]);
-                            });
+                        ->when(! empty($request->search_txt), function ($query) use ($request, $leadService) {
+                            return $leadService->formatSearchColumn($request, $query);
                         })
                         ->when(! empty($excelFilters), function (Builder $query) use ($excelFilters, $leadService) {
                             return $leadService->convertExcelFilterToSql($query, $excelFilters);
@@ -441,6 +404,12 @@ class LeadController extends Controller
         return withSuccess($integrations);
     }
 
+    /**
+     * Retrieves a list of integrations based on the search text and platform ID provided in the request.
+     *
+     * @param Request $request
+     * @return Response
+     */
     public function getIntegrations(Request $request): Response
     {
         $platformId = $request->platform_id;
@@ -460,5 +429,19 @@ class LeadController extends Controller
                             ->get();
 
         return withSuccess($integrations);
+    }
+
+    /**
+     * Retrieves a list of options for a given type, based on the request data and using the LeadService.
+     *
+     * @param Request $request
+     * @param string $type
+     * @param LeadService $leadService
+     * @return Response
+     */
+    public function getLeadOptions(Request $request, string $type, LeadService $leadService): Response
+    {
+        $data = $leadService->convertTypeToData($request, $type);
+        return withSuccess($data);
     }
 }
