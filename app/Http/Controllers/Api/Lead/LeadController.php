@@ -128,18 +128,8 @@ class LeadController extends Controller
 
         $platformDataColumns = $leadService->formatHeaders($platformDataColumns);
 
-        $integrations = Integration::query()
-                            ->select('buyer_unique_id', 'buyer_headers')
-                            ->whereNotNull('buyer_headers')
-                            ->when(! empty($platformId), function ($query) use ($platformId) {
-                                return $query->where('list_id', $platformId);
-                            })
-                            ->get();
-
-
         return withSuccess([
             'platformDataColumns' => $platformDataColumns,
-            'integrations' => $integrations,
             'defaultFields' => $leadService->getSortFields()
         ]);
     }
@@ -415,6 +405,11 @@ class LeadController extends Controller
         $platformId = $request->platform_id;
         $searchText = strtolower($request->search_txt);
 
+        $selectColumns = [];
+        if(! empty($request->select_columns)){
+            $selectColumns = explode(',', $request->select_columns);
+        }
+
         $integrations = Integration::query()
                             ->select('buyer_unique_id', 'buyer_headers')
                             ->whereNotNull('buyer_headers')
@@ -425,7 +420,7 @@ class LeadController extends Controller
                             ->when(! empty($platformId), function ($query) use ($platformId) {
                                 return $query->where('list_id', $platformId);
                             })
-                            ->limit(10)
+                            ->limit(100)
                             ->get();
 
         return withSuccess($integrations);
