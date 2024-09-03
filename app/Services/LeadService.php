@@ -7,6 +7,8 @@ use App\Models\LeadLog;
 use App\Models\LeadReport;
 use App\Models\PageSetting;
 use App\Models\PlatformData;
+use App\Models\PlatformList;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
@@ -46,29 +48,37 @@ class LeadService extends ReportingService
         ->all();
     }
 
-    public function formatSearchColumn(Request $request)
+    /**
+     * Formats the search query for the leads list.
+     *
+     * @param Request $request
+     * @param Builder $query
+     * @return Builder
+     */
+    public function formatSearchColumn(Request $request, Builder $query): Builder
     {
-        $searchText = $request->search_txt;
-        $searchCol = null;
+        $searchText = strtolower($request->search_txt);
 
-        if(empty($searchText)){
-            return $searchCol;
-        }
+        return $query->where(function ($query) use ($searchText) {
 
-        if (substr($searchText, 0, 2) === '+1' || is_numeric($searchText) && strlen($searchText) > 9 && strlen($searchText) < 12) {
+            $searchCol = null;
 
-            try {
+            if (substr($searchText, 0, 2) === '+1' || is_numeric($searchText) && strlen($searchText) > 9 && strlen($searchText) < 12) {
                 $searchText = phone($searchText, 'US')->formatE164();
                 $searchCol = 'platform_datas.phone';
-            } catch (\Throwable $th) {
-                //throw $th;
+            } else if (filter_var($searchText, FILTER_VALIDATE_EMAIL)) {
+                $searchCol = 'platform_datas.email';
             }
 
-        } else if (filter_var($searchText, FILTER_VALIDATE_EMAIL)) {
-            $searchCol = 'platform_datas.email';
-        }
+            if ($searchCol) {
+                return $query->where($searchCol, $searchText);
+            }
 
-        return $searchCol;
+            return $query->orWhereRaw('LOWER(datas) like ?', ["%{$searchText}%"]);
+
+                // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.first_name"))) LIKE ?', ["%{$searchText}%"])
+                // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.last_name"))) LIKE ?', ["%{$searchText}%"]);
+        });
     }
 
     /**
@@ -320,17 +330,16 @@ class LeadService extends ReportingService
             foreach ($excelFilters as $key => $filter) {
 
                 $isJsonColumn = ! empty($filter['is_json_column']);
-                $method = $this->getWhereInMethod($key, $isJsonColumn);
 
                 if(! $isJsonColumn){
-                    $query->$method($filter['column'], $filter['values']);
+                    $query->where($filter['column'], $filter['values']);
                     continue;
                 }
 
                 $column = $filter['column'];
                 $values = array_map('strtolower', $filter['values']);
                 $placeholders = implode(',', array_fill(0, count($filter['values']), '?'));
-                $query->$method('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.' . $column . '"))) IN (' . $placeholders . ')', $values);
+                $query->whereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.' . $column . '"))) IN (' . $placeholders . ')', $values);
             }
         });
     }
@@ -729,5 +738,106 @@ class LeadService extends ReportingService
             'rule' => $conditions['rule'],
             'value' => $conditions['value']
         ], isRelational: true);
+    }
+
+    /**
+     * Converts the given type to an array of data.
+     *
+     * @param Request $request
+     * @param string $type
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function convertTypeToData(Request $request, string $type): Collection
+    {
+        return match($type){
+            'list_name' => $this->getPlatformList($request),
+            'buyer_name' => $this->getBuyers($request),
+            'buyer_integration' => $this->getBuyerIntegrations($request),
+            'affiliate_name' => $this->getAffiliates($request),
+            'affid' => $this->getAffIds($request),
+            default => []
+        };
+    }
+
+    /**
+     * Retrieves a list of affids from LeadReport filtered by the search text if provided.
+     *
+     * @param Request $request
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getAffIds(Request $request): Collection
+    {
+        return LeadReport::select('affid as value', 'affid as label')
+                ->whereNotNull('affid')
+                ->when(! empty($request->search_txt), function ($query) use ($request) {
+                    return $query->where('affid', 'like', '%'.$request->search_txt.'%');
+                })
+                ->groupBy('affid')
+                ->limit(50)
+                ->get();
+    }
+
+    /**
+     * Retrieves a list of buyer integrations with associated platform list names, filtered by the search text if provided.
+     *
+     * @param Request $request
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getBuyerIntegrations(Request $request): Collection
+    {
+        return DB::table('integrations')
+                ->leftJoin('platform_lists', 'integrations.list_id', '=', 'platform_lists.id')
+                ->select('integrations.id as value', DB::raw("CONCAT(integrations.name , ' ( ', platform_lists.name, ' )') as label"))
+                ->when(! empty($request->search_txt), function ($query) use ($request) {
+                    return $query->where('integrations.name', 'like', '%'.$request->search_txt.'%');
+                })
+                ->limit(50)
+                ->get();
+    }
+
+    /**
+     * Retrieves a list of affiliates with associated IDs, filtered by the search text if provided.
+     *
+     * @param Request $request
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getAffiliates(Request $request): Collection
+    {
+        return User::select('id as value', 'name as label')
+                ->when(! empty($request->search_txt), function ($query) use ($request) {
+                    return $query->where('name', 'like', '%'.$request->search_txt.'%');
+                })
+                ->where('role', 'affiliate')->get();
+    }
+
+    /**
+     * Retrieves a list of buyers with associated IDs, filtered by the search text if provided.
+     *
+     * @param Request $request
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getBuyers(Request $request): Collection
+    {
+        return DB::table('buyers')
+                ->when(! empty($request->search_txt), function ($query) use ($request) {
+                    return $query->where('name', 'like', '%'.$request->search_txt.'%');
+                })
+                ->select('id as value', 'name as label')->get();
+    }
+
+    /**
+     * Retrieves a list of platform lists with associated IDs, filtered by the search text if provided.
+     *
+     * @param Request $request
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getPlatformList(Request $request): EloquentCollection
+    {
+        return PlatformList::select('id as value', 'name as label')
+                ->when(! empty($request->search_txt), function ($query) use ($request) {
+                    return $query->where('name', 'like', '%'.$request->search_txt.'%');
+                })
+                ->limit(50)
+                ->get();
     }
 }
