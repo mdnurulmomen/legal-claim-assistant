@@ -61,6 +61,7 @@ class ExcelService
                 'value' => $item,
                 'label' => ucwords(str_replace('_', ' ', $item)),
                 'model_value' => $item,
+                'options' => []
             ];
         })
         ->all();

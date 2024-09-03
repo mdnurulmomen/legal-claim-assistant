@@ -30,11 +30,13 @@ class ExcelController extends Controller
         }
 
         try {
+
             $file = $request->file('file')->store('public/import');
             $path = storage_path('app/' . $file);
             $data = (new FastExcel)->import($path);
             $data = $excelService->formatLeadCsvData($data);
             unlink($path);
+
             return withSuccess([
                 'lead_data' => $data,
                 'lead_columns' => $excelService->getLeadColumns($data)
