@@ -32,9 +32,6 @@ class LeadService extends ReportingService
             $index = array_search($item, $serialization);
             return $index === false ? PHP_INT_MAX : $index;
         })
-        // ->reject(function ($item) use ($platformId) {
-        //     return !empty($platformId) && $item === 'list';
-        // })
         ->map(function ($header) use ($serialization) {
             return [
                 'field' => $header,

@@ -14,7 +14,7 @@ Route::prefix('excels')->as('excels.')
 
         $route->prefix('import')
         ->middleware('auth:sanctum')
-        ->as('import.')->group(function ($route) {
+        ->as('import.')->group(function ($route){
             $route->post('/upload-lead-csv', [ExcelController::class, 'uploadLeadCsv'])->name('upload-lead-csv');
         });
     });
