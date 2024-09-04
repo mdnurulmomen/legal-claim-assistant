@@ -36,6 +36,9 @@ class LeadController extends Controller
      */
     public function list(Request $request, LeadService $leadService, ExcelService $excelService): Response | string | StreamedResponse
     {
+        set_time_limit(0);
+        ini_set('memory_limit', -1);
+
         [$startDate, $endDate] = $this->formatStartEndDateWithTimezone($request->start_date, $request->end_date, $request->timezone);
         [$relationalConditions, $conditions] = $leadService->formatFilters($request);
         $excelFilters = $leadService->formatExcelFilters($request);
