@@ -3,11 +3,9 @@
 namespace App\Services;
 
 use App\Http\Controllers\Api\Reporting\Resources\ReportingResource;
-use App\Models\LeadReport;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 
 class ReportingService
 {
@@ -223,7 +221,7 @@ class ReportingService
      * @param string|int|null $value
      * @return array
      */
-    public function makeCondition(string $column, string $operator, string | int | null $value = null)
+    public function makeCondition(string $column, string $operator, string | int | null | array $value = null)
     {
         return [
             'column' => $column,
@@ -243,8 +241,16 @@ class ReportingService
     {
         $method = $index == 0 ? 'where' : 'orWhere';
 
-        if($type){
-            $type == 'exists' ? ($method .= 'NotNull') : ($method .= 'Null');
+        $matchType = match($type){
+            'exists' => 'NotNull',
+            'does_not_exist' => 'Null',
+            'equals' => 'In',
+            'not_equals' => 'NotIn',
+            default => null
+        };
+
+        if($matchType){
+            $method .= $matchType;
         }
 
         return $method;
@@ -258,10 +264,16 @@ class ReportingService
      */
     public function getConditionType(string $operator): ?string
     {
-        return in_array($operator, ['exists', 'does_not_exist']) ? $operator : null;
+        return match($operator){
+            'exists', 'does_not_exist' => $operator,
+            '=' => 'equals',
+            '!=' => 'not_equals',
+            default => null
+        };
+        // return in_array($operator, ['exists', 'does_not_exist']) ? $operator : null;
     }
 
-    public function getReportTotals(Builder $baseQuery, Request $request)
+    public function getReportTotals(QueryBuilder $baseQuery, Request $request)
     {
         $leads = $baseQuery->lazyById(1000, 'id');
         $totals = [
@@ -285,4 +297,47 @@ class ReportingService
         return new ReportingResource($totals);
     }
 
+    /**
+     * Converts an array of relational conditions to a SQL query using Laravel's query builder.
+     *
+     * @param Builder $query
+     * @param array $relations
+     * @return Builder
+     */
+    public function convertRelationsToSql(Builder $query, array $relations): Builder
+    {
+        return $query->where(function ($query) use ($relations) {
+            foreach ($relations as $conditionKey => $conditionGroup) {
+                $query->where(function ($query2) use ($conditionGroup) {
+                    foreach ($conditionGroup as $index => $condition) {
+
+                        if(in_array($condition['operator'], ['=', '!='])) {
+                            $this->convertEqualsOrNotEqualsCondition($query2, $condition, $index);
+                            continue;
+                        }
+
+                        $method = $this->getConditionMethod($index);
+                        $query2->$method($condition['column'], $condition['operator'], $condition['value']);
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * Converts an equals or not equals condition to a SQL query using Laravel's query builder.
+     *
+     * @param Builder $query
+     * @param array $condition
+     * @param int $index
+     * @return Builder
+     */
+    public function convertEqualsOrNotEqualsCondition(Builder &$query, array $condition, int $index): Builder
+    {
+        $type = $this->getConditionType($condition['operator']);
+        $method = $this->getConditionMethod($index, $type);
+        $conditionValue = is_array($condition['value']) ? $condition['value'] : [$condition['value']];
+
+        return $query->$method($condition['column'], $conditionValue);
+    }
 }

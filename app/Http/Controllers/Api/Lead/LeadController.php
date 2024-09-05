@@ -118,7 +118,6 @@ class LeadController extends Controller
     public function getLeadHeaders(Request $request, LeadService $leadService): Response
     {
         $platformId = $request->platform_id;
-
         $platformDataColumns = PlatformList::query()
                                 ->whereNotNull('lead_headers')
                                 ->when(! empty($platformId), function ($query) use ($platformId) {

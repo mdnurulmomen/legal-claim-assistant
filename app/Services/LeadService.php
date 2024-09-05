@@ -238,16 +238,16 @@ class LeadService extends ReportingService
     public function convertConditionToSql(array $conditions, bool $isRelational = false): array
     {
         $condition = match($conditions['rule']){
-            'contains' => $this->makeCondition($conditions['column'], 'like', ('%' . $conditions['value'] . '%'), $isRelational),
-            'does_not_contain' => $this->makeCondition($conditions['column'], 'not like', ('%' . $conditions['value'] . '%'), $isRelational),
-            'begins_with' => $this->makeCondition($conditions['column'], 'like', ($conditions['value'] . '%'), $isRelational),
-            'does_not_begin_with' => $this->makeCondition($conditions['column'], 'not like', ($conditions['value'] . '%'), $isRelational),
-            'greater_than' => $this->makeCondition($conditions['column'], '>', $conditions['value'], $isRelational),
-            'less_than' => $this->makeCondition($conditions['column'], '<', $conditions['value'], $isRelational),
-            'equals' => $this->makeCondition($conditions['column'], '=', $conditions['value'], $isRelational),
-            'not_equals' => $this->makeCondition($conditions['column'], '!=', $conditions['value'], $isRelational),
-            'exists' => $this->makeCondition($conditions['column'], 'exists', null, $isRelational),
-            'does_not_exist' => $this->makeCondition($conditions['column'], 'does_not_exist', null, $isRelational),
+            'contains' => $this->makeConditions($conditions['column'], 'like', ('%' . $conditions['value'] . '%'), $isRelational),
+            'does_not_contain' => $this->makeConditions($conditions['column'], 'not like', ('%' . $conditions['value'] . '%'), $isRelational),
+            'begins_with' => $this->makeConditions($conditions['column'], 'like', ($conditions['value'] . '%'), $isRelational),
+            'does_not_begin_with' => $this->makeConditions($conditions['column'], 'not like', ($conditions['value'] . '%'), $isRelational),
+            'greater_than' => $this->makeConditions($conditions['column'], '>', $conditions['value'], $isRelational),
+            'less_than' => $this->makeConditions($conditions['column'], '<', $conditions['value'], $isRelational),
+            'equals' => $this->makeConditions($conditions['column'], '=', $conditions['value'], $isRelational),
+            'not_equals' => $this->makeConditions($conditions['column'], '!=', $conditions['value'], $isRelational),
+            'exists' => $this->makeConditions($conditions['column'], 'exists', null, $isRelational),
+            'does_not_exist' => $this->makeConditions($conditions['column'], 'does_not_exist', null, $isRelational),
             default => []
         };
         return $condition;
@@ -261,7 +261,7 @@ class LeadService extends ReportingService
      * @param string|int|null $value
      * @return array
      */
-    public function makeCondition(string $column, string $operator, string | int | null $value = null, bool $isRelational = false): array
+    public function makeConditions(string $column, string $operator, string | int | null $value = '', bool $isRelational = false): array
     {
         return [
             'column' => $isRelational ? $column : ("platform_datas.datas->" . $column),

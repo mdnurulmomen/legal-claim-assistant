@@ -39,6 +39,7 @@ class IntegrationSettingRequest extends FormRequest
             'ping' => ['required', 'array'],
             'ping.required' => ['sometimes', 'boolean'],
             'ping.triggers' => ['nullable', 'array'],
+            'ping.save_data' => ['nullable', 'array'],
             'ping.payout.params' => ['nullable', 'string'],
             'maps' => ['required', 'array'],
             'custom_maps' => ['nullable', 'array'],
@@ -53,48 +54,8 @@ class IntegrationSettingRequest extends FormRequest
         if($this->ping['required']) {
             $rules['ping.triggers'] = ['required', 'array'];
             $rules['ping.payout.params'] = ['required', 'string'];
+            $rules['ping.save_data'] = ['required', 'array'];
         }
-
-        return $rules;
-    }
-
-    public function getRulesByType($settingType): array
-    {
-        $rules = match ($settingType) {
-            'configuration' => [
-                'internal_buyer' => ['nullable', 'boolean'],
-                'buyer_profile' => ['nullable', 'integer'],
-                'alias' => ['nullable', 'string'],
-                'buyer_type' => ['nullable', 'string'],
-                'curl.url' => ['nullable', 'string'],
-                'curl.method' => ['nullable', 'string'],
-                'auth' => ['nullable', 'boolean'],
-                'phone_format' => ['nullable', 'string'],
-                'save_data' => ['nullable', 'array'],
-                'custom_params' => ['nullable', 'array'],
-            ],
-            'mapping' => [
-                'maps' => ['required', 'array'],
-            ],
-            'static_fields' => [
-                'custom_maps' => ['required', 'array'],
-            ],
-            'filters' => [
-                'filter' => ['required', 'array'],
-            ],
-            'converted_filters' => [
-                'convert_maps' => ['required', 'array'],
-            ],
-            'payout_settings' => [
-                'payout' => ['required', 'array'],
-                'buyer_payout_by_affid' => ['required', 'array'],
-            ],
-            'caps_controller' => [
-                'caps' => ['required', 'array']
-            ],
-
-            default => []
-        };
 
         return $rules;
     }
@@ -122,6 +83,7 @@ class IntegrationSettingRequest extends FormRequest
     {
         return [
             'ping.triggers' => 'Please select at least one ping trigger.',
+            'ping.save_data' => 'Please select at least from Ping Response Fields.',
             'ping.payout.params' => 'Please enter Ping Payout Parameter.',
             'curl.url' => 'Please enter a valid endpoint.',
             'curl.method' => 'Please enter a valid HTTP method.',
