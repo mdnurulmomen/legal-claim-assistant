@@ -6,14 +6,13 @@ use App\Helpers\Utility;
 use App\Http\Controllers\Api\Reporting\Resources\ReportingResource;
 use App\Http\Controllers\Controller;
 use App\Models\LeadReport;
-use App\Models\PlatformData;
 use App\Models\PlatformList;
 use App\Models\User;
 use App\Services\ReportingService;
 use App\Traits\CommonTrait;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ReportingController extends Controller
@@ -73,17 +72,8 @@ class ReportingController extends Controller
                     ->when(in_array('lead_reports.affiliate_id', $groupBy), function ($query) {
                         return $query->whereNotNull('lead_reports.affiliate_id');
                     })
-                    ->when(! empty($relationalConditions), function ($query) use ($relationalConditions, $reportingService) {
-                        return $query->where(function ($query) use ($relationalConditions, $reportingService) {
-                            foreach ($relationalConditions as $conditionKey => $conditionGroup) {
-                                $query->where(function ($query2) use ($conditionGroup, $reportingService) {
-                                    foreach ($conditionGroup as $index => $condition) {
-                                        $method = $reportingService->getConditionMethod($index);
-                                        $query2->$method($condition['column'], $condition['operator'], $condition['value']);
-                                    }
-                                });
-                            }
-                        });
+                    ->when(! empty($relationalConditions), function (Builder $query) use ($relationalConditions, $reportingService) {
+                        return $reportingService->convertRelationsToSql($query, $relationalConditions);
                     })
                     ->when(! empty($reportStart) && ! empty($reportEnd), function ($query) use ($reportStart, $reportEnd) {
                         return $query->whereBetween('lead_reports.created_at', [$reportStart, $reportEnd]);
