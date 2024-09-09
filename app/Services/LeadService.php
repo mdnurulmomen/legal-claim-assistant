@@ -628,7 +628,16 @@ class LeadService extends ReportingService
         ]);
     }
 
-    public function hasAnyRetainedLead(int $leadId, int $reportId): bool
+    /**
+     * Checks if there is any retained lead report for given lead ID,
+     * excluding the given report ID if it is not empty.
+     *
+     * @param int $leadId
+     * @param int $reportId
+     *
+     * @return bool
+     */
+    public function hasAnyRetainedLead(int $leadId, int | null $reportId = null): bool
     {
         return LeadReport::query()
                 ->when(! empty($reportId), function($query) use ($reportId) {
