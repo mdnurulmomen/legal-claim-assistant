@@ -76,6 +76,7 @@ class LeadResource extends JsonResource
         if (empty($request->is_export)){
             return $data;
         }
+
         return (new LeadService())->filterDataForExport($data);
     }
 }

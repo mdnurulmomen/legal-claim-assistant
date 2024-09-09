@@ -206,7 +206,7 @@ class LeadService extends ReportingService
                     continue;
                 }
 
-                if(in_array($item['column'], ['list_name', 'buyer_name', 'buyer_integration', 'affiliate_name', 'affid'])){
+                if(in_array($item['column'], ['list_name', 'buyer_name', 'buyer_integration', 'affiliate_name', 'affid', 'lead_status', 'phone', 'email'])){
                     $relationalTerms[] = $this->formatAdvanceConditionToSql($item);
                     continue;
                 }
@@ -335,12 +335,8 @@ class LeadService extends ReportingService
                     continue;
                 }
 
-
                 $values = array_map('strtolower', $values);
                 $placeholders = implode(',', array_fill(0, count($values), '?'));
-                info(json_encode($column));
-                info(json_encode($values));
-                info(json_encode($placeholders));
                 $query->whereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.' . $column . '"))) IN (' . $placeholders . ')', $values);
             }
         });
@@ -741,7 +737,10 @@ class LeadService extends ReportingService
             'buyer_name' => 'buyers.name',
             'buyer_integration' => 'integrations.name',
             'affiliate_name' => 'users.name',
-            'affid' => 'platform_datas.affid'
+            'affid' => 'platform_datas.affid',
+            'phone' => 'platform_datas.phone',
+            'email' => 'platform_datas.email',
+            'lead_status' => 'platform_datas.lead_status'
         ];
 
         return $this->convertConditionToSql([
