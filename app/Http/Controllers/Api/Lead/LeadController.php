@@ -291,6 +291,10 @@ class LeadController extends Controller
      */
     public function storeLeadReports(StoreLeadReportRequest $request, LeadService $leadService): Response
     {
+        if(! empty($request->is_retainer) && $leadService->hasAnyRetainedLead($request->lead_id)){
+            return withError('Lead has been retained and cannot be created.');
+        }
+
         $formattedData = $leadService->formatReportRequest($request->validated());
 
         try {
@@ -355,6 +359,10 @@ class LeadController extends Controller
         $report = LeadReport::find($reportId);
         if(empty($report)){
             return withError('Invalid Report Id Provided');
+        }
+
+        if(! empty($request->is_retainer) && $leadService->hasAnyRetainedLead($request->lead_id, $reportId)){
+            return withError('Lead has been retained and cannot be updated.');
         }
 
         $formattedData = $leadService->formatReportRequest($request->validated());
