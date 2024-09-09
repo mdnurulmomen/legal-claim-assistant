@@ -82,11 +82,13 @@ class ReportingController extends Controller
 
         $baseQuery = DB::table(DB::raw("({$subQuery->toSql()}) as sub"))
                             ->mergeBindings($subQuery->getQuery()) // Ensure bindings are merged correctly
-                            ->selectRaw("
-                                sub.*,
-                                FORMAT((sub.accepted / NULLIF(sub.posted, 0)) * 100, 2) as acceptance_rate,
-                                FORMAT((sub.accepted_cpl / NULLIF(sub.posted, 0)) * 100, 2) as acceptance_rate_cpl
-                            ")
+                            ->selectRaw("sub.*")
+                            ->when(empty($request->is_total), function ($query) {
+                                return $query->selectRaw("
+                                    FORMAT((sub.accepted / NULLIF(sub.posted, 0)) * 100, 2) as acceptance_rate,
+                                    FORMAT((sub.accepted_cpl / NULLIF(sub.posted, 0)) * 100, 2) as acceptance_rate_cpl
+                                ");
+                            })
                             ->when(! empty($orderBy) && ! empty($orderIn), function ($query) use ($orderBy, $orderIn) {
                                 return $query->orderBy($orderBy, $orderIn);
                             })

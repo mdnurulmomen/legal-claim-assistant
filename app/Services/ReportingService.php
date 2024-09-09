@@ -270,11 +270,35 @@ class ReportingService
             '!=' => 'not_equals',
             default => null
         };
-        // return in_array($operator, ['exists', 'does_not_exist']) ? $operator : null;
     }
 
+    /**
+     * Retrieves performance data for the given request parameters.
+     *
+     * @param QueryBuilder $baseQuery
+     * @param Request $request
+     * @return ReportingResource
+     */
     public function getReportTotals(QueryBuilder $baseQuery, Request $request)
     {
+        $totals = $baseQuery->selectRaw('
+            SUM(posted) as posted,
+            SUM(accepted) as accepted,
+            SUM(rejected) as rejected,
+            SUM(accepted_cpl) as accepted_cpl,
+            SUM(revenue) as revenue,
+            SUM(profit) as profit,
+            SUM(affiliate_payout) as affiliate_payout,
+            SUM(revenue_per_lead) as revenue_per_lead,
+            SUM(average_profit) as average_profit,
+            SUM(affiliate_average_payout) as affiliate_average_payout,
+            AVG(FORMAT((accepted / NULLIF(posted, 0)) * 100, 2)) as acceptance_rate,
+            AVG(FORMAT((accepted_cpl / NULLIF(posted, 0)) * 100, 2)) as acceptance_rate_cpl
+        ')->first();
+
+        $totals->platform_name = 'Total';
+
+        return new ReportingResource($totals);
         $leads = $baseQuery->lazyById(50000, 'id');
         $totals = [
             'platform_name' => 'Total',

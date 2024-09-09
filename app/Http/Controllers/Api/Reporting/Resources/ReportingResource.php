@@ -20,18 +20,18 @@ class ReportingResource extends JsonResource
             'integration_name' => $this->integration_name ?? '',
             'affiliate_name' => $this->affiliate_name ?? '',
             'affid' => $this->affid ?? '',
-            'posted' => $this->posted,
-            'accepted' => $this->accepted,
-            'rejected' => $this->rejected,
-            'accepted_cpl' => $this->accepted_cpl,
-            'acceptance_rate' => $this->acceptance_rate,
-            'acceptance_rate_cpl' => $this->acceptance_rate,
-            'revenue' => $this->revenue,
-            'profit' => $this->profit,
-            'affiliate_payout' => $this->affiliate_payout,
-            'revenue_per_lead' => $this->revenue_per_lead,
-            'average_profit' => $this->average_profit,
-            'affiliate_average_payout' => $this->affiliate_average_payout
+            'posted' => (float) $this->posted,
+            'accepted' => (float) $this->accepted,
+            'rejected' => (float) $this->rejected,
+            'accepted_cpl' => (float) $this->accepted_cpl,
+            'acceptance_rate' => (float) $this->acceptance_rate,
+            'acceptance_rate_cpl' => (float) $this->acceptance_rate,
+            'revenue' => (float) $this->revenue,
+            'profit' => (float) $this->profit,
+            'affiliate_payout' => (float) $this->affiliate_payout,
+            'revenue_per_lead' => (float) $this->revenue_per_lead,
+            'average_profit' => (float) $this->average_profit,
+            'affiliate_average_payout' => (float) $this->affiliate_average_payout
         ];
     }
 }
