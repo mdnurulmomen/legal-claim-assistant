@@ -367,6 +367,7 @@ class LeadController extends Controller
 
         $formattedData = $leadService->formatReportRequest($request->validated());
         $clonedReport = $report->replicate();
+        $clonedReport->id = $report->id;
 
         try {
 

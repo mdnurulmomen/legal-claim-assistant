@@ -596,7 +596,8 @@ class LeadService extends ReportingService
             $leadData['retained_date'] = null;
         }
 
-        DB::table('lead_reports')->where('id', $report->id)
+        DB::table('lead_reports')
+            ->where('id', $report->id)
             ->where('created_at', '!=', $date)
             ->update(['created_at' => $date]);
 
