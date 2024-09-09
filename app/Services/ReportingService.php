@@ -299,26 +299,6 @@ class ReportingService
         $totals->platform_name = 'Total';
 
         return new ReportingResource($totals);
-        $leads = $baseQuery->lazyById(50000, 'id');
-        $totals = [
-            'platform_name' => 'Total',
-            'posted' => $leads->sum('posted'),
-            'accepted' => $leads->sum('accepted'),
-            'rejected' => $leads->sum('rejected'),
-            'accepted_cpl' => $leads->sum('accepted_cpl'),
-            'revenue' => $leads->sum('revenue'),
-            'profit' => $leads->sum('profit'),
-            'affiliate_payout' => $leads->sum('affiliate_payout'),
-            'revenue_per_lead' => $leads->sum('revenue_per_lead'),
-            'average_profit' => $leads->sum('average_profit'),
-            'affiliate_average_payout' => $leads->sum('affiliate_average_payout'),
-            'acceptance_rate' => $leads->avg('acceptance_rate'),
-            'acceptance_rate_cpl' => $leads->avg('acceptance_rate_cpl'),
-        ];
-
-        $totals = (object) $totals;
-
-        return new ReportingResource($totals);
     }
 
     /**
