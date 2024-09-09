@@ -148,7 +148,7 @@ class LeadService extends ReportingService
                     'column' => "users.name",
                     'values' => $filter['values']
                 ],
-                'lead_status' => [
+                'lead_status', 'phone', 'email', 'affid' => [
                     'column' => "platform_datas." . $filter['column'],
                     'values' => $filter['values']
                 ],
@@ -327,15 +327,20 @@ class LeadService extends ReportingService
             foreach ($excelFilters as $key => $filter) {
 
                 $isJsonColumn = ! empty($filter['is_json_column']);
+                $column = $filter['column'];
+                $values = $filter['values'];
 
                 if(! $isJsonColumn){
-                    $query->where($filter['column'], $filter['values']);
+                    $query->where($column, $values);
                     continue;
                 }
 
-                $column = $filter['column'];
-                $values = array_map('strtolower', $filter['values']);
-                $placeholders = implode(',', array_fill(0, count($filter['values']), '?'));
+
+                $values = array_map('strtolower', $values);
+                $placeholders = implode(',', array_fill(0, count($values), '?'));
+                info(json_encode($column));
+                info(json_encode($values));
+                info(json_encode($placeholders));
                 $query->whereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.' . $column . '"))) IN (' . $placeholders . ')', $values);
             }
         });
