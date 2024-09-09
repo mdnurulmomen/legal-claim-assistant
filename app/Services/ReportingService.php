@@ -275,7 +275,7 @@ class ReportingService
 
     public function getReportTotals(QueryBuilder $baseQuery, Request $request)
     {
-        $leads = $baseQuery->lazyById(10000, 'id');
+        $leads = $baseQuery->lazyById(50000, 'id');
         $totals = [
             'platform_name' => 'Total',
             'posted' => $leads->sum('posted'),
