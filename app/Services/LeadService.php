@@ -577,14 +577,15 @@ class LeadService extends ReportingService
      * @param string $date
      * @return void
      */
-    public function updateReportData(LeadReport $report, Request $request, array $formattedData): void
+    public function updateReportData(LeadReport $report, Request $request, array $formattedData, bool $isCreate = false): void
     {
         $leadData = [
             'retained_date' => null,
             'is_retainer' => $formattedData['is_retainer']
         ];
 
-        $isReportUpdatable = $report->is_retainer != $formattedData['is_retainer'];
+        $isReportUpdatable = ($report->is_retainer != $formattedData['is_retainer']) || ($isCreate && $formattedData['is_retainer']);
+
         $date = empty($request->created_at) ? now() : Carbon::parse($request->created_at)->startOfDay();
 
         if($isReportUpdatable && ! empty($request->is_retainer) && ! empty($request->created_at)){

@@ -300,7 +300,7 @@ class LeadController extends Controller
         try {
             DB::beginTransaction();
             $report = LeadReport::create($formattedData);
-            $leadService->updateReportData($report, $request, $formattedData);
+            $leadService->updateReportData($report, $request, $formattedData, isCreate: true);
             $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer);
             $leadService->updateRevenuePayout($request->lead_id);
             DB::commit();
