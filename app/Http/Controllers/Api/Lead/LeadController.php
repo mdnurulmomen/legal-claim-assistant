@@ -85,10 +85,10 @@ class LeadController extends Controller
                         ->when(! empty($request->platform_id), function($query) use ($request) {
                             return $query->where('platform_datas.list_id', $request->platform_id);
                         })
-                        ->when(! empty($startDate) && ! empty($endDate), function ($query) use ($startDate, $endDate) {
+                        ->when(! empty($startDate) && ! empty($endDate), function (Builder $query) use ($startDate, $endDate) {
                             return $query->whereBetween('platform_datas.created_at', [$startDate, $endDate]);
                         })
-                        ->when(! empty($request->search_txt), function ($query) use ($request, $leadService) {
+                        ->when(! empty($request->search_txt), function (Builder $query) use ($request, $leadService) {
                             return $leadService->formatSearchColumn($request, $query);
                         })
                         ->when(! empty($excelFilters), function (Builder $query) use ($excelFilters, $leadService) {
@@ -105,6 +105,11 @@ class LeadController extends Controller
 
         if(! empty($request->is_export)){
             return $excelService->formatLeadExportData($leadQuery);
+        }
+
+        if(! empty($request->is_total)) {
+            $leads = $leadService->getLeadTotals($leadQuery, $request);
+            return withSuccess($leads);
         }
 
         $leads = $leadQuery->paginate($perPage);

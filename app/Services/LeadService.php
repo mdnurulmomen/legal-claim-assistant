@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Controllers\Api\Lead\Resources\LeadResource;
 use App\Models\Integration;
 use App\Models\LeadLog;
 use App\Models\LeadReport;
@@ -10,6 +11,7 @@ use App\Models\PlatformData;
 use App\Models\PlatformList;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -43,6 +45,21 @@ class LeadService extends ReportingService
         })
         ->values()
         ->all();
+    }
+
+    /**
+     * Retrieves performance data for the given request parameters.
+     *
+     * @param Builder $baseQuery
+     * @param Request $request
+     */
+    public function getLeadTotals(Builder $baseQuery, Request $request): LeadResource
+    {
+        $totals = $baseQuery->selectRaw('
+            SUM(revenue) as revenue
+        ')->first();
+
+        return new LeadResource($totals);
     }
 
     /**
