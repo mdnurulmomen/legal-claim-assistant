@@ -61,8 +61,12 @@ class LeadService extends ReportingService
             $searchCol = null;
 
             if (substr($searchText, 0, 2) === '+1' || is_numeric($searchText) && strlen($searchText) > 9 && strlen($searchText) < 12) {
-                $searchText = phone($searchText, 'US')->formatE164();
-                $searchCol = 'platform_datas.phone';
+                try {
+                    $searchText = phone($searchText, 'US')->formatE164();
+                    $searchCol = 'platform_datas.phone';
+                } catch (\Throwable $th) {
+                    //throw $th;
+                }
             } else if (filter_var($searchText, FILTER_VALIDATE_EMAIL)) {
                 $searchCol = 'platform_datas.email';
             }
