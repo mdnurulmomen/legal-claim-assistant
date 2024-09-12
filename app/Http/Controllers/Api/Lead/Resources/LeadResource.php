@@ -71,12 +71,10 @@ class LeadResource extends JsonResource
 
         $data = array_merge($leads, $this->datas);
 
-        return $data;
-
-        if (empty($request->is_export)){
-            return $data;
+        if (! empty($request->is_export)){
+            return (new LeadService())->filterDataForExport($data);
         }
 
-        return (new LeadService())->filterDataForExport($data);
+        return $data;
     }
 }
