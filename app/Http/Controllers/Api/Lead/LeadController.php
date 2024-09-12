@@ -126,7 +126,8 @@ class LeadController extends Controller
     public function getLatestLeads(Request $request, LeadService $leadService): Response
     {
         // $lastSyncAt = $request->get('last_sync_at', now());
-        $lastSyncAt = Carbon::parse($request->last_sync_at)->setTimezone('UTC');
+        $lastSyncAt = Carbon::parse($request->last_sync_at)->setTimezone('Europe/Amsterdam');
+        // $lastSyncAt = Carbon::parse($request->last_sync_at, 'Europe/Amsterdam');
         [$relationalConditions, $conditions] = $leadService->formatFilters($request);
 
         $leads = PlatformData::query()
