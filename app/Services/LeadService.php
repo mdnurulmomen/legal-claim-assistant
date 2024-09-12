@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Controllers\Api\Lead\Resources\LeadResource;
 use App\Models\Integration;
 use App\Models\LeadLog;
 use App\Models\LeadReport;
@@ -10,6 +11,7 @@ use App\Models\PlatformData;
 use App\Models\PlatformList;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -43,6 +45,32 @@ class LeadService extends ReportingService
         })
         ->values()
         ->all();
+    }
+
+    /**
+     * Retrieves performance data for the given request parameters.
+     *
+     * @param Builder $baseQuery
+     * @param Request $request
+     */
+    public function getLeadTotals(Builder $baseQuery, Request $request)
+    {
+        $totals = DB::table(DB::raw("({$baseQuery->toSql()}) as sub"))
+                    ->mergeBindings($baseQuery->getQuery()) // Ensure bindings are merged correctly
+                    ->selectRaw('
+                        SUM(sub.revenue) as total_revenue,
+                        SUM(sub.profit) as total_profit,
+                        AVG(sub.affiliate_payout) as avg_affiliate_payout,
+                        AVG(sub.affiliate_margin) as avg_affiliate_margin
+                    ')->first();
+
+
+        $totals->total_revenue = (float) $totals->total_revenue;
+        $totals->total_profit = (float) $totals->total_profit;
+        $totals->avg_affiliate_payout = (float) $totals->avg_affiliate_payout;
+        $totals->avg_affiliate_margin = (float) $totals->avg_affiliate_margin;
+
+        return $totals;
     }
 
     /**
