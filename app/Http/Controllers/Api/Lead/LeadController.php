@@ -41,6 +41,7 @@ class LeadController extends Controller
         ini_set('memory_limit', -1);
 
         [$startDate, $endDate] = $this->formatStartEndDateWithTimezone($request->start_date, $request->end_date, $request->timezone);
+        [$retainedStartDate, $retainedEndDate] = $this->formatStartEndDateWithTimezone($request->retained_start_date, $request->retained_end_date, $request->timezone);
         [$relationalConditions, $conditions] = $leadService->formatFilters($request);
         $excelFilters = $leadService->formatExcelFilters($request);
         $perPage = empty($request->limit) ? 10 : $request->limit;
@@ -59,7 +60,8 @@ class LeadController extends Controller
                             'users.name as affiliate_name',
                             'platform_datas.lead_status',
                             'platform_lists.name as list_name',
-                            'platform_datas.created_at'
+                            'platform_datas.created_at',
+                            'platform_datas.retained_date',
                         )
                         ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
                         ->leftJoin('buyers', 'buyers.id', '=', 'platform_datas.buyer_id')
@@ -84,6 +86,9 @@ class LeadController extends Controller
                         ])
                         ->when(! empty($request->platform_id), function($query) use ($request) {
                             return $query->where('platform_datas.list_id', $request->platform_id);
+                        })
+                        ->when(! empty($retainedStartDate) && ! empty($retainedEndDate), function (Builder $query) use ($retainedStartDate, $retainedEndDate) {
+                            return $query->whereBetween('platform_datas.retained_date', [$retainedStartDate, $retainedEndDate]);
                         })
                         ->when(! empty($startDate) && ! empty($endDate), function (Builder $query) use ($startDate, $endDate) {
                             return $query->whereBetween('platform_datas.created_at', [$startDate, $endDate]);
