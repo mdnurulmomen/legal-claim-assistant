@@ -100,6 +100,7 @@ class LeadController extends Controller
                         ->when(! empty($conditions), function (Builder $query) use ($conditions, $leadService) {
                             return $leadService->convertFilterToSql($query, $conditions);
                         })
+                        // ->where('platform_datas.id', '<', 695)
                         ->latest('platform_datas.id');
 
         if(! empty($request->is_export)){
@@ -125,9 +126,6 @@ class LeadController extends Controller
      */
     public function getLatestLeads(Request $request, LeadService $leadService): Response
     {
-        // $lastSyncAt = $request->get('last_sync_at', now());
-        $lastSyncAt = Carbon::parse($request->last_sync_at, 'Europe/Amsterdam');
-        // $lastSyncAt = Carbon::parse($request->last_sync_at, 'Europe/Amsterdam');
         [$relationalConditions, $conditions] = $leadService->formatFilters($request);
 
         $leads = PlatformData::query()
@@ -176,8 +174,8 @@ class LeadController extends Controller
                     ->when(! empty($conditions), function (Builder $query) use ($conditions, $leadService) {
                         return $leadService->convertFilterToSql($query, $conditions);
                     })
-                    ->when(! empty($lastSyncAt), function ($query) use ($lastSyncAt) {
-                        return $query->where('platform_datas.created_at', '>=', $lastSyncAt);
+                    ->when(! empty($request->last_sync_id), function ($query) use ($request) {
+                        return $query->where('platform_datas.id', '>', $request->last_sync_id);
                     }, default: function ($query) {
                         return $query->limit(10);
                     })
