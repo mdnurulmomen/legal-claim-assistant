@@ -100,7 +100,6 @@ class LeadController extends Controller
                         ->when(! empty($conditions), function (Builder $query) use ($conditions, $leadService) {
                             return $leadService->convertFilterToSql($query, $conditions);
                         })
-                        // ->where('platform_datas.id', '<', 695)
                         ->latest('platform_datas.id');
 
         if(! empty($request->is_export)){
@@ -129,42 +128,11 @@ class LeadController extends Controller
         [$relationalConditions, $conditions] = $leadService->formatFilters($request);
 
         $leads = PlatformData::query()
-                    ->select(
-                        'platform_datas.id',
-                        'platform_datas.datas',
-                        'platform_datas.email',
-                        'platform_datas.phone',
-                        'platform_datas.buyer_integration_id',
-                        'integrations.name as buyer_integration',
-                        'platform_datas.buyer_id',
-                        'buyers.name as buyer_name',
-                        'platform_datas.affiliate_id',
-                        'users.name as affiliate_name',
-                        'platform_datas.lead_status',
-                        'platform_lists.name as list_name',
-                        'platform_datas.created_at'
-                    )
+                    ->select('platform_datas.id')
                     ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
                     ->leftJoin('buyers', 'buyers.id', '=', 'platform_datas.buyer_id')
                     ->leftJoin('users', 'users.id', '=', 'platform_datas.affiliate_id')
                     ->leftJoin('platform_lists', 'platform_lists.id', '=', 'platform_datas.list_id')
-                    ->addSelect([
-                        'revenue' => LeadReport::select(DB::raw('sum(lead_reports.lead_revenue)'))
-                                        ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
-                                        ->limit(1),
-
-                        'profit' => LeadReport::select(DB::raw('sum(lead_reports.lead_profit)'))
-                                        ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
-                                        ->limit(1),
-
-                        'affiliate_payout' => LeadReport::select(DB::raw('sum(lead_reports.affiliate_payout)'))
-                                                ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
-                                                ->limit(1),
-
-                        'affiliate_margin' => LeadReport::select(DB::raw('sum(lead_reports.affiliate_margin)'))
-                                                ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
-                                                ->limit(1)
-                    ])
                     ->when(! empty($request->platform_id), function($query) use ($request) {
                         return $query->where('platform_datas.list_id', $request->platform_id);
                     })
@@ -176,13 +144,13 @@ class LeadController extends Controller
                     })
                     ->when(! empty($request->last_sync_id), function ($query) use ($request) {
                         return $query->where('platform_datas.id', '>', $request->last_sync_id);
-                    }, default: function ($query) {
+                    }, function ($query) {
                         return $query->limit(10);
                     })
                     ->latest('platform_datas.id')
-                    ->get();
+                    ->pluck('platform_datas.id');
 
-        return withSuccess(LeadResource::collection($leads));
+        return withSuccess($leads);
     }
 
     /**
