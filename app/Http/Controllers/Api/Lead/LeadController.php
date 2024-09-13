@@ -125,6 +125,9 @@ class LeadController extends Controller
      */
     public function getLatestLeads(Request $request, LeadService $leadService): Response
     {
+        if(empty($request->last_sync_id)){
+            return withSuccess([]);
+        }
         [$relationalConditions, $conditions] = $leadService->formatFilters($request);
 
         $leads = PlatformData::query()
@@ -145,7 +148,7 @@ class LeadController extends Controller
                     ->when(! empty($request->last_sync_id), function ($query) use ($request) {
                         return $query->where('platform_datas.id', '>', $request->last_sync_id);
                     }, function ($query) {
-                        return $query->limit(10);
+                        return $query->limit(0);
                     })
                     ->latest('platform_datas.id')
                     ->pluck('platform_datas.id');
