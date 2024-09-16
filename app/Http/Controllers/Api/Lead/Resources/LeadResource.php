@@ -34,6 +34,7 @@ class LeadResource extends JsonResource
             'phone' => $this->phone,
             'timestamp' => $this->created_at ? $this->created_at->format('Y-m-d H:i') : '',
             'created_at' => $this->created_at,
+            'retained_date' => $this->retained_date ? $this->retained_date : '',
             "first_name" => '',
             "last_name" => '',
             "attorney" => '',
