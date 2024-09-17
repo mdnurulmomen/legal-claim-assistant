@@ -55,15 +55,14 @@ class LeadService extends ReportingService
      */
     public function getLeadTotals(Builder $baseQuery, Request $request)
     {
-        $totals = DB::table(DB::raw("({$baseQuery->toSql()}) as sub"))
-                    ->mergeBindings($baseQuery->getQuery()) // Ensure bindings are merged correctly
-                    ->selectRaw('
-                        SUM(sub.revenue) as total_revenue,
-                        SUM(sub.profit) as total_profit,
-                        AVG(sub.affiliate_payout) as avg_affiliate_payout,
-                        AVG(sub.affiliate_margin) as avg_affiliate_margin
-                    ')->first();
-
+        $totals = $baseQuery->leftJoin('lead_reports', 'lead_reports.lead_id', '=', 'platform_datas.id')
+                        ->selectRaw('
+                            SUM(lead_reports.lead_revenue) as total_revenue,
+                            SUM(lead_reports.lead_profit) as total_profit,
+                            (SUM(lead_reports.affiliate_payout) / COUNT(DISTINCT platform_datas.id)) as avg_affiliate_payout,
+                            (SUM(lead_reports.affiliate_margin) / COUNT(DISTINCT platform_datas.id)) as avg_affiliate_margin
+                        ')
+                        ->first();
 
         $totals->total_revenue = (float) $totals->total_revenue;
         $totals->total_profit = (float) $totals->total_profit;
