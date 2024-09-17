@@ -64,16 +64,6 @@ class LeadService extends ReportingService
                         ')
                         ->first();
 
-        // $totals = DB::table(DB::raw("({$baseQuery->toSql()}) as sub"))
-        //             ->mergeBindings($baseQuery->getQuery()) // Ensure bindings are merged correctly
-        //             ->selectRaw('
-        //                 SUM(sub.revenue) as total_revenue,
-        //                 SUM(sub.profit) as total_profit,
-        //                 AVG(sub.affiliate_payout) as avg_affiliate_payout,
-        //                 AVG(sub.affiliate_margin) as avg_affiliate_margin
-        //             ')->first();
-
-
         $totals->total_revenue = (float) $totals->total_revenue;
         $totals->total_profit = (float) $totals->total_profit;
         $totals->avg_affiliate_payout = (float) $totals->avg_affiliate_payout;
