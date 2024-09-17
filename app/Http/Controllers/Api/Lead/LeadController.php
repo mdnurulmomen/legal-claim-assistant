@@ -18,7 +18,6 @@ use App\Traits\CommonTrait;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -47,43 +46,50 @@ class LeadController extends Controller
         $perPage = empty($request->limit) ? 10 : $request->limit;
 
         $leadQuery = PlatformData::query()
-                        ->select(
-                            'platform_datas.id',
-                            'platform_datas.datas',
-                            'platform_datas.email',
-                            'platform_datas.phone',
-                            'platform_datas.buyer_integration_id',
-                            'integrations.name as buyer_integration',
-                            'platform_datas.buyer_id',
-                            'buyers.name as buyer_name',
-                            'platform_datas.affiliate_id',
-                            'users.name as affiliate_name',
-                            'platform_datas.lead_status',
-                            'platform_lists.name as list_name',
-                            'platform_datas.created_at',
-                            'platform_datas.retained_date',
-                        )
+                        ->when(! empty($request->is_total), function($query) {
+                            return $query->select('platform_datas.id');
+                        })
+                        ->when(empty($request->is_total), function($query) use ($request) {
+                            return $query->select(
+                                'platform_datas.id',
+                                'platform_datas.datas',
+                                'platform_datas.email',
+                                'platform_datas.phone',
+                                'platform_datas.buyer_integration_id',
+                                'integrations.name as buyer_integration',
+                                'platform_datas.buyer_id',
+                                'buyers.name as buyer_name',
+                                'platform_datas.affiliate_id',
+                                'users.name as affiliate_name',
+                                'platform_datas.lead_status',
+                                'platform_lists.name as list_name',
+                                'platform_datas.created_at',
+                                'platform_datas.retained_date',
+                            );
+                        })
                         ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
                         ->leftJoin('buyers', 'buyers.id', '=', 'platform_datas.buyer_id')
                         ->leftJoin('users', 'users.id', '=', 'platform_datas.affiliate_id')
                         ->leftJoin('platform_lists', 'platform_lists.id', '=', 'platform_datas.list_id')
-                        ->addSelect([
-                            'revenue' => LeadReport::select(DB::raw('sum(lead_reports.lead_revenue)'))
-                                            ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
-                                            ->limit(1),
+                        ->when(empty($request->is_total), function($query) {
+                            return $query->addSelect([
+                                'revenue' => LeadReport::select(DB::raw('sum(lead_reports.lead_revenue)'))
+                                                ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                                ->limit(1),
 
-                            'profit' => LeadReport::select(DB::raw('sum(lead_reports.lead_profit)'))
-                                            ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
-                                            ->limit(1),
+                                'profit' => LeadReport::select(DB::raw('sum(lead_reports.lead_profit)'))
+                                                ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                                ->limit(1),
 
-                            'affiliate_payout' => LeadReport::select(DB::raw('sum(lead_reports.affiliate_payout)'))
-                                                    ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
-                                                    ->limit(1),
+                                'affiliate_payout' => LeadReport::select(DB::raw('sum(lead_reports.affiliate_payout)'))
+                                                        ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                                        ->limit(1),
 
-                            'affiliate_margin' => LeadReport::select(DB::raw('sum(lead_reports.affiliate_margin)'))
-                                                    ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
-                                                    ->limit(1)
-                        ])
+                                'affiliate_margin' => LeadReport::select(DB::raw('sum(lead_reports.affiliate_margin)'))
+                                                        ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                                        ->limit(1)
+                            ]);
+                        })
                         ->when(! empty($request->platform_id), function($query) use ($request) {
                             return $query->where('platform_datas.list_id', $request->platform_id);
                         })
