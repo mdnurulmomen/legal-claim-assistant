@@ -22,8 +22,8 @@ class ExcelController extends Controller
     public function uploadLeadCsv(Request $request, ExcelService $excelService): Response
     {
         $validator = Validator::make($request->all(), [
-                            'file' => 'required|file|mimes:xlsx,csv,xls',
-                        ]);
+                        'file' => 'required|file|mimes:xlsx,csv,xls',
+                    ]);
 
         if ($validator->fails()) {
             return withError($validator->errors()->first());

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Lead;
 
 use App\Http\Controllers\Api\Lead\Requests\StoreLeadReportRequest;
+use App\Http\Controllers\Api\Lead\Requests\UpdateFilledRequest;
 use App\Http\Controllers\Api\Lead\Requests\UpdateLeadsRequest;
 use App\Http\Controllers\Api\Lead\Resources\LeadInfoResource;
 use App\Http\Controllers\Api\Lead\Resources\LeadReportResource;
@@ -496,5 +497,34 @@ class LeadController extends Controller
     {
         $data = $leadService->convertTypeToData($request, $type);
         return withSuccess($data);
+    }
+
+    public function updateFilledFields(UpdateFilledRequest $request): Response
+    {
+        $arrayVar = [
+            [
+                "conditional_keys" => [
+                    "phone" => "+18035809374",
+                    "email" => "Disqualified",
+                ],
+                "updatable_data" => ["affid" => "768", "revenue" => "bridge_legal"],
+            ],
+            [
+                "conditional_keys" => [
+                    "phone" => "+14153249734",
+                    "email" => "Disqualified",
+                ],
+                "updatable_data" => ["affid" => "768", "revenue" => "bridge_legal"],
+            ],
+            [
+                "conditional_keys" => [
+                    "phone" => "+15613798182",
+                    "email" => "Disqualified",
+                ],
+                "updatable_data" => ["affid" => "768", "revenue" => "bridge_legal"],
+            ],
+        ];
+
+        return withSuccess('ok');
     }
 }
