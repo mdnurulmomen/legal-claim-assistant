@@ -90,6 +90,23 @@ class LeadController extends Controller
                                                         ->limit(1)
                             ]);
                         })
+                        ->addSelect([
+                            'revenue' => LeadReport::select(DB::raw('sum(lead_reports.lead_revenue)'))
+                                            ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                            ->limit(1),
+
+                            'profit' => LeadReport::select(DB::raw('sum(lead_reports.lead_profit)'))
+                                            ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                            ->limit(1),
+
+                            'affiliate_payout' => LeadReport::select(DB::raw('sum(lead_reports.affiliate_payout)'))
+                                                    ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                                    ->limit(1),
+
+                            'affiliate_margin' => LeadReport::select(DB::raw('sum(lead_reports.affiliate_margin)'))
+                                                    ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                                    ->limit(1)
+                        ])
                         ->when(! empty($request->platform_id), function($query) use ($request) {
                             return $query->where('platform_datas.list_id', $request->platform_id);
                         })
