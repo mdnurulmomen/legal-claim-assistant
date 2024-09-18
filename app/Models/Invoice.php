@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Invoice extends Model
 {
     use HasFactory;
-    
+
     protected $table = 'invoices';
 
     /**
@@ -36,6 +36,11 @@ class Invoice extends Model
     public function partner()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function affiliateInfo()
+    {
+        return $this->hasOneThrough(Affiliate::class, User::class, 'id', 'user_id', 'user_id', 'id');
     }
 
     public function user()
