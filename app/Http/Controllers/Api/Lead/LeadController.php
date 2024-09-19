@@ -66,6 +66,7 @@ class LeadController extends Controller
                                 'platform_lists.name as list_name',
                                 'platform_datas.created_at',
                                 'platform_datas.retained_date',
+                                'platform_datas.sold_type',
                             );
                         })
                         ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
@@ -510,32 +511,18 @@ class LeadController extends Controller
         return withSuccess($data);
     }
 
-    public function updateFilledFields(UpdateFilledRequest $request): Response
+    public function updateFilledFields(UpdateFilledRequest $request, LeadService $leadService): Response
     {
-        $arrayVar = [
-            [
-                "conditional_keys" => [
-                    "phone" => "+18035809374",
-                    "email" => "Disqualified",
-                ],
-                "updatable_data" => ["affid" => "768", "revenue" => "bridge_legal"],
-            ],
-            [
-                "conditional_keys" => [
-                    "phone" => "+14153249734",
-                    "email" => "Disqualified",
-                ],
-                "updatable_data" => ["affid" => "768", "revenue" => "bridge_legal"],
-            ],
-            [
-                "conditional_keys" => [
-                    "phone" => "+15613798182",
-                    "email" => "Disqualified",
-                ],
-                "updatable_data" => ["affid" => "768", "revenue" => "bridge_legal"],
-            ],
-        ];
+        try {
+            DB::beginTransaction();
+            $leadService->updateFilledData($request);
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            info($th->getMessage());
+            return withError('Lead Filled Fields Update Failed!');
+        }
 
-        return withSuccess('ok');
+        return withSuccess(message: 'Lead Filled Fields Updated Successfully!');
     }
 }

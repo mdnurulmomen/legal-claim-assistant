@@ -682,6 +682,21 @@ class LeadService extends ReportingService
                 ->exists();
     }
 
+
+    /**
+     * Retrieves the retained lead report associated with the given lead ID.
+     *
+     * @param int $leadId
+     * @return LeadReport|null
+     */
+    public function getRetainedLeadReport(int $leadId): LeadReport | null
+    {
+        return LeadReport::query()
+                    ->where('lead_id', $leadId)
+                    ->where('is_retainer', '>', 0)
+                    ->first();
+    }
+
     /**
      * Formats the report request data.
      *
@@ -882,5 +897,90 @@ class LeadService extends ReportingService
                 })
                 ->limit(50)
                 ->get();
+    }
+
+    public function updateFilledData(Request $request)
+    {
+        $filledData = $request->filled_data;
+        $fillable = (new PlatformData())->getFillable();
+
+        foreach ($filledData as $item) {
+
+            PlatformData::where(column: $item['conditional_keys'])
+                ->with(['leadReport' => function ($query) use ($item) {
+                    return $query->where('is_retainer', '>', 0);
+                }])
+                ->lazy()
+                ->each(callback: function (&$lead) use ($item, $fillable) {
+                    $this->savePlatformData($lead, $item['updatable_data'], $fillable);
+                    // if($lead->leadReport) {
+                    //     info(json_encode($lead));
+                    // }
+                    // info(json_encode($lead));
+                });
+
+            break;
+        }
+    }
+
+    public function savePlatformData(PlatformData &$lead, array $updatableData, array $fillable): void
+    {
+        $leadReportData = [];
+
+        $datas = $lead->datas;
+
+        foreach ($updatableData as $key => $value) {
+
+            if(in_array($key, ['revenue', 'affiliate_payout'])) {
+                $leadReportData[$key] = $value;
+                continue;
+            }
+
+            if(in_array($key, $fillable)){
+                $lead->{$key} = $value;
+            }
+
+            if(array_key_exists($key, $datas)) {
+                $datas[$key] = $value;
+            }
+        }
+
+        $lead->datas = $datas;
+        $lead->save();
+
+        if(! empty($leadReportData)) {
+            $this->saveLeadReportData($lead, $leadReportData);
+        }
+    }
+
+    public function saveLeadReportData(PlatformData $lead, array $leadReportData)
+    {
+        $leadReport = $this->getRetainedLeadReport($lead->id);
+        if (empty($leadReport)) {
+            return;
+        }
+
+        $revenue = $leadReportData['revenue'] ?? $leadReport->lead_revenue;
+        $affiliatePayout = $leadReportData['affiliate_payout'] ?? $leadReport->affiliate_payout;
+
+        $reportData = $this->calculateRevenuePayout((float) $revenue, (float) $affiliatePayout);
+
+        $leadReport->update($reportData);
+        $this->updateRevenuePayout($lead->id);
+    }
+
+    public function calculateRevenuePayout( float | int $revenue = 0, float | int $affiliatePayout)
+    {
+        $profit = $revenue - $affiliatePayout;
+        $affiliateMargin = $revenue ? (($affiliatePayout / $revenue) * 100) : 0;
+        $profitMargin = $revenue ? (($profit / $revenue) * 100) : 0;
+
+        return [
+            'lead_revenue' => $revenue,
+            'affiliate_payout' => $affiliatePayout,
+            'lead_profit' => $profit,
+            'affiliate_margin' => $affiliateMargin,
+            'profit_margin' => $profitMargin
+        ];
     }
 }
