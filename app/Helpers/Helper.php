@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
 
 //*******************Response Modifier Start************************/
 
@@ -103,4 +104,28 @@ function minusBeforeDollarSign(?string $currency = '', float $number = 0)
     }
 
     return $formatted;
+}
+
+/**
+ * Download invoice file from remote url.
+ * Then save it to storage
+ * Then return the full path of the saved file.
+ * But before saving, check if the file already exists in the storage.
+ * @param string $url
+ * @return Response
+ */
+function downloadInvoiceFile(string $url): string
+{
+    $file_name = basename($url);
+
+    $file_path = storage_path('app/public/invoices/' . $file_name);
+
+    if (!file_exists($file_path)) {
+        $file = file_get_contents($url);
+
+        file_put_contents($file_path, $file);
+    }
+
+    //return with full url
+    return url(Storage::url('invoices/' . $file_name));
 }
