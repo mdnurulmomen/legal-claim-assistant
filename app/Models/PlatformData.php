@@ -37,4 +37,14 @@ class PlatformData extends Model
     protected $casts = [
         'datas' => 'array'
     ];
+
+    /**
+     * Get the lead report associated with this platform data.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     */
+    public function leadReport()
+    {
+        return $this->hasOne(LeadReport::class, 'lead_id', 'id');
+    }
 }

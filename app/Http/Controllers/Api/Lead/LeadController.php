@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Lead;
 
 use App\Http\Controllers\Api\Lead\Requests\StoreLeadReportRequest;
+use App\Http\Controllers\Api\Lead\Requests\UpdateFilledRequest;
 use App\Http\Controllers\Api\Lead\Requests\UpdateLeadsRequest;
 use App\Http\Controllers\Api\Lead\Resources\LeadInfoResource;
 use App\Http\Controllers\Api\Lead\Resources\LeadReportResource;
@@ -65,6 +66,7 @@ class LeadController extends Controller
                                 'platform_lists.name as list_name',
                                 'platform_datas.created_at',
                                 'platform_datas.retained_date',
+                                'platform_datas.sold_type',
                             );
                         })
                         ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
@@ -507,5 +509,20 @@ class LeadController extends Controller
     {
         $data = $leadService->convertTypeToData($request, $type);
         return withSuccess($data);
+    }
+
+    public function updateFilledFields(UpdateFilledRequest $request, LeadService $leadService): Response
+    {
+        try {
+            DB::beginTransaction();
+            $leadService->updateFilledData($request);
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            info($th->getMessage());
+            return withError('Lead Filled Fields Update Failed!');
+        }
+
+        return withSuccess(message: 'Lead Filled Fields Updated Successfully!');
     }
 }

@@ -35,6 +35,7 @@ class LeadResource extends JsonResource
             'timestamp' => $this->created_at ? $this->created_at->format('Y-m-d H:i') : '',
             'created_at' => $this->created_at,
             'retained_date' => $this->retained_date ? $this->retained_date : '',
+            'sold_type' => $this->sold_type,
             "first_name" => '',
             "last_name" => '',
             "attorney" => '',
@@ -71,12 +72,12 @@ class LeadResource extends JsonResource
             "age_claimant" => '',
         ];
 
-        $data = array_merge($leads, $this->datas);
+        $leads = array_merge($leads, $this->datas);
 
         if (! empty($request->is_export)){
-            return (new LeadService())->filterDataForExport($data);
+            return (new LeadService())->filterDataForExport($leads);
         }
 
-        return $data;
+        return $leads;
     }
 }
