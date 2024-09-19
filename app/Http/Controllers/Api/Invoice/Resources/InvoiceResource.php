@@ -25,7 +25,7 @@ class InvoiceResource extends JsonResource
             'status' => $this->status,
             // 'listresult' => $this->listresult,
             //  'file' => url(Storage::url($this->file)),
-            'file' => downloadInvoiceFile("https://portal-api.legalclaimassistant.support/invoices/" . $this->file,),
+            'file' => downloadInvoiceFile("https://portal-api.legalclaimassistant.support/invoices/" . $this->file),
             'dueDate' => $this->dueDate,
             'periodDateFrom' => $this->periodDateFrom,
             'periodDateTo' => $this->periodDateTo,
