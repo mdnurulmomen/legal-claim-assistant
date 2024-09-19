@@ -486,7 +486,7 @@ class LeadService extends ReportingService
             if(empty($originalPayload)) continue;
 
             foreach($lead as $key => $value){
-                if(! isset($originalPayload[$key])) continue;
+                if(! array_key_exists($key, $originalPayload)) continue;
                 $originalPayload[$key] = $value;
             }
 
@@ -899,6 +899,22 @@ class LeadService extends ReportingService
                 ->get();
     }
 
+    /**
+     * Updates the platform data for each lead that matches the given conditions.
+     *
+     * The conditions are given as an array of arrays, where each inner array
+     * contains the following keys:
+     * - 'conditional_keys': An array of keys to search in the platform data.
+     * - 'updatable_data': An array of key-value pairs of data to update in the
+     *                     platform data.
+     *
+     * The function uses the lazy collection to iterate over the results of the
+     * where query, and for each result, it calls the savePlatformData method to
+     * update the platform data.
+     *
+     * @param Request $request
+     * @return void
+     */
     public function updateFilledData(Request $request)
     {
         $filledData = $request->filled_data;
@@ -907,26 +923,32 @@ class LeadService extends ReportingService
         foreach ($filledData as $item) {
 
             PlatformData::where(column: $item['conditional_keys'])
-                ->with(['leadReport' => function ($query) use ($item) {
-                    return $query->where('is_retainer', '>', 0);
-                }])
                 ->lazy()
                 ->each(callback: function (&$lead) use ($item, $fillable) {
                     $this->savePlatformData($lead, $item['updatable_data'], $fillable);
-                    // if($lead->leadReport) {
-                    //     info(json_encode($lead));
-                    // }
-                    // info(json_encode($lead));
                 });
-
-            break;
         }
     }
 
+    /**
+     * Saves the given updatable data to the given platform data and its associated data.
+     *
+     * If the key is 'revenue' or 'affiliate_payout', it is added to $leadReportData and
+     * saved to the associated lead report. Otherwise, if the key is in $fillable, it is
+     * updated in the platform data. If the key is in the associated data, it is updated
+     * there as well.
+     *
+     * If the key is 'buyer_integration', the buyer integration ID, buyer ID, and buyer
+     * unique ID are set in the platform data and its associated data.
+     *
+     * @param PlatformData $lead
+     * @param array $updatableData
+     * @param array $fillable
+     * @return void
+     */
     public function savePlatformData(PlatformData &$lead, array $updatableData, array $fillable): void
     {
         $leadReportData = [];
-
         $datas = $lead->datas;
 
         foreach ($updatableData as $key => $value) {
@@ -945,23 +967,107 @@ class LeadService extends ReportingService
             }
         }
 
+        if(array_key_exists('buyer_integration', $updatableData)) {
+            $this->setBuyerIntegration($lead, $updatableData['buyer_integration'], $datas);
+        }
+
         $lead->datas = $datas;
         $lead->save();
 
         if(! empty($leadReportData)) {
             $this->saveLeadReportData($lead, $leadReportData);
         }
+
+        $this->updateRelevantReport($lead);
+        $this->updateRelevantLeadLog($lead, $updatableData);
     }
 
-    public function saveLeadReportData(PlatformData $lead, array $leadReportData)
+    /**
+     * Sets the buyer integration ID, buyer ID, and buyer unique ID in the given platform data and its associated data.
+     *
+     * @param PlatformData $lead
+     * @param int|string $integrationId
+     * @param array $datas
+     * @return void
+     */
+    public function setBuyerIntegration(PlatformData &$lead, int | string $integrationId, array &$datas): void
+    {
+        $integration = Integration::query()
+                            ->select('id', 'buyer_id', 'buyer_unique_id')
+                            ->find($integrationId);
+
+        if(empty($integration)) return;
+
+        $lead->buyer_integration_id = $integration->id;
+        $lead->buyer_id = $integration->buyer_id;
+        $datas['lead_buyer'] = $integration->buyer_unique_id;
+    }
+
+    /**
+     * Updates the relevant fields in the lead log for the given lead.
+     *
+     * Looks up the lead log for the given lead and updates the fields in the log data
+     * that are also present in the updatable data.
+     *
+     * @param PlatformData $lead
+     * @param array $updatableData
+     * @return void
+     */
+    public function updateRelevantLeadLog(PlatformData $lead, array $updatableData): void
+    {
+        $leadLog = LeadLog::where('lead_id', $lead->id)->first();
+        if(empty($leadLog)) return;
+
+        $logData = $leadLog->log_data;
+        $originalPayload = $logData && $logData['original_payload'] ? $logData['original_payload'] : null;
+
+        if(empty($originalPayload)) return;
+
+        foreach($updatableData as $key => $value){
+            if(! array_key_exists($key, $originalPayload)) continue;
+            $originalPayload[$key] = $value;
+        }
+
+        $logData['original_payload'] = $originalPayload;
+        $leadLog->log_data = $logData;
+        $leadLog->save();
+    }
+
+    /**
+     * Updates the relevant fields in the lead report for the given lead.
+     *
+     * @param PlatformData $lead
+     * @return void
+     */
+    public function updateRelevantReport(PlatformData $lead): void
+    {
+        LeadReport::where('lead_id', $lead->id)
+            ->update([
+                'affid' => $lead->affid,
+                'buyer_integration_id' => $lead->buyer_integration_id,
+                'buyer_id' => $lead->buyer_id
+            ]);
+    }
+
+    /**
+     * Saves the lead report data for a given lead. If the lead report doesn't exist, a new one is created.
+     * The revenue and affiliate payout are calculated based on the given data and the current values in the lead report.
+     * The lead report is then updated with the new data and the revenue and payout totals are updated for the lead.
+     *
+     * @param PlatformData $lead
+     * @param array $leadReportData
+     * @return void
+     */
+    public function saveLeadReportData(PlatformData $lead, array $leadReportData): void
     {
         $leadReport = $this->getRetainedLeadReport($lead->id);
         if (empty($leadReport)) {
+            $this->addNewLeadReport($lead, $leadReportData);
             return;
         }
 
-        $revenue = $leadReportData['revenue'] ?? $leadReport->lead_revenue;
-        $affiliatePayout = $leadReportData['affiliate_payout'] ?? $leadReport->affiliate_payout;
+        $revenue = array_key_exists('revenue', $leadReportData) ? $leadReportData['revenue'] : $leadReport->lead_revenue;
+        $affiliatePayout = array_key_exists('affiliate_payout', $leadReportData) ? $leadReportData['affiliate_payout'] : $leadReport->affiliate_payout;
 
         $reportData = $this->calculateRevenuePayout((float) $revenue, (float) $affiliatePayout);
 
@@ -969,7 +1075,14 @@ class LeadService extends ReportingService
         $this->updateRevenuePayout($lead->id);
     }
 
-    public function calculateRevenuePayout( float | int $revenue = 0, float | int $affiliatePayout)
+    /**
+     * Calculates the revenue, profit, affiliate margin and profit margin given the revenue and affiliate payout.
+     *
+     * @param float|int $revenue
+     * @param float|int $affiliatePayout
+     * @return array
+     */
+    public function calculateRevenuePayout( float | int $revenue = 0, float | int $affiliatePayout): array
     {
         $profit = $revenue - $affiliatePayout;
         $affiliateMargin = $revenue ? (($affiliatePayout / $revenue) * 100) : 0;
@@ -982,5 +1095,65 @@ class LeadService extends ReportingService
             'affiliate_margin' => $affiliateMargin,
             'profit_margin' => $profitMargin
         ];
+    }
+
+    /**
+     * Creates a new lead report and updates the lead status, revenue and payout accordingly.
+     *
+     * @param PlatformData $lead
+     * @param array $leadReportData
+     * @return void
+     */
+    public function addNewLeadReport(PlatformData $lead, array $leadReportData): void
+    {
+        $formData = $this->getFormData($lead, $leadReportData);
+        $formattedData = $this->formatReportRequest($formData);
+        $report = LeadReport::create($formattedData);
+
+        $request = new Request($formattedData);
+
+        $this->updateReportData($report, $request, $formattedData, isCreate: true);
+        $this->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer);
+        $this->updateRevenuePayout($request->lead_id);
+    }
+
+    /**
+     * Retrieves the form data for creating a new lead report from the given lead data and any revenue/payout data.
+     *
+     * @param PlatformData $lead
+     * @param array $leadReportData
+     * @return array
+     */
+    public function getFormData(PlatformData $lead, array $leadReportData): array
+    {
+        $formData = [
+            'affiliate_id' => $lead->affiliate_id,
+            'lead_id' => $lead->id,
+            'list_id' => $lead->list_id,
+            'buyer_id' => $lead->buyer_id,
+            'affid' => $lead->affId,
+            'buyer_integration_id' => $lead->buyer_integration_id,
+            'affiliate_specs_id' => $lead->affiliate_specs_id,
+            'affm_source_id' => $lead->affm_source_id,
+            'is_retainer' => true,
+            'is_paid' => false,
+            'is_internal' => false,
+            'is_posted' => false,
+            'lead_revenue' => 0,
+            'affiliate_payout' => 0,
+            'lead_profit' => 0,
+            'affiliate_margin' => 0,
+            'profit_margin' => 0,
+            'page_source' => '',
+            'sold_type' => '',
+            'created_at' => now(),
+            'show_in_portal' => false,
+        ];
+
+        $revenue =  $leadReportData['revenue'] ?? 0;
+        $affiliatePayout = $leadReportData['affiliate_payout'] ?? 0;
+        $reportData = $this->calculateRevenuePayout((float) $revenue, (float) $affiliatePayout);
+
+        return array_merge($formData, $reportData);
     }
 }
