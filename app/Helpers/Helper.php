@@ -121,7 +121,7 @@ function downloadInvoiceFile(string $url): string
     $file_path = storage_path('app/public/invoices/' . $file_name);
 
     if (!file_exists($file_path)) {
-        $file = file_get_contents($url);
+        $file = file_get_contents('https://portal-api.legalclaimassistant.support/invoices/1726675921_Griffin%20Invoice%209.18.24%20-%20Template.pdf');
 
         file_put_contents($file_path, $file);
     }
