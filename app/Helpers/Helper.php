@@ -119,7 +119,6 @@ function downloadInvoiceFile(string $url): string
     $file_name = basename($url);
     $encoded_file_name = rawurlencode($file_name);
 
-    // Rebuild the URL with the encoded file name
     $url = str_replace($file_name, $encoded_file_name, $url);
 
     $file_path = storage_path('app/public/invoices/' . $file_name);
@@ -134,15 +133,4 @@ function downloadInvoiceFile(string $url): string
     }
 
     return url(Storage::url('invoices/' . rawurlencode($file_name)));
-    // $file_name = basename($url);
-
-    // $file_path = storage_path('app/public/invoices/' . $file_name);
-
-    // if (!file_exists($file_path)) {
-    //     $file = file_get_contents($url);
-
-    //     file_put_contents($file_path, $file);
-    // }
-
-    // return url(Storage::url('invoices/' . $file_name));
 }
