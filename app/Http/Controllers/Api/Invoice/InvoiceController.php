@@ -76,6 +76,8 @@ class InvoiceController extends Controller
      */
     public function invoiceByTag(Request $request, $tag): Response
     {
+        // $file = downloadInvoiceFile("https://portal-api.legalclaimassistant.support/invoices/" . "1726675921_Griffin%20Invoice%209.18.24%20-%20Template.pdf");
+        // return withSuccess($file);
         $invoices = Invoice::where('tag', $tag)->get();
 
         if($invoices){
