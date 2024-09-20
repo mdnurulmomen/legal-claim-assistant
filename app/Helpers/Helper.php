@@ -133,7 +133,7 @@ function downloadInvoiceFile(string $url): string
         }
     }
 
-    return rawurlencode(url(Storage::url('invoices/' . $file_name)));
+    return url(Storage::url('invoices/' . rawurlencode($file_name)));
     // $file_name = basename($url);
 
     // $file_path = storage_path('app/public/invoices/' . $file_name);
