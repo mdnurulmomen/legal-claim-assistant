@@ -117,36 +117,14 @@ function minusBeforeDollarSign(?string $currency = '', float $number = 0)
 function downloadInvoiceFile(string $url): string
 {
     $file_name = basename($url);
+
     $file_path = storage_path('app/public/invoices/' . $file_name);
 
     if (!file_exists($file_path)) {
-        $opts = [
-            'http' => [
-                'method' => "GET",
-                'header' => "User-Agent: Mozilla/5.0\r\n"
-            ]
-        ];
+        $file = file_get_contents($url);
 
-        $context = stream_context_create($opts);
-
-        try {
-            $file = file_get_contents($url, false, $context);
-            file_put_contents($file_path, $file);
-        } catch (\Exception $e) {
-            return 'Error: ' . $e->getMessage();
-        }
+        file_put_contents($file_path, $file);
     }
 
     return url(Storage::url('invoices/' . $file_name));
-    // $file_name = basename($url);
-
-    // $file_path = storage_path('app/public/invoices/' . $file_name);
-
-    // if (!file_exists($file_path)) {
-    //     $file = file_get_contents($url);
-
-    //     file_put_contents($file_path, $file);
-    // }
-
-    // return url(Storage::url('invoices/' . $file_name));
 }
