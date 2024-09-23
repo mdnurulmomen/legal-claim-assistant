@@ -24,6 +24,7 @@ class ReportingResource extends JsonResource
             'accepted' => (float) $this->accepted,
             'rejected' => (float) $this->rejected,
             'accepted_cpl' => (float) $this->accepted_cpl,
+            'retained' => (float) $this->retained,
             'acceptance_rate' => (float) $this->acceptance_rate,
             'acceptance_rate_cpl' => (float) $this->acceptance_rate,
             'revenue' => (float) $this->revenue,
