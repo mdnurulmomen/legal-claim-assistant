@@ -926,7 +926,7 @@ class LeadService extends ReportingService
                 ->lazy()
                 ->each(function (&$lead) use ($item, $fillable) {
                     $this->savePlatformData($lead, $item['updatable_data'], $fillable);
-                }); // Retry 5 times with a delay of 100ms between attempts
+                });
         }
 
         // foreach ($filledData as $item) {
