@@ -921,7 +921,7 @@ class LeadService extends ReportingService
         $fillable = (new PlatformData())->getFillable();
 
         foreach ($filledData as $item) {
-            retry(2, function () use ($item, $fillable) {
+            retry(1, function () use ($item, $fillable) {
                 PlatformData::where(column: $item['conditional_keys'])
                     ->lockForUpdate()
                     ->lazy()
