@@ -37,7 +37,7 @@ class ExcelService
      */
     public function formatLeadCsvData(Collection $data): array
     {
-        return $data->take(3)->map(function ($item) {
+        return $data->map(function ($item) {
             return collect($item)->mapWithKeys(function ($value, $key) {
                 return [str()->slug($key, '_') => $value];
             })->all();
