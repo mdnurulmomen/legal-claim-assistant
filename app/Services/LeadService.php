@@ -921,13 +921,27 @@ class LeadService extends ReportingService
         $fillable = (new PlatformData())->getFillable();
 
         foreach ($filledData as $item) {
-
-            PlatformData::where(column: $item['conditional_keys'])
-                ->lazy()
-                ->each(callback: function (&$lead) use ($item, $fillable) {
-                    $this->savePlatformData($lead, $item['updatable_data'], $fillable);
+            retry(5, function () use ($item, $fillable) {
+                DB::transaction(function () use ($item, $fillable) {
+                    // Lock the relevant rows before starting the update
+                    PlatformData::where(column: $item['conditional_keys'])
+                        ->lockForUpdate()
+                        ->lazy()
+                        ->each(function (&$lead) use ($item, $fillable) {
+                            $this->savePlatformData($lead, $item['updatable_data'], $fillable);
+                        });
                 });
+            }, 150);  // Retry 5 times with a delay of 100ms between attempts
         }
+
+        // foreach ($filledData as $item) {
+
+        //     PlatformData::where(column: $item['conditional_keys'])
+        //         ->lazy()
+        //         ->each(callback: function (&$lead) use ($item, $fillable) {
+        //             $this->savePlatformData($lead, $item['updatable_data'], $fillable);
+        //         });
+        // }
     }
 
     /**
