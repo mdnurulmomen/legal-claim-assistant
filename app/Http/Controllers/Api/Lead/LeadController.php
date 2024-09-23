@@ -520,7 +520,7 @@ class LeadController extends Controller
         } catch (\Throwable $th) {
             DB::rollBack();
             info($th->getMessage());
-            return withError('Lead Filled Fields Update Failed!');
+            return withError('Lead Filled Fields Update Failed!' . $th->getMessage());
         }
 
         return withSuccess(message: 'Lead Filled Fields Updated Successfully!');
