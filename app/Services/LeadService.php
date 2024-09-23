@@ -362,7 +362,7 @@ class LeadService extends ReportingService
                 $values = $filter['values'];
 
                 if(! $isJsonColumn){
-                    $query->where($column, $values);
+                    $query->whereIn($column, $values);
                     continue;
                 }
 
