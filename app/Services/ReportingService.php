@@ -42,6 +42,8 @@ class ReportingService
             'accepted',
             'rejected',
             'accepted_cpl',
+            'avg_retained_leads',
+            'avg_retain_time',
             'retained',
             'acceptance_rate',
             'acceptance_rate',

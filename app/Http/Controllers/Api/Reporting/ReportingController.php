@@ -47,6 +47,8 @@ class ReportingController extends Controller
                         COUNT(CASE WHEN lead_reports.buyer_id IS NULL AND lead_reports.is_posted = 1 THEN 1 END) as rejected,
                         COUNT(CASE WHEN lead_reports.is_retainer > 0 THEN 1 END) as retained,
                         COUNT(CASE WHEN lead_reports.sold_type = 'CPL' THEN 1 END) as accepted_cpl,
+                        COUNT(CASE WHEN lead_reports.is_retainer > 0 THEN 1 END) / COUNT(CASE WHEN lead_reports.is_posted = 1 THEN 1 END) * 100 as avg_retained_leads,
+                        AVG(CASE WHEN lead_reports.is_retainer > 0 THEN DATEDIFF(pd.created_at, pd.retained_date) END) AS avg_retain_time,
                         SUM(lead_reports.lead_revenue) as revenue,
                         SUM(lead_reports.lead_profit) as profit,
                         SUM(lead_reports.affiliate_payout) as affiliate_payout,
@@ -54,6 +56,7 @@ class ReportingController extends Controller
                         AVG(lead_reports.lead_profit) as average_profit,
                         AVG(lead_reports.affiliate_payout) as affiliate_average_payout
                     ")
+                    ->leftJoin('platform_datas as pd', 'lead_reports.lead_id', '=', 'pd.id')
                     ->leftJoin('platform_lists as pl', 'lead_reports.list_id', '=', 'pl.id')
                     ->leftJoin('buyers', 'lead_reports.buyer_id', '=', 'buyers.id')
                     ->leftJoin('integrations', 'lead_reports.buyer_integration_id', '=', 'integrations.id')
@@ -209,6 +212,10 @@ class ReportingController extends Controller
                 'affiliate_average_payout' => [
                     'label' => 'Affiliate Average Payout',
                     'db_name' => 'AVG(lead_reports.affiliate_payout)',
+                ],
+                'retained' => [
+                    'label' => 'Retained',
+                    'db_name' => 'COUNT(CASE WHEN lead_reports.is_retainer > 0 THEN 1 END)',
                 ],
                 'revenue_per_lead' => [
                     'label' => 'Revenue Per Lead',

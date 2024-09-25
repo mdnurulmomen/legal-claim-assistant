@@ -25,6 +25,8 @@ class ReportingResource extends JsonResource
             'rejected' => (float) $this->rejected,
             'accepted_cpl' => (float) $this->accepted_cpl,
             'retained' => (float) $this->retained,
+            'avg_retained_leads' => number_format($this->avg_retained_leads, 2) . "%",
+            'avg_retain_time' => $this->avg_retain_time > 0 ? number_format($this->avg_retain_time) . " Day" . ($this->avg_retain_time > 1 ? "s" : "") : "-",
             'acceptance_rate' => (float) $this->acceptance_rate,
             'acceptance_rate_cpl' => (float) $this->acceptance_rate,
             'revenue' => (float) $this->revenue,
