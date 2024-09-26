@@ -291,6 +291,7 @@ class ReportingService
             SUM(rejected) as rejected,
             SUM(accepted_cpl) as accepted_cpl,
             SUM(retained) as retained,
+            FORMAT((retained / NULLIF(accepted, 0)) * 100, 2) as avg_retained_leads,
             SUM(revenue) as revenue,
             SUM(profit) as profit,
             SUM(affiliate_payout) as affiliate_payout,

@@ -47,7 +47,7 @@ class ReportingController extends Controller
                         COUNT(CASE WHEN lead_reports.buyer_id IS NULL AND lead_reports.is_posted = 1 THEN 1 END) as rejected,
                         COUNT(CASE WHEN lead_reports.is_retainer > 0 THEN 1 END) as retained,
                         COUNT(CASE WHEN lead_reports.sold_type = 'CPL' THEN 1 END) as accepted_cpl,
-                        COUNT(CASE WHEN lead_reports.is_retainer > 0 THEN 1 END) / COUNT(CASE WHEN lead_reports.is_posted = 1 THEN 1 END) * 100 as avg_retained_leads,
+                        COUNT(CASE WHEN lead_reports.is_retainer > 0 THEN 1 END) / COUNT(CASE WHEN lead_reports.buyer_id IS NOT NULL AND lead_reports.is_posted = 1 THEN 1 END) * 100 as avg_retained_leads,
                         AVG(CASE WHEN lead_reports.is_retainer > 0 THEN DATEDIFF(pd.created_at, pd.retained_date) END) AS avg_retain_time,
                         SUM(lead_reports.lead_revenue) as revenue,
                         SUM(lead_reports.lead_profit) as profit,
