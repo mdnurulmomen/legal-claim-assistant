@@ -243,6 +243,7 @@ class ReportingService
     public function getConditionMethod(int $index, string $type = null): string
     {
         $method = $index == 0 ? 'where' : 'orWhere';
+        if(! $type) return $method;
 
         $matchType = match($type){
             'exists' => 'NotNull',
