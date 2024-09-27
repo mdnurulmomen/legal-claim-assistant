@@ -242,7 +242,7 @@ class ReportingController extends Controller
                     $formattedColumn = 'DATE_FORMAT(lead_reports.created_at, "%a, %d")';
                     break;
                 case ($diffDays <= 31):
-                    $groupBy = 'DATE_FORMAT(lead_reports.created_at, "%a, %d, %m, %y")';
+                    $groupBy = 'DAY(lead_reports.created_at)';
                     $formattedColumn = 'DATE_FORMAT(lead_reports.created_at, "%a, %d")';
                     break;
                 case ($diffDays <= 60):
@@ -272,7 +272,7 @@ class ReportingController extends Controller
             $performanceData = DB::table('lead_reports')
                                 ->select($performanceQueries)
                                 ->groupBy(DB::raw($groupBy))
-                                ->limit(15)
+                                ->limit(50)
                                 ->when(! empty($startDate) && ! empty($endDate), function ($query) use ($startDate, $endDate) {
                                     return $query->whereBetween('lead_reports.created_at', [$startDate, $endDate]);
                                 })
