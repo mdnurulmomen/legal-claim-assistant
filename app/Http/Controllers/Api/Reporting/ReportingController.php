@@ -82,8 +82,7 @@ class ReportingController extends Controller
                     ->when(! empty($reportStart) && ! empty($reportEnd), function ($query) use ($reportStart, $reportEnd) {
                         return $query->whereBetween('lead_reports.created_at', [$reportStart, $reportEnd]);
                     })
-                    ->groupBy("lead_reports.id");
-                    dd($subQuery->get()->toArray());
+                    ->groupBy($groupBy);
 
         $baseQuery = DB::table(DB::raw("({$subQuery->toSql()}) as sub"))
                             ->mergeBindings($subQuery->getQuery()) // Ensure bindings are merged correctly
