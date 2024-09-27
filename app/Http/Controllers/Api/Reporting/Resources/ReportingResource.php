@@ -17,7 +17,7 @@ class ReportingResource extends JsonResource
 
         $avg_retain_time = "-";
 
-        if ($this->accepted !== null || $this->retained == 0) {
+        if ($this->accepted !== null || $this->retained != 0) {
             $dayLabel = ($this->accepted > 1) ? "Days" : "Day";
             $avg_retain_time = number_format($this->avg_retain_time) . " " . $dayLabel;
         }
