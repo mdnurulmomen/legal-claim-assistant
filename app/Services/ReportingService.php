@@ -291,7 +291,7 @@ class ReportingService
             SUM(rejected) as rejected,
             SUM(accepted_cpl) as accepted_cpl,
             SUM(retained) as retained,
-            AVG(avg_retain_time) as avg_retain_time,
+            AVG(IF(avg_retain_time < 0, 0, avg_retain_time)) as avg_retain_time,
             SUM(revenue) as revenue,
             SUM(profit) as profit,
             SUM(affiliate_payout) as affiliate_payout,

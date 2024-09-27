@@ -14,6 +14,14 @@ class ReportingResource extends JsonResource
      */
     public function toArray($request): array
     {
+
+        $avg_retain_time = "-";
+
+        if ($this->accepted !== null) {
+            $dayLabel = ($this->accepted > 1) ? "Days" : "Day";
+            $avg_retain_time = number_format($this->avg_retain_time) . " " . $dayLabel;
+        }
+
         return [
             'platform_name' => $this->platform_name ?? '',
             'buyer_name' => $this->buyer_name ?? '',
@@ -26,7 +34,7 @@ class ReportingResource extends JsonResource
             'accepted_cpl' => (float) $this->accepted_cpl,
             'retained' => (float) $this->retained,
             'avg_retained_leads' => $this->accepted > 0 ? number_format($this->retained / $this->accepted * 100, 2) . "%" : "0.00%",
-            'avg_retain_time' => $this->avg_retain_time > 0 ? number_format($this->avg_retain_time) . " Day" . ($this->avg_retain_time > 1 ? "s" : "") : "-",
+            'avg_retain_time' => $avg_retain_time,
             'acceptance_rate' => (float) $this->acceptance_rate,
             'acceptance_rate_cpl' => (float) $this->acceptance_rate,
             'revenue' => (float) $this->revenue,
