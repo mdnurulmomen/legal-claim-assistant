@@ -242,7 +242,7 @@ class ReportingController extends Controller
                     $formattedColumn = 'DATE_FORMAT(lead_reports.created_at, "%a, %d")';
                     break;
                 case ($diffDays <= 31):
-                    $groupBy = 'DAY(lead_reports.created_at)';
+                    $groupBy = 'DATE_FORMAT(lead_reports.created_at, "%a, %d, %m, %y")';
                     $formattedColumn = 'DATE_FORMAT(lead_reports.created_at, "%a, %d")';
                     break;
                 case ($diffDays <= 60):
