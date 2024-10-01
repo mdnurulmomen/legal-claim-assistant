@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AdminRole;
 use App\Models\User;
 
 class UserService
@@ -23,7 +24,9 @@ class UserService
     public function formatRequestData(array $data): array
     {
         $data['password'] = $data['password'] ?? null;
-        unset($data['password']);
+        if(empty($data['password'])) {
+            unset($data['password']);
+        }
         return $data;
     }
 
@@ -35,7 +38,11 @@ class UserService
      */
     public function getSingleUser(int $userId): ?User
     {
-        return User::query()->with('adminRole:id,name')->find($userId);
+        return User::query()
+                ->addSelect([
+                    'admin_role' => AdminRole::select('admin_role')->whereColumn('id', 'users.admin_role_id')->limit(1),
+                ])
+                ->find($userId);
     }
 
 }

@@ -41,6 +41,7 @@ class ReportingController extends Controller
                         buyers.name as buyer_name,
                         integrations.name as integration_name,
                         affiliate.name as affiliate_name,
+                        JSON_EXTRACT(affiliate.data, '$.affids') AS affids,
                         lead_reports.affid,
                         COUNT(CASE WHEN lead_reports.is_posted = 1 THEN 1 END) as posted,
                         COUNT(CASE WHEN lead_reports.buyer_id IS NOT NULL AND lead_reports.is_posted = 1 THEN 1 END) as accepted,
@@ -149,7 +150,23 @@ class ReportingController extends Controller
     {
         $lists = PlatformList::select('id as value', 'name as label')->get();
         $buyers = DB::table('buyers')->select('id as value', 'name as label')->get();
-        $affiliates = User::select('id as value', 'name as label')->where('role', 'affiliate')->get();
+        $affiliates = User::select('id as value', 'name as label', 'data->affids as affids', 'role')
+                        ->where('role', 'affiliate')
+                        ->get()
+                        ->map(function ($user) {
+                            if(! hasAffiliateAccess() && $user->role === 'affiliate') {
+                                return [
+                                    'value' => $user->value,
+                                    'label' => $user->affids ? implode(', ', json_decode($user->affids, true)) : ''
+                                ];
+                            }
+
+                            return [
+                                'value' => $user->value,
+                                'label' => $user->name
+                            ];
+                        })->toArray();
+
         $affIds = LeadReport::select('affid as value', 'affid as label')->whereNotNull('affid')->groupBy('affid')->get();
 
         $buyer_integrations = DB::table('integrations')

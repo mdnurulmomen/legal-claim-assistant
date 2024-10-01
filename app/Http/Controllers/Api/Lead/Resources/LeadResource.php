@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Api\Lead\Resources;
 
 use App\Models\PlatformList;
 use App\Services\LeadService;
+use App\Traits\AffiliateTrait;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class LeadResource extends JsonResource
 {
+    use AffiliateTrait;
+
     /**
      * Transform the resource into an array.
      *
@@ -22,8 +25,7 @@ class LeadResource extends JsonResource
             'buyer_integration' => $this->buyer_integration,
             'buyer_id' => $this->buyer_id,
             'buyer_name' => $this->buyer_name,
-            'affiliate_id' => $this->affiliate_id,
-            'affiliate_name' => $this->affiliate_name,
+            'affiliate_name' => hasAffiliateAccess() ? $this->affiliate_name : $this->formatAffIds($this->affids),
             'list_name' => $this->list_name,
             'lead_status' => $this->lead_status,
             'revenue' => $this->revenue,

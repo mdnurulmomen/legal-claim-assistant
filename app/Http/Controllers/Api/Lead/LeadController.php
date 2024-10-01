@@ -62,6 +62,7 @@ class LeadController extends Controller
                                 'buyers.name as buyer_name',
                                 'platform_datas.affiliate_id',
                                 'users.name as affiliate_name',
+                                'users.data->affids as affids',
                                 'platform_datas.lead_status',
                                 'platform_lists.name as list_name',
                                 'platform_datas.created_at',

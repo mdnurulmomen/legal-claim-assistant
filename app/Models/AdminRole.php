@@ -4,14 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class AdminRole extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name'];
+    protected $fillable = [
+        'name',
+        'admin_role',
+        'is_show_affiliate'
+    ];
+
+    protected $casts = [
+        'is_show_affiliate' => 'boolean'
+    ];
 
     public function menus(): BelongsToMany
     {

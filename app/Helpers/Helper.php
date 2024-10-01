@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
@@ -83,6 +84,27 @@ function customResponse(mixed $data, bool $success, int $status, string $message
 
 //*******************Response Modifier End************************/
 
+function hasAffiliateAccess(): bool
+{
+    if (!auth('sanctum')->check()) {
+        return false;
+    }
+
+    $userId = auth('sanctum')->id();
+
+    $user = User::query()
+        ->leftJoin('admin_roles as ar', 'users.admin_role_id', '=', 'ar.id')
+        ->where('users.id', $userId)
+        ->select('ar.is_show_affiliate', 'ar.admin_role')
+        ->first();
+
+    if (!$user) {
+        return false;
+    }
+
+    // return (bool) $user->is_show_affiliate;
+    return $user->admin_role === 'super_admin' || (bool) $user->is_show_affiliate;
+}
 
 /**
  * Returns value after formatting currency and with $ sign.

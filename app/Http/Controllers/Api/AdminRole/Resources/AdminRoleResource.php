@@ -16,7 +16,8 @@ class AdminRoleResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'name' => $this->name
+            'name' => $this->name,
+            'is_show_affiliate' => (bool)$this->is_show_affiliate
         ];
     }
 }

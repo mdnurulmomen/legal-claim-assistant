@@ -5,9 +5,11 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class User extends Authenticatable
 {
@@ -81,13 +83,6 @@ class User extends Authenticatable
         return $this->hasOne(Affiliate::class);
     }
 
-    /**
-     * Get the affiliate record associated partner_platform_connections.
-     */
-    /* // public function postingDocs(): \Illuminate\Database\Eloquent\Relations\HasMany
-    // {
-    //     return $this->hasMany(partnerPlatformConnections::class);
-    // } */
     public function postingDocs(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
     {
         return $this->hasManyThrough(partnerPlatformConnections::class, User::class, 'master_user_id', 'user_id', 'id', 'id');

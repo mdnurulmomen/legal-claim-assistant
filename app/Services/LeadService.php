@@ -861,11 +861,25 @@ class LeadService extends ReportingService
      */
     public function getAffiliates(Request $request): Collection
     {
-        return User::select('id as value', 'name as label')
+        return User::select('id as value', 'name as label', 'data->affids as affids', 'role')
                 ->when(! empty($request->search_txt), function ($query) use ($request) {
                     return $query->where('name', 'like', '%'.$request->search_txt.'%');
                 })
-                ->where('role', 'affiliate')->get();
+                ->where('role', 'affiliate')
+                ->get()
+                ->map(function ($user): array {
+                    if(! hasAffiliateAccess() && $user->role === 'affiliate') {
+                        return [
+                            'value' => $user->value,
+                            'label' => $user->affids ? implode(', ', json_decode($user->affids, true)) : ''
+                        ];
+                    }
+
+                    return [
+                        'value' => $user->value,
+                        'label' => $user->name
+                    ];
+                });
     }
 
     /**

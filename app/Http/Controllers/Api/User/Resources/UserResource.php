@@ -14,7 +14,7 @@ class UserResource extends JsonResource
      */
     public function toArray($request): array
     {
-        return [
+        $data = [
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
@@ -24,8 +24,17 @@ class UserResource extends JsonResource
             'workspace' => $this->workspace,
             'role' => $this->role,
             'admin_role_id' => $this->admin_role_id,
-            'admin_role_name' => $this->adminRole ? $this->adminRole->name : null,
-            'status' => $this->status
+            'admin_role_name' => $this->admin_role_name,
+            'status' => $this->status,
+            'user_access' => []
         ];
+
+        if(! empty($this->is_show_affiliate)){
+            $data['user_access'][] = 'Affiliate';
+        }
+
+        $data['user_access'] = implode(', ', $data['user_access']);
+
+        return $data;
     }
 }

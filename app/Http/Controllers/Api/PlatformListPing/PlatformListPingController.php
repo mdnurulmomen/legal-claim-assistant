@@ -30,17 +30,17 @@ class PlatformListPingController extends Controller
         // $orderIn = $request->input('order_in');
         $start_date = false;
         $end_date   = false;
-            
-        if ($request->has('start_date') && $request->has('end_date') 
+
+        if ($request->has('start_date') && $request->has('end_date')
                 && !empty($request->start_date) && !empty($request->end_date) ) {
             try {
                 $start_date = Carbon::createFromFormat('Y-m-d H:i:s', $request->start_date);
                 $end_date = Carbon::createFromFormat('Y-m-d H:i:s', $request->end_date);
-            } catch (\Throwable $th) { 
+            } catch (\Throwable $th) {
                 abort(404);
             }
 
-        }     
+        }
 
         //init query
         $platformPingQuery = PlatformPings::query();
@@ -53,26 +53,33 @@ class PlatformListPingController extends Controller
         }
 
         //for seaerching
-        if ($request->has('search_txt')) {
-            
-           $platformPingQuery = $platformPingQuery->where(function ($query) use ($request) { 
+        if (! empty($request->search_txt)) {
+
+           $platformPingQuery = $platformPingQuery->where(function ($query) use ($request) {
                //improved search lead algorithm
                 if (substr($request->search_txt, 0, 2) === '+1' || is_numeric($request->search_txt) && strlen($request->search_txt) > 9 && strlen($request->search_txt) < 12) {
-                    
-                    try { 
+
+                    try {
                         $searchText = phone($request->search_txt, 'US')->formatE164();
                         $query->where('platform_pings.phone', '=', $searchText);
-                        
+
                     } catch (\Throwable $th) {
                         //throw $th;
                     }
 
                 } else {
-                    
-                    $query->orWhere('users.name', 'like', '%' . $request->search_txt . '%');
+
+                    if(hasAffiliateAccess()) {
+                        $query->orWhere('users.name', 'like', '%' . $request->search_txt . '%');
+                    } else {
+                        $formattedTxt = explode(',', str_replace(' ', '', $request->search_txt));
+                        $query->orWhere('users.data->affids', 'like', '%' . $request->search_txt . '%');
+                        $query->orWhereJsonContains('users.data->affids', $formattedTxt);
+                    }
+
                     $query->orWhere('platform_lists.name', 'like', '%' . $request->search_txt . '%');
                     $query->orWhere('platform_pings.ping_id', 'like', '%' . $request->search_txt . '%');
-                } 
+                }
             });
         }
 
@@ -101,9 +108,24 @@ class PlatformListPingController extends Controller
         }
 
         //group by list and affid
-        $pingLogData = $platformPingQuery->selectRaw('platform_pings.affiliate_id, users.name, platform_pings.list_id, platform_lists.name as list_name, platform_lists.tag as list_tag, platform_pings.phone, platform_pings.ping_id, platform_pings.buyer, platform_pings.internal_buyer_price, platform_pings.affiliate_price, platform_pings.sold, platform_pings.accepted, platform_pings.created_at')
-                                ->paginate($limit);
-                                
+        $pingLogData = $platformPingQuery->selectRaw("
+            platform_pings.affiliate_id,
+            users.name,
+            JSON_EXTRACT(users.data, '$.affids') AS affids,
+            platform_pings.list_id,
+            platform_lists.name as list_name,
+            platform_lists.tag as list_tag,
+            platform_pings.phone,
+            platform_pings.ping_id,
+            platform_pings.buyer,
+            platform_pings.internal_buyer_price,
+            platform_pings.affiliate_price,
+            platform_pings.sold,
+            platform_pings.accepted,
+            platform_pings.created_at
+        ")
+        ->paginate($limit);
+
         return withSuccessResourceList(PlatformListPingResource::collection($pingLogData));
     }
 
