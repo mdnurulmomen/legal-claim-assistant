@@ -84,6 +84,11 @@ function customResponse(mixed $data, bool $success, int $status, string $message
 
 //*******************Response Modifier End************************/
 
+/**
+ * Checks if the currently authenticated user has affiliate access.
+ *
+ * @return bool
+ */
 function hasAffiliateAccess(): bool
 {
     if (!auth('sanctum')->check()) {
@@ -98,11 +103,10 @@ function hasAffiliateAccess(): bool
         ->select('ar.is_show_affiliate', 'ar.admin_role')
         ->first();
 
-    if (!$user) {
+    if (empty($user)) {
         return false;
     }
 
-    // return (bool) $user->is_show_affiliate;
     return $user->admin_role === 'super_admin' || (bool) $user->is_show_affiliate;
 }
 

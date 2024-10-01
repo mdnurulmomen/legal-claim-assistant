@@ -88,12 +88,13 @@ class PermissionController extends Controller
         }
 
         $data['saved_reports'] = SavedReport::whereUserId($authUser->id)->select('id', 'title', 'uid')->get();
-        $data['is_show_affiliate'] = (bool) $authUser->is_show_affiliate;
 
         if($authUser->admin_role === 'super_admin'){
+            $data['is_show_affiliate'] = true;
             return withSuccess($data);
         }
 
+        $data['is_show_affiliate'] = (bool) $authUser->is_show_affiliate;
         $data['permissions'] = Permission::where('permissions.admin_role_id', $authUser->admin_role_id)
                                     ->select('permissions.id', 'menus.route_name')
                                     ->leftJoin('menus', 'permissions.menu_id', '=', 'menus.id')
