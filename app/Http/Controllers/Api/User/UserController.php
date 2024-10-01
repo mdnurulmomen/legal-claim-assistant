@@ -19,7 +19,6 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
-
     /**
      * Retrieves a paginated list of users based on the given request parameters.
      *
@@ -31,16 +30,30 @@ class UserController extends Controller
         $limit = $request->input('limit', 10);
 
         $users = User::query()
-                    ->select('id','name','email','username','admin_role_id','logo','phone','workspace','status')
+                    ->select(
+                        'users.id',
+                        'users.name',
+                        'users.email',
+                        'users.role',
+                        'users.username',
+                        'users.admin_role_id',
+                        'users.logo',
+                        'users.phone',
+                        'users.workspace',
+                        'users.status',
+                        'ar.admin_role',
+                        'ar.name as admin_role_name',
+                        'ar.is_show_affiliate',
+                        'users.data->affids as affids'
+                    )
+                    ->leftJoin('admin_roles as ar', 'users.admin_role_id', '=', 'ar.id')
                     ->when(! empty($request->search_txt), function ($query) use ($request) {
-                        return $query->whereAny(['name','email','username'], 'like', "%{$request->search_txt}%");
+                        return $query->whereAny(['users.name','users.email','users.username'], 'like', "%{$request->search_txt}%");
                     })
-                    ->with('adminRole:id,name')
-                    ->where('role', 'admin')
                     ->whereDoesntHave('adminRole', function ($query) {
-                        return $query->where('name', 'super_admin');
+                        return $query->where('admin_role', 'super_admin');
                     })
-                    ->latest('id')
+                    ->latest('users.id')
                     ->paginate($limit);
 
         return withSuccessResourceList(UserResource::collection($users));
@@ -54,8 +67,10 @@ class UserController extends Controller
      */
     public function createUser(CreateOrUpdateUserRequest $request): Response
     {
-        $user = User::create($request->validated());
-        return withSuccess(new UserResource($user->load('adminRole:id,name')), 'User created successfully');
+        $user = User::create($request->validated())->load('adminRole:id,admin_role');
+        $user->admin_role = $user->adminRole->admin_role;
+
+        return withSuccess(new UserResource($user), 'User created successfully');
     }
 
     /**
@@ -120,7 +135,7 @@ class UserController extends Controller
      */
     public function updateMyInfo(UpdateBasicInfoRequest $request, UserService $userService): Response
     {
-        $user = $userService->getSingleUser($request->user()->id);
+        $user = $userService->getSingleUser(auth()->id());
         if(empty($user)){
             return withError('User not found', 404);
         }
@@ -138,7 +153,7 @@ class UserController extends Controller
      */
     public function updateMyEmail(UpdateMyEmailRequest $request, UserService $userService): Response
     {
-        $user = $userService->getSingleUser($request->user()->id);
+        $user = $userService->getSingleUser(auth()->id());
         if(empty($user)){
             return withError('User not found', 404);
         }
@@ -160,7 +175,7 @@ class UserController extends Controller
      */
     public function updateMyPassword(UpdateMyPasswordRequest $request, UserService $userService): Response
     {
-        $user = $userService->getSingleUser($request->user()->id);
+        $user = $userService->getSingleUser(auth()->id());
         if(empty($user)){
             return withError('User not found', 404);
         }
@@ -172,7 +187,7 @@ class UserController extends Controller
         $user->update(['password' => $request->password]);
         return withSuccess(new AuthResource($user->refresh()), 'Password updated successfully');
     }
-    
+
     /**
      * Retrieves a list of partners.
      *

@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Api\Reporting\Resources;
 
+use App\Traits\AffiliateTrait;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class ReportingResource extends JsonResource
 {
+    use AffiliateTrait;
+
     /**
      * Transform the resource into an array.
      *
@@ -23,10 +26,11 @@ class ReportingResource extends JsonResource
         }
 
         return [
+            'id' => $this->id,
             'platform_name' => $this->platform_name ?? '',
             'buyer_name' => $this->buyer_name ?? '',
             'integration_name' => $this->integration_name ?? '',
-            'affiliate_name' => $this->affiliate_name ?? '',
+            'affiliate_name' => hasAffiliateAccess() ? $this->affiliate_name : $this->formatAffIds($this->affids),
             'affid' => $this->affid ?? '',
             'posted' => (float) $this->posted,
             'accepted' => (float) $this->accepted,

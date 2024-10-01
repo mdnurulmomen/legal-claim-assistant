@@ -21,10 +21,18 @@ class AuthController extends Controller
      */
     public function login(LoginRequest $request): Response
     {
-        $user = User::where('email', $request->email)->where('role', 'admin')->first();
+        $user = User::query()
+                    ->leftJoin('admin_roles', 'users.admin_role_id', '=', 'admin_roles.id')
+                    ->where('users.email', $request->email)
+                    ->whereNotNull('admin_roles.admin_role')
+                    ->select('users.*', 'admin_roles.admin_role as admin_role')
+                    ->first();
+
         if(empty($user)){
             return withError('The provided credentials are incorrect.', 404);
         }
+
+        info(json_encode($user));
 
         if (! Hash::check($request->password, $user->password)) {
             return withError('The provided credentials are incorrect.', 400);
@@ -47,7 +55,7 @@ class AuthController extends Controller
     public function logout(Request $request): Response
     {
         $request->user()->currentAccessToken()->delete();
-        return withSuccess(['message' => 'Logged out successfully']);
+        return withSuccess(message: 'Logged out successfully.');
     }
 
     /**

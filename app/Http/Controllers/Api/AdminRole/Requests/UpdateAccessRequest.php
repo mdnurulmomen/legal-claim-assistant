@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers\Api\AdminRole\Requests;
 
-use App\Helpers\Utility;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Validation\Rule;
 
-class CreateOrUpdateAdminRoleRequest extends FormRequest
+class UpdateAccessRequest extends FormRequest
 {
     /**
      * Determine if the Admin Role is authorized to make this request.
@@ -26,7 +25,8 @@ class CreateOrUpdateAdminRoleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255', Rule::unique('admin_roles', 'name')->ignore($this->roleId ?? 0)]        ];
+            'is_show_affiliate' => ['required', 'boolean']
+        ];
     }
 
     /**

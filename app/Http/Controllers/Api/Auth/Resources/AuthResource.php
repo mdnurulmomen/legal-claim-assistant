@@ -22,7 +22,7 @@ class AuthResource extends JsonResource
             'phone' => $this->phone,
             'workspace' => $this->workspace,
             'api_token' => $this->access_token,
-            'role' => $this->adminRole->name ?? null,
+            'role' => $this->admin_role,
             'status' => $this->status
         ];
     }
