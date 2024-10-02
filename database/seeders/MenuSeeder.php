@@ -107,6 +107,16 @@ class MenuSeeder extends Seeder
                 'order' => 8,
                 'created_at' => $now,
                 'updated_at' => $now
+            ],
+            [
+                'id' => 9,
+                'title' => 'Global Postback',
+                'route_name' => 'globalPostback',
+                'type' => 'endpoint',
+                'menu_id' => null,
+                'order' => 9,
+                'created_at' => $now,
+                'updated_at' => $now
             ]
         ];
 
