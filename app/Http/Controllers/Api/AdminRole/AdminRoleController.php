@@ -44,6 +44,7 @@ class AdminRoleController extends Controller
     {
         $roles = AdminRole::query()
                     ->select('id', 'name')
+                    ->whereNot('admin_role', 'super_admin')
                     ->get();
         return withSuccess(AdminRoleResource::collection($roles));
     }

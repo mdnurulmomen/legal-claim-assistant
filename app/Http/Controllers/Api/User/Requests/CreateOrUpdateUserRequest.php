@@ -47,7 +47,7 @@ class CreateOrUpdateUserRequest extends FormRequest
                             return $query->ignore($this->userId);
                         })
                     ],
-            'workspace' => ['nullable', 'string', 'max:255'],
+            'workspace' => ['required', 'string', 'max:255'],
             'role' => ['required', 'string', Rule::in(array_keys(Utility::$userRoles))],
             'admin_role_id' => ['required', 'integer', Rule::exists('admin_roles', 'id')],
             'status' => ['nullable', 'boolean', Rule::in(array_keys(Utility::$userStatus))]
