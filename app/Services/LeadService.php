@@ -20,6 +20,41 @@ use Illuminate\Support\Facades\DB;
 
 class LeadService extends ReportingService
 {
+    protected $validOrderByColumns = [
+        'email',
+        'phone',
+        'revenue',
+        'profit',
+        'affiliate_payout',
+        'affiliate_margin'
+    ];
+
+    /**
+     * Formats the order by and order in parameters from the request.
+     *
+     * @param Request $request
+     * @return array The formatted order by and order in parameters.
+     */
+    public function formatLeadOrderByIn(Request $request): array
+    {
+        $orderBy = $request->order_by;
+        $orderIn = $request->order_in;
+
+        if(empty($orderBy) || empty($orderIn)) {
+            return ['', ''];
+        }
+
+        if (! in_array($orderIn, ['asc', 'desc'])) {
+            $orderIn = '';
+        }
+
+        if (! in_array($orderBy, $this->validOrderByColumns)) {
+            $orderBy = '';
+        }
+
+        return [$orderBy, $orderIn];
+    }
+
     /**
      * Formats an array of headers into a sorted and formatted array.
      *
@@ -40,7 +75,8 @@ class LeadService extends ReportingService
                 'headerName' => ucwords(str_replace('_', ' ', $header)),
                 'minWidth' => 200,
                 'hide' => ! in_array($header, $serialization),
-                'editable' => true
+                'editable' => true,
+                'sortable' => in_array($header, $this->validOrderByColumns),
             ];
         })
         ->values()
