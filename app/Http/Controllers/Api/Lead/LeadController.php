@@ -45,6 +45,7 @@ class LeadController extends Controller
         [$relationalConditions, $conditions] = $leadService->formatFilters($request);
         $excelFilters = $leadService->formatExcelFilters($request);
         $perPage = empty($request->limit) ? 10 : $request->limit;
+        [$orderBy, $orderIn] = $leadService->formatLeadOrderByIn($request);
 
         $leadQuery = PlatformData::query()
                         ->when(! empty($request->is_total), function($query) {
@@ -74,7 +75,7 @@ class LeadController extends Controller
                         ->leftJoin('buyers', 'buyers.id', '=', 'platform_datas.buyer_id')
                         ->leftJoin('users', 'users.id', '=', 'platform_datas.affiliate_id')
                         ->leftJoin('platform_lists', 'platform_lists.id', '=', 'platform_datas.list_id')
-                        ->when(empty($request->is_total), function($query) {
+                        ->when(empty($request->is_total), function($query) use ($orderBy, $orderIn) {
                             return $query->addSelect([
                                 'revenue' => LeadReport::select(DB::raw('sum(lead_reports.lead_revenue)'))
                                                 ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
@@ -91,7 +92,10 @@ class LeadController extends Controller
                                 'affiliate_margin' => LeadReport::select(DB::raw('sum(lead_reports.affiliate_margin)'))
                                                         ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
                                                         ->limit(1)
-                            ]);
+                            ])
+                            ->when(! empty($orderBy) && ! empty($orderIn), function ($query) use ($orderBy, $orderIn) {
+                                return $query->orderBy($orderBy, $orderIn);
+                            });
                         })
                         ->when(! empty($request->platform_id), function($query) use ($request) {
                             return $query->where('platform_datas.list_id', $request->platform_id);

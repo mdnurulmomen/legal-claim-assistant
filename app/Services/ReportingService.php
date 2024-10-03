@@ -26,7 +26,7 @@ class ReportingService
     public function formatOrderByIn(Request $request): array
     {
         $orderBy = $request->input('order_by', '');
-        $orderIn = $request->input('order_in', '');
+        $orderIn = $request->order_in;
 
         if (! in_array($orderIn, ['asc', 'desc'])) {
             $orderIn = '';
