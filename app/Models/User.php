@@ -85,6 +85,6 @@ class User extends Authenticatable
 
     public function postingDocs(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
     {
-        return $this->hasManyThrough(partnerPlatformConnections::class, User::class, 'master_user_id', 'user_id', 'id', 'id');
+        return $this->hasManyThrough(PartnerPlatformConnection::class, User::class, 'master_user_id', 'user_id', 'id', 'id');
     }
 }
