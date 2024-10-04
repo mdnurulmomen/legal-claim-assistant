@@ -106,7 +106,7 @@ function hasAffiliateAccess(): bool
     if (empty($user)) {
         return false;
     }
-
+    // return false;
     return $user->admin_role === 'super_admin' || (bool) $user->is_show_affiliate;
 }
 
