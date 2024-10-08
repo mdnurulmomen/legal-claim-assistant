@@ -7,7 +7,8 @@ Route::prefix('leads')->as('leads.')
     ->controller(LeadController::class)
     ->middleware('auth:sanctum')
     ->group(function ($route) {
-        $route->get('list', 'list')->name('list');
+        $route->post('list', 'list')->name('list');
+        $route->get('get-latest-leads', 'getLatestLeads')->name('get-latest-leads');
         $route->get('headers', 'getLeadHeaders')->name('headers');
         $route->get('lead-info/{leadId}', 'getLeadInfo')->name('lead-info');
         $route->post('update-leads', 'updateLeads')->name('update-leads');
@@ -19,4 +20,5 @@ Route::prefix('leads')->as('leads.')
         $route->get('buyer-integrations', 'getBuyerIntegrations')->name('buyer-integrations');
         $route->get('get-integrations', 'getIntegrations')->name('get-integrations');
         $route->get('get-lead-options/{type}', 'getLeadOptions')->name('get-lead-options');
+        $route->put('update-filled-fields', 'updateFilledFields')->name('update.filled-fields');
     });

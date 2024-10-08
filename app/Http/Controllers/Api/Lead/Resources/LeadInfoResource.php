@@ -20,7 +20,7 @@ class LeadInfoResource extends JsonResource
             'id' => $this->id,
             'buyer_integration' => $this->buyer_integration,
             'buyer_name' => $this->buyer_name,
-            'affiliate_name' => $this->affiliate_name,
+            'affiliate_name' => hasAffiliateAccess() ? $this->affiliate_name : '',
             'email' => $this->email,
             'phone' => $this->phone,
             'revenue' => $this->revenue,

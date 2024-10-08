@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\PlatformList\PlatformIntegrationController;
 use App\Http\Controllers\Api\PlatformList\PlatformListController;
+use App\Http\Controllers\Api\PlatformList\PlatformSpecsController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -27,4 +28,12 @@ Route::prefix('platform-integrations')->as('platform.integrations.')
         $route->post('save-full-integration/{platformId}', 'saveFullIntegration')->name('save-full-integration');
         $route->post('update-integration/{platformId}', 'updateIntegration')->name('update-integration');
         $route->post('store-integration/{platformId}', 'storeIntegration')->name('store-integration');
+    });
+
+Route::prefix('platform-specs')->as('platform.specs.')
+    ->controller(PlatformSpecsController::class)
+    ->middleware('auth:sanctum')
+    ->group(function ($route) {
+        $route->get('specs-list/{platformId}', 'specsList')->name('list');
+        $route->delete('delete-specs/{specsId}', 'deleteSpecs')->name('delete.specs');
     });

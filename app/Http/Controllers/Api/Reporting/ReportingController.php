@@ -41,11 +41,15 @@ class ReportingController extends Controller
                         buyers.name as buyer_name,
                         integrations.name as integration_name,
                         affiliate.name as affiliate_name,
+                        JSON_EXTRACT(affiliate.data, '$.affids') AS affids,
                         lead_reports.affid,
                         COUNT(CASE WHEN lead_reports.is_posted = 1 THEN 1 END) as posted,
                         COUNT(CASE WHEN lead_reports.buyer_id IS NOT NULL AND lead_reports.is_posted = 1 THEN 1 END) as accepted,
                         COUNT(CASE WHEN lead_reports.buyer_id IS NULL AND lead_reports.is_posted = 1 THEN 1 END) as rejected,
+                        COUNT(CASE WHEN lead_reports.is_retainer > 0 THEN 1 END) as retained,
                         COUNT(CASE WHEN lead_reports.sold_type = 'CPL' THEN 1 END) as accepted_cpl,
+                        AVG(CASE WHEN pd.retained_date IS NOT NULL THEN IF(DATEDIFF(pd.retained_date, pd.created_at) < 0, 0, DATEDIFF(pd.retained_date, pd.created_at)) END) AS avg_retain_time,
+                        COUNT(CASE WHEN lead_reports.is_retainer > 0 THEN 1 END) / COUNT(CASE WHEN lead_reports.buyer_id IS NOT NULL AND lead_reports.is_posted = 1 THEN 1 END) * 100 as avg_retained_leads,
                         SUM(lead_reports.lead_revenue) as revenue,
                         SUM(lead_reports.lead_profit) as profit,
                         SUM(lead_reports.affiliate_payout) as affiliate_payout,
@@ -53,6 +57,7 @@ class ReportingController extends Controller
                         AVG(lead_reports.lead_profit) as average_profit,
                         AVG(lead_reports.affiliate_payout) as affiliate_average_payout
                     ")
+                    ->leftJoin('platform_datas as pd', 'lead_reports.lead_id', '=', 'pd.id')
                     ->leftJoin('platform_lists as pl', 'lead_reports.list_id', '=', 'pl.id')
                     ->leftJoin('buyers', 'lead_reports.buyer_id', '=', 'buyers.id')
                     ->leftJoin('integrations', 'lead_reports.buyer_integration_id', '=', 'integrations.id')
@@ -82,11 +87,13 @@ class ReportingController extends Controller
 
         $baseQuery = DB::table(DB::raw("({$subQuery->toSql()}) as sub"))
                             ->mergeBindings($subQuery->getQuery()) // Ensure bindings are merged correctly
-                            ->selectRaw("
-                                sub.*,
-                                FORMAT((sub.accepted / NULLIF(sub.posted, 0)) * 100, 2) as acceptance_rate,
-                                FORMAT((sub.accepted_cpl / NULLIF(sub.posted, 0)) * 100, 2) as acceptance_rate_cpl
-                            ")
+                            ->selectRaw("sub.*")
+                            ->when(empty($request->is_total), function ($query) {
+                                return $query->selectRaw("
+                                    FORMAT((sub.accepted / NULLIF(sub.posted, 0)) * 100, 2) as acceptance_rate,
+                                    FORMAT((sub.accepted_cpl / NULLIF(sub.posted, 0)) * 100, 2) as acceptance_rate_cpl
+                                ");
+                            })
                             ->when(! empty($orderBy) && ! empty($orderIn), function ($query) use ($orderBy, $orderIn) {
                                 return $query->orderBy($orderBy, $orderIn);
                             })
@@ -144,7 +151,23 @@ class ReportingController extends Controller
     {
         $lists = PlatformList::select('id as value', 'name as label')->get();
         $buyers = DB::table('buyers')->select('id as value', 'name as label')->get();
-        $affiliates = User::select('id as value', 'name as label')->where('role', 'affiliate')->get();
+        $affiliates = User::select('id as value', 'name as label', 'data->affids as affids', 'role')
+                        ->where('role', 'affiliate')
+                        ->get()
+                        ->map(function ($user) {
+                            if(! hasAffiliateAccess() && $user->role === 'affiliate') {
+                                return [
+                                    'value' => $user->value,
+                                    'label' => $user->affids ? implode(', ', json_decode($user->affids, true)) : ''
+                                ];
+                            }
+
+                            return [
+                                'value' => $user->value,
+                                'label' => $user->name
+                            ];
+                        })->toArray();
+
         $affIds = LeadReport::select('affid as value', 'affid as label')->whereNotNull('affid')->groupBy('affid')->get();
 
         $buyer_integrations = DB::table('integrations')
@@ -207,6 +230,10 @@ class ReportingController extends Controller
                     'label' => 'Affiliate Average Payout',
                     'db_name' => 'AVG(lead_reports.affiliate_payout)',
                 ],
+                'retained' => [
+                    'label' => 'Retained',
+                    'db_name' => 'COUNT(CASE WHEN lead_reports.is_retainer > 0 THEN 1 END)',
+                ],
                 'revenue_per_lead' => [
                     'label' => 'Revenue Per Lead',
                     'db_name' => 'AVG(lead_reports.lead_revenue)',
@@ -232,7 +259,7 @@ class ReportingController extends Controller
                     $formattedColumn = 'DATE_FORMAT(lead_reports.created_at, "%a, %d")';
                     break;
                 case ($diffDays <= 31):
-                    $groupBy = 'FLOOR(DATEDIFF(lead_reports.created_at, "' . $startDate->format('Y-m-d') . '") / 3)';
+                    $groupBy = 'DAY(lead_reports.created_at)';
                     $formattedColumn = 'DATE_FORMAT(lead_reports.created_at, "%a, %d")';
                     break;
                 case ($diffDays <= 60):
@@ -262,7 +289,7 @@ class ReportingController extends Controller
             $performanceData = DB::table('lead_reports')
                                 ->select($performanceQueries)
                                 ->groupBy(DB::raw($groupBy))
-                                ->limit(15)
+                                ->limit(50)
                                 ->when(! empty($startDate) && ! empty($endDate), function ($query) use ($startDate, $endDate) {
                                     return $query->whereBetween('lead_reports.created_at', [$startDate, $endDate]);
                                 })

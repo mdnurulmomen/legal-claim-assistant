@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Api\Lead\Resources;
 
 use App\Models\PlatformList;
 use App\Services\LeadService;
+use App\Traits\AffiliateTrait;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class LeadResource extends JsonResource
 {
+    use AffiliateTrait;
+
     /**
      * Transform the resource into an array.
      *
@@ -22,8 +25,7 @@ class LeadResource extends JsonResource
             'buyer_integration' => $this->buyer_integration,
             'buyer_id' => $this->buyer_id,
             'buyer_name' => $this->buyer_name,
-            'affiliate_id' => $this->affiliate_id,
-            'affiliate_name' => $this->affiliate_name,
+            'affiliate_name' => hasAffiliateAccess() ? $this->affiliate_name : $this->formatAffIds($this->affids),
             'list_name' => $this->list_name,
             'lead_status' => $this->lead_status,
             'revenue' => $this->revenue,
@@ -33,6 +35,9 @@ class LeadResource extends JsonResource
             'email' => $this->email,
             'phone' => $this->phone,
             'timestamp' => $this->created_at ? $this->created_at->format('Y-m-d H:i') : '',
+            'created_at' => $this->created_at,
+            'retained_date' => $this->retained_date ? $this->retained_date : '',
+            'sold_type' => $this->sold_type,
             "first_name" => '',
             "last_name" => '',
             "attorney" => '',
@@ -69,13 +74,12 @@ class LeadResource extends JsonResource
             "age_claimant" => '',
         ];
 
-        $data = array_merge($leads, $this->datas);
+        $leads = array_merge($leads, $this->datas);
 
-        return $data;
-
-        if (empty($request->is_export)){
-            return $data;
+        if (! empty($request->is_export)){
+            return (new LeadService())->filterDataForExport($leads);
         }
-        return (new LeadService())->filterDataForExport($data);
+
+        return $leads;
     }
 }

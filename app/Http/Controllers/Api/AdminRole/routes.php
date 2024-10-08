@@ -13,5 +13,6 @@ Route::prefix('admin-role')->as('admin-role.')
         $route->post('create-role', 'createAdminRole')->name('role.create');
         $route->get('show-role/{roleId}', 'showAdminRole')->name('role.show');
         $route->put('update-role/{roleId}', 'updateAdminRole')->name('role.update');
+        $route->put('update-access/{roleId}', 'updateAccess')->name('role.update-access');
         $route->delete('delete-role/{roleId}', 'deleteAdminRole')->name('role.delete');
     });

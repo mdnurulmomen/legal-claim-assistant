@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
 
 //*******************Response Modifier Start************************/
 
@@ -82,6 +84,31 @@ function customResponse(mixed $data, bool $success, int $status, string $message
 
 //*******************Response Modifier End************************/
 
+/**
+ * Checks if the currently authenticated user has affiliate access.
+ *
+ * @return bool
+ */
+function hasAffiliateAccess(): bool
+{
+    if (!auth('sanctum')->check()) {
+        return false;
+    }
+
+    $userId = auth('sanctum')->id();
+
+    $user = User::query()
+        ->leftJoin('admin_roles as ar', 'users.admin_role_id', '=', 'ar.id')
+        ->where('users.id', $userId)
+        ->select('ar.is_show_affiliate', 'ar.admin_role')
+        ->first();
+
+    if (empty($user)) {
+        return false;
+    }
+    // return false;
+    return $user->admin_role === 'super_admin' || (bool) $user->is_show_affiliate;
+}
 
 /**
  * Returns value after formatting currency and with $ sign.
@@ -103,4 +130,33 @@ function minusBeforeDollarSign(?string $currency = '', float $number = 0)
     }
 
     return $formatted;
+}
+
+/**
+ * Download invoice file from remote url.
+ * Then save it to storage
+ * Then return the full path of the saved file.
+ * But before saving, check if the file already exists in the storage.
+ * @param string $url
+ * @return Response
+ */
+function downloadInvoiceFile(string $url): string
+{
+    $file_name = basename($url);
+    $encoded_file_name = rawurlencode($file_name);
+
+    $url = str_replace($file_name, $encoded_file_name, $url);
+
+    $file_path = storage_path('app/public/invoices/' . $file_name);
+
+    if (!file_exists($file_path)) {
+        try {
+            $file = file_get_contents($url);
+            file_put_contents($file_path, $file);
+        } catch (\Exception $e) {
+            return 'Error: ' . $e->getMessage();
+        }
+    }
+
+    return url(Storage::url('invoices/' . rawurlencode($file_name)));
 }

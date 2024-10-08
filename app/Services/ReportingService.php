@@ -26,7 +26,7 @@ class ReportingService
     public function formatOrderByIn(Request $request): array
     {
         $orderBy = $request->input('order_by', '');
-        $orderIn = $request->input('order_in', '');
+        $orderIn = $request->order_in;
 
         if (! in_array($orderIn, ['asc', 'desc'])) {
             $orderIn = '';
@@ -42,6 +42,9 @@ class ReportingService
             'accepted',
             'rejected',
             'accepted_cpl',
+            'avg_retained_leads',
+            'avg_retain_time',
+            'retained',
             'acceptance_rate',
             'acceptance_rate',
             'revenue',
@@ -240,6 +243,7 @@ class ReportingService
     public function getConditionMethod(int $index, string $type = null): string
     {
         $method = $index == 0 ? 'where' : 'orWhere';
+        if(! $type) return $method;
 
         $matchType = match($type){
             'exists' => 'NotNull',
@@ -270,29 +274,35 @@ class ReportingService
             '!=' => 'not_equals',
             default => null
         };
-        // return in_array($operator, ['exists', 'does_not_exist']) ? $operator : null;
     }
 
+    /**
+     * Retrieves performance data for the given request parameters.
+     *
+     * @param QueryBuilder $baseQuery
+     * @param Request $request
+     * @return ReportingResource
+     */
     public function getReportTotals(QueryBuilder $baseQuery, Request $request)
     {
-        $leads = $baseQuery->lazyById(1000, 'id');
-        $totals = [
-            'platform_name' => 'Total',
-            'posted' => $leads->sum('posted'),
-            'accepted' => $leads->sum('accepted'),
-            'rejected' => $leads->sum('rejected'),
-            'accepted_cpl' => $leads->sum('accepted_cpl'),
-            'revenue' => $leads->sum('revenue'),
-            'profit' => $leads->sum('profit'),
-            'affiliate_payout' => $leads->sum('affiliate_payout'),
-            'revenue_per_lead' => $leads->sum('revenue_per_lead'),
-            'average_profit' => $leads->sum('average_profit'),
-            'affiliate_average_payout' => $leads->sum('affiliate_average_payout'),
-            'acceptance_rate' => $leads->avg('acceptance_rate'),
-            'acceptance_rate_cpl' => $leads->avg('acceptance_rate_cpl'),
-        ];
+        $totals = $baseQuery->selectRaw('
+            SUM(posted) as posted,
+            SUM(accepted) as accepted,
+            SUM(rejected) as rejected,
+            SUM(accepted_cpl) as accepted_cpl,
+            SUM(retained) as retained,
+            AVG(IF(avg_retain_time < 0, 0, avg_retain_time)) as avg_retain_time,
+            SUM(revenue) as revenue,
+            SUM(profit) as profit,
+            SUM(affiliate_payout) as affiliate_payout,
+            SUM(revenue_per_lead) as revenue_per_lead,
+            SUM(average_profit) as average_profit,
+            SUM(affiliate_average_payout) as affiliate_average_payout,
+            AVG(FORMAT((accepted / NULLIF(posted, 0)) * 100, 2)) as acceptance_rate,
+            AVG(FORMAT((accepted_cpl / NULLIF(posted, 0)) * 100, 2)) as acceptance_rate_cpl
+        ')->first();
 
-        $totals = (object) $totals;
+        $totals->platform_name = 'Total';
 
         return new ReportingResource($totals);
     }

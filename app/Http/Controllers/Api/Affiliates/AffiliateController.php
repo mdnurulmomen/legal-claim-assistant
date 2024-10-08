@@ -36,17 +36,24 @@ class AffiliateController extends Controller
             ->withCount('postingDocs')
 
             ->when(!empty($request->search_txt), function ($query) use ($request) {
-//                return $query->whereAny(['name', 'email', 'username'], 'like', "%{$request->search_txt}%");
 
                 $searchTxt = "%{$request->search_txt}%";
 
-                return $query->where(function ($query) use ($searchTxt) {
-                    $query->where('name', 'like', $searchTxt)
-                        ->orWhere('email', 'like', $searchTxt)
-                        ->orWhere('username', 'like', $searchTxt)
-                        ->orWhereHas('affiliate', function ($query) use ($searchTxt) {
-                            $query->where('country', 'like', $searchTxt)
-                                ->orWhere('company_name', 'like', $searchTxt);
+                return $query->where(function ($query) use ($searchTxt, $request) {
+                    $query->when(! hasAffiliateAccess(), function ($query) use ($request) {
+                            $formattedTxt = explode(',', str_replace(' ', '', $request->search_txt));
+
+                            return $query->where('data->affids', 'like', '%' . $request->search_txt . '%')
+                                        ->orWhereJsonContains('data->affids', $formattedTxt);
+
+                        }, function ($query) use($searchTxt) {
+                           return $query->where('name', 'like', $searchTxt)
+                                    ->orWhere('email', 'like', $searchTxt)
+                                    ->orWhere('username', 'like', $searchTxt)
+                                    ->orWhereHas('affiliate', function ($query) use ($searchTxt) {
+                                            $query->where('country', 'like', $searchTxt)
+                                            ->orWhere('company_name', 'like', $searchTxt);
+                                    });
                         });
                 });
 

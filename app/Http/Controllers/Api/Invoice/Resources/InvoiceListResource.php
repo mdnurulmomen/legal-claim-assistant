@@ -26,7 +26,7 @@ class InvoiceListResource extends JsonResource
             'status' => $this->status,
             // 'listresult' => $this->listresult,
             'listresult' => [],
-            'file' => url(Storage::url($this->file)),
+            'file' => url(Storage::url('invoices/' . $this->file)),
             'created_at' => $this->created_at->toDateTimeString()
         ];
     }

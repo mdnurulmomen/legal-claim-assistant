@@ -9,6 +9,7 @@ use App\Models\AdminRole;
 use App\Models\Menu;
 use App\Models\Permission;
 use App\Models\SavedReport;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -66,24 +67,35 @@ class PermissionController extends Controller
      */
     public function getPermission(Request $request): Response
     {
-        $auth = auth('sanctum')->user();
         $data = [
             'permissions' => [],
             'saved_reports' => [],
+            'is_show_affiliate' => false
         ];
 
-        if(! $auth){
+        if(! auth('sanctum')->check()){
             return withSuccess($data);
         }
 
-        $data['saved_reports'] = SavedReport::whereUserId($auth->id)->select('id', 'title', 'uid')->get();
+        $authUser = User::query()
+                        ->where('users.id', auth('sanctum')->id())
+                        ->leftJoin('admin_roles', 'users.admin_role_id', '=', 'admin_roles.id')
+                        ->select('users.id', 'users.admin_role_id', 'admin_roles.admin_role', 'admin_roles.is_show_affiliate')
+                        ->first();
 
-
-        if($auth->role === 'super_admin'){
+        if(empty($authUser) || empty($authUser->admin_role)){
             return withSuccess($data);
         }
 
-        $data['permissions'] = Permission::where('permissions.admin_role_id', $auth->admin_role_id)
+        $data['saved_reports'] = SavedReport::whereUserId($authUser->id)->select('id', 'title', 'uid')->get();
+
+        if($authUser->admin_role === 'super_admin'){
+            $data['is_show_affiliate'] = true;
+            return withSuccess($data);
+        }
+
+        $data['is_show_affiliate'] = (bool) $authUser->is_show_affiliate;
+        $data['permissions'] = Permission::where('permissions.admin_role_id', $authUser->admin_role_id)
                                     ->select('permissions.id', 'menus.route_name')
                                     ->leftJoin('menus', 'permissions.menu_id', '=', 'menus.id')
                                     ->pluck('route_name');
