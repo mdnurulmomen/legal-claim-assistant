@@ -130,4 +130,21 @@ class PlatformSpecsController extends Controller
             return withError('Specs Saved Failed!');
         }
     }
+
+    public function storeSpecs(SpecsSettingRequest $request, PlatformSpecsService $specsService): Response
+    {
+        DB::beginTransaction();
+
+        try {
+            $user = $specsService->createAffiliateUser($request);
+            $specsService->createSpecs($request, $user);
+
+            DB::commit();
+            return withSuccess(message: 'Specs saved successfully');
+        } catch (\Throwable $th) {
+            info($th->getMessage());
+            DB::rollBack();
+            return withError('Specs Saved Failed!');
+        }
+    }
 }

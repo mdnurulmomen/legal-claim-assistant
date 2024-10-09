@@ -27,8 +27,15 @@ class SpecsSettingRequest extends FormRequest
         $rules = [
             'affiliate_master_id' => ['required', 'integer', 'exists:users,id'],
             'affiliate_id' => ['required', 'integer', 'exists:users,id'],
+            'platform_id' => ['required', 'integer', 'exists:platform_lists,id'],
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255'],
+            'email' => [
+                'required', 'string', 'email', 'max:255',
+                Rule::unique('users', 'email')
+                    ->when(! empty($this->specsId), function($query) {
+                        return $query->ignore($this->affiliate_id);
+                    })
+            ],
             'posting_type' => ['required', 'string', 'max:255'],
             'ping_required_fields' => ['nullable', 'array'],
             'force_pingpost_sell' => ['required', 'boolean'],
@@ -40,6 +47,14 @@ class SpecsSettingRequest extends FormRequest
             'optional_fields' => ['nullable', 'array'],
             'required_fields' => ['nullable', 'array']
         ];
+
+        if(! empty($this->specsId)){
+            $rules['platform_id'] = ['nullable', 'integer', 'exists:platform_lists,id'];
+        }
+
+        if(empty($this->specsId)){
+            $rules['affiliate_id'] = ['nullable', 'integer', 'exists:users,id'];
+        }
 
         return $rules;
     }
