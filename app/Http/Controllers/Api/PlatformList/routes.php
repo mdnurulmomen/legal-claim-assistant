@@ -36,4 +36,5 @@ Route::prefix('platform-specs')->as('platform.specs.')
     ->group(function ($route) {
         $route->get('specs-list/{platformId}', 'specsList')->name('list');
         $route->delete('delete-specs/{specsId}', 'deleteSpecs')->name('delete.specs');
+        $route->post('save-specs/{specsId}', 'saveSpecs')->name('save.specs');
     });

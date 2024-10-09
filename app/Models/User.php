@@ -87,4 +87,9 @@ class User extends Authenticatable
     {
         return $this->hasManyThrough(PartnerPlatformConnection::class, User::class, 'master_user_id', 'user_id', 'id', 'id');
     }
+
+    public function childUsers()
+    {
+        return $this->hasMany(User::class, 'master_user_id', 'id');
+    }
 }
