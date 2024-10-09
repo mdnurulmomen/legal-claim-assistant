@@ -48,11 +48,14 @@ class UserController extends Controller
                     )
                     ->leftJoin('admin_roles as ar', 'users.admin_role_id', '=', 'ar.id')
                     ->when(! empty($request->search_txt), function ($query) use ($request) {
-                        return $query->whereAny(['users.name','users.email','users.username'], 'like', "%{$request->search_txt}%");
+                        return $query->where(function ($query2) use ($request) {
+                            return $query2->whereAny(['users.name','users.email','users.username'], 'like', "%{$request->search_txt}%");
+                        });
                     })
                     ->whereDoesntHave('adminRole', function ($query) {
                         return $query->where('admin_role', 'super_admin');
                     })
+                    ->where('ar.admin_role', 'admin')
                     ->latest('users.id')
                     ->paginate($limit);
 
