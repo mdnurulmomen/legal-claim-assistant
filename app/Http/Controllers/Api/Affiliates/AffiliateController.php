@@ -10,9 +10,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Affiliate;
 use App\Models\Impersonation;
 use App\Models\User;
+use App\Services\LeadService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Http\Response;
 
 class AffiliateController extends Controller
 {
@@ -251,13 +252,18 @@ class AffiliateController extends Controller
         return withSuccess(new AffiliateResource($affiliate));
     }
 
+    public function affiliateList(Request $request, LeadService $leadService): Response
+    {
+        $affiliates = $leadService->getAffiliates($request);
+        return withSuccess($affiliates,  'Affiliates retrieved successfully');
+    }
+
     /**
      * Impersonation of the affiliate based on the provided ID.
      * @param Request $request
      * @param int $id
      * @return Response
      */
-
     public function impersonate(Request $request, $id)
     {
         //check if the user is an affiliate
