@@ -55,7 +55,7 @@ class UserController extends Controller
                     ->whereDoesntHave('adminRole', function ($query) {
                         return $query->where('admin_role', 'super_admin');
                     })
-                    ->where('ar.admin_role', 'admin')
+                    ->where('users.role', 'admin')
                     ->latest('users.id')
                     ->paginate($limit);
 
