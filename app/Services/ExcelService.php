@@ -19,7 +19,7 @@ class ExcelService
     public function formatLeadExportData(Builder $leadQuery): string | StreamedResponse
     {
         function leadGenerators($leadQuery) {
-            foreach ($leadQuery->cursor() as $lead) {
+            foreach ($leadQuery->cursor() as $key => $lead) {
                 yield new LeadResource($lead);
             }
         }

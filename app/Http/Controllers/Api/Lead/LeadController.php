@@ -69,6 +69,8 @@ class LeadController extends Controller
                                 'platform_datas.created_at',
                                 'platform_datas.retained_date',
                                 'platform_datas.sold_type',
+                                'platform_datas.affm_lead_id',
+                                'platform_datas.internal_lead_note'
                             );
                         })
                         ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
