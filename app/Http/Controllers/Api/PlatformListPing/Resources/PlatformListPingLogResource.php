@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\PlatformListPing\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class PlatformListPingResource extends JsonResource
+class PlatformListPingLogResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
