@@ -696,7 +696,6 @@ class LeadService extends ReportingService
         $isRetained = $this->hasAnyRetainedLead($leadId, $reportId);
         if($isRetained) return;
 
-        info('Lead Retained: ' . $leadStatus);
         $this->updatePlatformData($leadId, [
             'lead_status' => $leadStatus ?: 'Pending',
             'retained_date' => null
