@@ -117,6 +117,16 @@ class MenuSeeder extends Seeder
                 'order' => 9,
                 'created_at' => $now,
                 'updated_at' => $now
+            ],
+            [
+                'id' => 10,
+                'title' => 'List Details',
+                'route_name' => 'platformDetails',
+                'type' => 'endpoint',
+                'menu_id' => null,
+                'order' => 2.1,
+                'created_at' => $now,
+                'updated_at' => $now
             ]
         ];
 
