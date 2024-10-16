@@ -28,6 +28,7 @@ class SpecsSettingRequest extends FormRequest
             'affiliate_master_id' => ['required', 'integer', 'exists:users,id'],
             'affiliate_id' => ['required', 'integer', 'exists:users,id'],
             'platform_id' => ['required', 'integer', 'exists:platform_lists,id'],
+            'internal_affiliate' => ['required', 'boolean'],
             'name' => ['required', 'string', 'max:255'],
             'email' => [
                 'required', 'string', 'email', 'max:255',
@@ -42,7 +43,7 @@ class SpecsSettingRequest extends FormRequest
             'affid' => ['required', 'string', 'max:255'],
             'payout.model' => ['nullable', 'string', 'max:255'],
             'payout.amount' => ['nullable', 'numeric'],
-            'payout.params' => ['nullable', 'string'],
+            'payout.percentage' => ['nullable', 'numeric'],
             'buyers' => ['nullable', 'array'],
             'optional_fields' => ['nullable', 'array'],
             'required_fields' => ['nullable', 'array']

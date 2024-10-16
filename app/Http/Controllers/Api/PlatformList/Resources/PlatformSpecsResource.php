@@ -32,6 +32,7 @@ class PlatformSpecsResource extends JsonResource
             'affiliate_master_id' => $this->affiliate_master_id,
             'affids' => $affids,
             'affid' => $this->affid,
+            'internal_affiliate' => (bool) $this->internal_affiliate,
             'label' => $this->label ? Str::title(Str::replace('_', ' ', $this->label)) : '',
             'posting_type' => $this->label,
             'platform_tag' => $this->platform_tag,
