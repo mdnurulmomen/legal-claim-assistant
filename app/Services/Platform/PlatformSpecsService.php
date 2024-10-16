@@ -34,6 +34,8 @@ class PlatformSpecsService
      */
     public function saveSpecs(Request $request, PartnerPlatformConnection $specs): void
     {
+        info($request->internal_affiliate ? 'Internal affiliate' : 'External affiliate');
+
         $options = $specs->options;
         $options['posting_type'] = $request->posting_type;
         $options['force_pingpost_sell'] = (int) $request->force_pingpost_sell;

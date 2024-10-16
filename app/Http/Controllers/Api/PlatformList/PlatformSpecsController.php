@@ -40,13 +40,13 @@ class PlatformSpecsController extends Controller
                         'affiliate.name as affiliate_name',
                         'affiliate.id as affiliate_master_id',
                         'affiliate.data->affids as affids',
+                        'pl.tag as platform_tag',
+                        'partner_platform_connections.created_at',
+                        'partner_platform_connections.is_active',
                         'partner_platform_connections.options->posting_type as label',
                         'partner_platform_connections.options->force_pingpost_sell as force_pingpost_sell',
                         'partner_platform_connections.options->affid as affid',
                         'partner_platform_connections.options->internal_affiliate as internal_affiliate',
-                        'pl.tag as platform_tag',
-                        'partner_platform_connections.created_at',
-                        'partner_platform_connections.is_active'
                     )
                     ->selectRaw("
                         JSON_LENGTH(partner_platform_connections.options->'$.lead_posting.buyers') as buyers_count,

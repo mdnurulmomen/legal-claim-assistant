@@ -76,7 +76,13 @@ class LeadResource extends JsonResource
             "age_claimant" => '',
         ];
 
-        $leads = array_merge($leads, $this->datas);
+        $data = $this->datas;
+
+        if (array_key_exists('lead_status', $data)) {
+            unset($data['lead_status']);
+        }
+
+        $leads = array_merge($leads, $data);
 
         // if (! empty($request->is_export)){
         //     return (new LeadService())->filterDataForExport($leads);

@@ -686,7 +686,7 @@ class LeadService extends ReportingService
      * @param bool $isRetainer
      * @return void
      */
-    public function updateLeadStatus(int $leadId, int $reportId, bool $isRetainer): void
+    public function updateLeadStatus(int $leadId, int $reportId, bool $isRetainer, ?string $leadStatus = null): void
     {
         if($isRetainer){
             $this->updatePlatformData($leadId, ['lead_status' => 'Retained']);
@@ -696,8 +696,9 @@ class LeadService extends ReportingService
         $isRetained = $this->hasAnyRetainedLead($leadId, $reportId);
         if($isRetained) return;
 
+        info('Lead Retained: ' . $leadStatus);
         $this->updatePlatformData($leadId, [
-            'lead_status' => 'Pending',
+            'lead_status' => $leadStatus ?: 'Pending',
             'retained_date' => null
         ]);
     }
@@ -750,6 +751,10 @@ class LeadService extends ReportingService
         }
 
         unset($requestData['show_in_portal']);
+
+        if(! array_key_exists('lead_status', $requestData)){
+            unset($requestData['lead_status']);
+        }
 
         return $requestData;
     }
