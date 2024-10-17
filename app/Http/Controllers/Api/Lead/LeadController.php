@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Integration;
 use App\Models\LeadReport;
 use App\Models\PlatformData;
+use App\Models\PlatformPings;
 use App\Models\PlatformList;
 use App\Services\ExcelService;
 use App\Services\LeadService;
@@ -79,7 +80,10 @@ class LeadController extends Controller
 
                             'affiliate_margin' => LeadReport::select(DB::raw('sum(lead_reports.affiliate_margin)'))
                                                     ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
-                                                    ->limit(1)
+                                                    ->limit(1), 
+                            'ping_log_id' => PlatformPings::select(DB::raw('id'))
+                                            ->whereColumn('platform_pings.lead_id', 'platform_datas.id')
+                                            ->limit(1),
                         ])
                         ->when(! empty($request->platform_id), function($query) use ($request) {
                             return $query->where('platform_datas.list_id', $request->platform_id);

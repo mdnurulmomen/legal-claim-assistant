@@ -18,6 +18,7 @@ class LeadResource extends JsonResource
     {
         $leads = [
             'id' => $this->id,
+            'ping_log_id' => $this->ping_log_id,
             'buyer_integration_id' => $this->buyer_integration_id,
             'buyer_integration' => $this->buyer_integration,
             'buyer_id' => $this->buyer_id,

@@ -203,6 +203,12 @@ class PlatformListPingController extends Controller
         // return response()->json($results);
     }
     
+    /**
+     * Retrieves lead, ping log, post log based on the request.
+     *
+     * @param Request $request
+     * @return Response
+     */
     public function getPingInfo(Request $request, $leadId)
     {
         $lead = PlatformPings::where('id', $leadId)->first();

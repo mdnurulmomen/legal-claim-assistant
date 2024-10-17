@@ -7,7 +7,8 @@ Route::prefix('leads')->as('leads.')
     ->controller(LeadController::class)
     ->middleware('auth:sanctum')
     ->group(function ($route) {
-        $route->get('list', 'list')->name('list');
+        $route->get('list', 'list')->name('list.get');
+        $route->post('list', 'list')->name('list.post');
         $route->get('headers', 'getLeadHeaders')->name('headers');
         $route->get('lead-info/{leadId}', 'getLeadInfo')->name('lead-info');
         $route->post('update-leads', 'updateLeads')->name('update-leads');
