@@ -40,12 +40,13 @@ class PlatformSpecsController extends Controller
                         'affiliate.name as affiliate_name',
                         'affiliate.id as affiliate_master_id',
                         'affiliate.data->affids as affids',
+                        'pl.tag as platform_tag',
+                        'partner_platform_connections.created_at',
+                        'partner_platform_connections.is_active',
                         'partner_platform_connections.options->posting_type as label',
                         'partner_platform_connections.options->force_pingpost_sell as force_pingpost_sell',
                         'partner_platform_connections.options->affid as affid',
-                        'pl.tag as platform_tag',
-                        'partner_platform_connections.created_at',
-                        'partner_platform_connections.is_active'
+                        'partner_platform_connections.options->internal_affiliate as internal_affiliate',
                     )
                     ->selectRaw("
                         JSON_LENGTH(partner_platform_connections.options->'$.lead_posting.buyers') as buyers_count,
@@ -131,6 +132,13 @@ class PlatformSpecsController extends Controller
         }
     }
 
+    /**
+     * Store a new specs for a given platform
+     *
+     * @param SpecsSettingRequest $request
+     * @param PlatformSpecsService $specsService
+     * @return Response
+     */
     public function storeSpecs(SpecsSettingRequest $request, PlatformSpecsService $specsService): Response
     {
         DB::beginTransaction();

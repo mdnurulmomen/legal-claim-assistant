@@ -69,6 +69,8 @@ class LeadController extends Controller
                                 'platform_datas.created_at',
                                 'platform_datas.retained_date',
                                 'platform_datas.sold_type',
+                                'platform_datas.affm_lead_id',
+                                'platform_datas.internal_lead_note'
                             );
                         })
                         ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
@@ -366,7 +368,7 @@ class LeadController extends Controller
             DB::beginTransaction();
             $report = LeadReport::create($formattedData);
             $leadService->updateReportData($report, $request, $formattedData, isCreate: true);
-            $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer);
+            $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer, $request->lead_status);
             $leadService->updateRevenuePayout($request->lead_id);
             DB::commit();
 
@@ -388,19 +390,21 @@ class LeadController extends Controller
     public function getSingleReports(Request $request, int $reportId): Response
     {
         $report = LeadReport::query()
+                        ->leftJoin('platform_datas', 'lead_reports.lead_id', '=', 'platform_datas.id')
                         ->select(
-                            'id',
-                            'is_retainer',
-                            'is_paid',
-                            'is_internal',
-                            'is_posted',
-                            'lead_revenue',
-                            'affiliate_payout',
-                            'lead_profit',
-                            'affiliate_margin',
-                            'profit_margin',
-                            'sold_type',
-                            'created_at'
+                            'lead_reports.id',
+                            'lead_reports.is_retainer',
+                            'lead_reports.is_paid',
+                            'lead_reports.is_internal',
+                            'lead_reports.is_posted',
+                            'lead_reports.lead_revenue',
+                            'lead_reports.affiliate_payout',
+                            'lead_reports.lead_profit',
+                            'lead_reports.affiliate_margin',
+                            'lead_reports.profit_margin',
+                            'lead_reports.sold_type',
+                            'lead_reports.created_at',
+                            'platform_datas.lead_status'
                         )
                         ->find($reportId);
 
@@ -439,7 +443,7 @@ class LeadController extends Controller
             DB::beginTransaction();
             $report->update($formattedData);
             $leadService->updateReportData($clonedReport, $request, $formattedData);
-            $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer);
+            $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer, $request->lead_status);
             $leadService->updateRevenuePayout($request->lead_id);
             DB::commit();
 

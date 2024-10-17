@@ -21,6 +21,7 @@ class LeadResource extends JsonResource
     {
         $leads = [
             'id' => $this->id,
+            'affm_lead_id' => $this->affm_lead_id,
             'buyer_integration_id' => $this->buyer_integration_id,
             'buyer_integration' => $this->buyer_integration,
             'buyer_id' => $this->buyer_id,
@@ -34,6 +35,7 @@ class LeadResource extends JsonResource
             'affiliate_margin' => $this->affiliate_margin,
             'email' => $this->email,
             'phone' => $this->phone,
+            'internal_lead_note' => $this->internal_lead_note,
             'timestamp' => $this->created_at ? $this->created_at->format('Y-m-d H:i') : '',
             'created_at' => $this->created_at,
             'retained_date' => $this->retained_date ? $this->retained_date : '',
@@ -74,11 +76,17 @@ class LeadResource extends JsonResource
             "age_claimant" => '',
         ];
 
-        $leads = array_merge($leads, $this->datas);
+        $data = $this->datas;
 
-        if (! empty($request->is_export)){
-            return (new LeadService())->filterDataForExport($leads);
+        if (array_key_exists('lead_status', $data)) {
+            unset($data['lead_status']);
         }
+
+        $leads = array_merge($leads, $data);
+
+        // if (! empty($request->is_export)){
+        //     return (new LeadService())->filterDataForExport($leads);
+        // }
 
         return $leads;
     }

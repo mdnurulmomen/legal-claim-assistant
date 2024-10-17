@@ -45,7 +45,8 @@ class StoreLeadReportRequest extends FormRequest
             'is_posted' => ['nullable', 'boolean'],
             'page_source' => ['nullable', 'string', 'max:255'],
             'affm_source_id' => ['nullable', 'string'],
-            'created_at' => ['required', 'date']
+            'created_at' => ['required', 'date'],
+            'lead_status' => ['nullable', 'string', 'max:255']
         ];
     }
 

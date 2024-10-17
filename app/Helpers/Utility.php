@@ -50,5 +50,4 @@ class Utility
         'report' => 'Report',
         'global_leads' => 'Global Leads',
     ];
-
 }

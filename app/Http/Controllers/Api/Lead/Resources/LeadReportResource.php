@@ -27,7 +27,8 @@ class LeadReportResource extends JsonResource
             'affiliate_margin' => (float) $this->affiliate_margin,
             'profit_margin' => (float) $this->profit_margin,
             'sold_type' => $this->sold_type,
-            'created_at' => $this->created_at->format('Y-m-d')
+            'created_at' => $this->created_at->format('Y-m-d'),
+            'lead_status' => $this->lead_status
         ];
     }
 }

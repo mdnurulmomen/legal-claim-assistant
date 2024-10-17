@@ -10,6 +10,7 @@ use App\Models\PageSetting;
 use App\Models\PlatformData;
 use App\Models\PlatformList;
 use App\Models\User;
+use App\Traits\FormatterTrait;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -20,6 +21,8 @@ use Illuminate\Support\Facades\DB;
 
 class LeadService extends ReportingService
 {
+    use FormatterTrait;
+
     protected $validOrderByColumns = [
         'email',
         'phone',
@@ -138,7 +141,8 @@ class LeadService extends ReportingService
                 return $query->where($searchCol, $searchText);
             }
 
-            return $query->orWhereRaw('LOWER(datas) like ?', ["%{$searchText}%"]);
+            return $query->where('platform_datas.affm_lead_id', $searchText)
+                    ->orWhereRaw('LOWER(datas) like ?', ["%{$searchText}%"]);
 
                 // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.first_name"))) LIKE ?', ["%{$searchText}%"])
                 // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.last_name"))) LIKE ?', ["%{$searchText}%"]);
@@ -682,7 +686,7 @@ class LeadService extends ReportingService
      * @param bool $isRetainer
      * @return void
      */
-    public function updateLeadStatus(int $leadId, int $reportId, bool $isRetainer): void
+    public function updateLeadStatus(int $leadId, int $reportId, bool $isRetainer, ?string $leadStatus = null): void
     {
         if($isRetainer){
             $this->updatePlatformData($leadId, ['lead_status' => 'Retained']);
@@ -693,7 +697,7 @@ class LeadService extends ReportingService
         if($isRetained) return;
 
         $this->updatePlatformData($leadId, [
-            'lead_status' => 'Pending',
+            'lead_status' => $leadStatus ?: 'Pending',
             'retained_date' => null
         ]);
     }
@@ -746,6 +750,10 @@ class LeadService extends ReportingService
         }
 
         unset($requestData['show_in_portal']);
+
+        if(! array_key_exists('lead_status', $requestData)){
+            unset($requestData['lead_status']);
+        }
 
         return $requestData;
     }
@@ -991,7 +999,6 @@ class LeadService extends ReportingService
                             return $query->$method($item['conditional_keys']);
                         });
                     })
-                    ->take(2)
                     ->get()
                     ->groupBy(function($item) use ($selectableFields) {
                         return collect($selectableFields)->map(function($field) use ($item) {
