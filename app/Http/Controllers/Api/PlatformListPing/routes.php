@@ -11,4 +11,5 @@ Route::prefix('/platform-lists/ping-logs/')->as('platformping.')
         $route->get('/fetch-data', 'fetchData')->name('get.fetch.data');
         $route->post('/fetch-data', 'fetchData')->name('post.fetch.data');
         $route->get('/get-filters', 'getFilterData')->name('get_filters');
+        $route->get('/ping-info/{leadId}',  'getPingInfo')->name('pinginfo');
     });
