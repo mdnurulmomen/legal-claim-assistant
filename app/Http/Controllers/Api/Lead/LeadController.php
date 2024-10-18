@@ -12,6 +12,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Integration;
 use App\Models\LeadReport;
 use App\Models\PlatformData;
+use App\Models\PlatformPings;
+use App\Models\LeadLog;
 use App\Models\PlatformList;
 use App\Services\ExcelService;
 use App\Services\LeadService;
@@ -520,6 +522,7 @@ class LeadController extends Controller
         return withSuccess($data);
     }
 
+
     public function updateFilledFields(UpdateFilledRequest $request, LeadService $leadService): Response
     {
         try {
@@ -533,5 +536,51 @@ class LeadController extends Controller
         }
 
         return withSuccess(message: 'Lead Filled Fields Updated Successfully!');
+    }
+
+    /**
+     * Retrieves lead post log based on the request.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function getLeadLogInfo(Request $request, $leadId)
+    {
+        if($leadId) {
+            $lead_log   = [];
+            $lead       = LeadLog::where('lead_id', $leadId)->first();
+
+            if (!$lead) {
+                $lead = PlatformData::where('id', $leadId)->first();
+            } else {
+                $lead_log   = $lead->log_data;
+                $lead       = $lead->lead;
+            }
+
+            if ($lead) {
+                //sort the order by order key
+                if (isset($lead_log["direct_posts"])) {
+                    uasort($lead_log["direct_posts"], function($a, $b) {
+                        return $a['order'] - $b['order'];
+                    });
+                }
+
+                if (isset($lead_log["grouped_pings"]) && count($lead_log["grouped_pings"]) > 0) {
+                    //order by price
+                    uasort($lead_log["grouped_pings"], function($a, $b) {
+                        $aPrice = isset($a['price']['amount']) ? $a['price']['amount'] : 0;
+                        $bPrice = isset($b['price']['amount']) ? $b['price']['amount'] : 0;
+                        return $bPrice - $aPrice;
+                    });
+                }
+
+                $results = array(
+                    'log_data'  => $lead_log,
+                    'lead'      => $lead,
+                );
+                return withSuccess($results);
+            }
+        }
+        return withError('Invalid Lead Log request.');
     }
 }

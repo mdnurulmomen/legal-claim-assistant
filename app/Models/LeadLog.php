@@ -20,4 +20,9 @@ class LeadLog extends Model
     protected $casts = [
         'log_data' => 'array'
     ];
+    
+    public function lead()
+    {
+        return $this->belongsTo(PlatformData::class, 'lead_id', 'id');
+    }
 }
