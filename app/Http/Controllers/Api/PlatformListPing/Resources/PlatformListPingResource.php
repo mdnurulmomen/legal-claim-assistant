@@ -15,7 +15,7 @@ class PlatformListPingResource extends JsonResource
     public function toArray($request): array
     {
         return [ 
-            'internal_lead_id'      => $this->internal_lead_id,
+            'lead_id'               => $this->lead_id,
             'affiliate_id'          => $this->affiliate_id, 
             'name'                  => $this->name, 
             'list_id'               => $this->list_id, 

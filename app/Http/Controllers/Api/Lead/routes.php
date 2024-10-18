@@ -20,4 +20,5 @@ Route::prefix('leads')->as('leads.')
         $route->get('buyer-integrations', 'getBuyerIntegrations')->name('buyer-integrations');
         $route->get('get-integrations', 'getIntegrations')->name('get-integrations');
         $route->get('get-lead-options/{type}', 'getLeadOptions')->name('get-lead-options');
+        $route->get('lead-log-info/{leadId}',  'getLeadLogInfo')->name('lead-log-info');
     });

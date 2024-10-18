@@ -102,7 +102,7 @@ class PlatformListPingController extends Controller
         }
 
         //group by list and affid
-        $pingLogData = $platformPingQuery->selectRaw('platform_pings.id as internal_lead_id, platform_pings.affiliate_id, users.name, platform_pings.list_id, platform_lists.name as list_name, platform_lists.tag as list_tag, platform_pings.phone, platform_pings.ping_id, platform_pings.buyer, platform_pings.internal_buyer_price, platform_pings.affiliate_price, platform_pings.sold, platform_pings.accepted, platform_pings.created_at')
+        $pingLogData = $platformPingQuery->selectRaw('platform_pings.lead_id as lead_id, platform_pings.affiliate_id, users.name, platform_pings.list_id, platform_lists.name as list_name, platform_lists.tag as list_tag, platform_pings.phone, platform_pings.ping_id, platform_pings.buyer, platform_pings.internal_buyer_price, platform_pings.affiliate_price, platform_pings.sold, platform_pings.accepted, platform_pings.created_at')
                                 ->paginate($limit);
                                 
         return withSuccessResourceList(PlatformListPingResource::collection($pingLogData));
@@ -211,7 +211,7 @@ class PlatformListPingController extends Controller
      */
     public function getPingInfo(Request $request, $leadId)
     {
-        $lead = PlatformPings::where('id', $leadId)->first();
+        $lead = PlatformPings::where('lead_id', $leadId)->first();
         
         if($lead){
             $lead_log = [];

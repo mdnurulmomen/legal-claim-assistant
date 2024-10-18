@@ -12,6 +12,7 @@ use App\Models\Integration;
 use App\Models\LeadReport;
 use App\Models\PlatformData;
 use App\Models\PlatformPings;
+use App\Models\LeadLog;
 use App\Models\PlatformList;
 use App\Services\ExcelService;
 use App\Services\LeadService;
@@ -80,10 +81,7 @@ class LeadController extends Controller
 
                             'affiliate_margin' => LeadReport::select(DB::raw('sum(lead_reports.affiliate_margin)'))
                                                     ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
-                                                    ->limit(1), 
-                            'ping_log_id' => PlatformPings::select(DB::raw('id'))
-                                            ->whereColumn('platform_pings.lead_id', 'platform_datas.id')
-                                            ->limit(1),
+                                                    ->limit(1),  
                         ])
                         ->when(! empty($request->platform_id), function($query) use ($request) {
                             return $query->where('platform_datas.list_id', $request->platform_id);
@@ -452,5 +450,51 @@ class LeadController extends Controller
     {
         $data = $leadService->convertTypeToData($request, $type);
         return withSuccess($data);
+    }
+    
+    /**
+     * Retrieves lead post log based on the request.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function getLeadLogInfo(Request $request, $leadId)
+    {
+        if($leadId) { 
+            $lead_log   = [];
+            $lead       = LeadLog::where('lead_id', $leadId)->first();
+
+            if (!$lead) { 
+                $lead = PlatformData::where('id', $leadId)->first();
+            } else {
+                $lead_log   = $lead->log_data;
+                $lead       = $lead->lead;
+            }
+
+            if ($lead) { 
+                //sort the order by order key
+                if (isset($lead_log["direct_posts"])) {
+                    uasort($lead_log["direct_posts"], function($a, $b) {
+                        return $a['order'] - $b['order'];
+                    });
+                } 
+
+                if (isset($lead_log["grouped_pings"]) && count($lead_log["grouped_pings"]) > 0) {
+                    //order by price
+                    uasort($lead_log["grouped_pings"], function($a, $b) {
+                        $aPrice = isset($a['price']['amount']) ? $a['price']['amount'] : 0;
+                        $bPrice = isset($b['price']['amount']) ? $b['price']['amount'] : 0;
+                        return $bPrice - $aPrice;
+                    });
+                }
+                
+                $results = array(
+                    'log_data'  => $lead_log,
+                    'lead'      => $lead,
+                );
+                return withSuccess($results);  
+            }
+        } 
+        return withError('Invalid Lead Log request.');
     }
 }

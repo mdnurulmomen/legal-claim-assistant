@@ -17,8 +17,7 @@ class LeadResource extends JsonResource
     public function toArray($request): array
     {
         $leads = [
-            'id' => $this->id,
-            'ping_log_id' => $this->ping_log_id,
+            'id' => $this->id, 
             'buyer_integration_id' => $this->buyer_integration_id,
             'buyer_integration' => $this->buyer_integration,
             'buyer_id' => $this->buyer_id,
