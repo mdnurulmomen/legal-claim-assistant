@@ -110,6 +110,7 @@ class PlatformListPingController extends Controller
 
         //group by list and affid
         $pingLogData = $platformPingQuery->selectRaw("
+            platform_pings.lead_id,
             platform_pings.affiliate_id,
             users.name,
             JSON_EXTRACT(users.data, '$.affids') AS affids,
