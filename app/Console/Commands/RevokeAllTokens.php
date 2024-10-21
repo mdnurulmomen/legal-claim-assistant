@@ -28,7 +28,8 @@ class RevokeAllTokens extends Command
      */
     public function handle()
     {
-        DB::table('personal_access_tokens')->delete();
+        // DB::table('personal_access_tokens')->delete();
+        DB::table('page_settings')->where('page', 'report')->where('type', 'table')->delete();
 
         $this->info('All users have been logged out.');
 
