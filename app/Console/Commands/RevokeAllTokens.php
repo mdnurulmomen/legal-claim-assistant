@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\PageSetting;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -29,11 +30,12 @@ class RevokeAllTokens extends Command
     public function handle()
     {
         // DB::table('personal_access_tokens')->delete();
-        DB::table('page_settings')->where('page', 'report')->where('type', 'table')->delete();
+        $isDeleted = PageSetting::where('page', 'report')->where('type', 'table')->delete();
 
-        $this->info('All users have been logged out.');
+        $this->info($isDeleted ? 'Deleted' : 'Not deleted');
+
+        $this->info('All users have been logged out');
 
         return 0;
     }
 }
-
