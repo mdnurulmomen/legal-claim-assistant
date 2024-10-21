@@ -73,6 +73,7 @@ class PlatformSpecsController extends Controller
                                 });
                         });
                     })
+                    ->latest('id')
                     ->paginate($limit);
 
         return withSuccessResourceList(PlatformSpecsResource::collection($specs));

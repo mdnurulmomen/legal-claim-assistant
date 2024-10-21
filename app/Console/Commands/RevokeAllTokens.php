@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use App\Models\PageSetting;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Support\Facades\Concurrency;
 class RevokeAllTokens extends Command
 {
     /**
