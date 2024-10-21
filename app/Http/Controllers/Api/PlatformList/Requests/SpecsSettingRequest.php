@@ -28,7 +28,7 @@ class SpecsSettingRequest extends FormRequest
             'affiliate_master_id' => ['required', 'integer', 'exists:users,id'],
             'affiliate_id' => ['required', 'integer', 'exists:users,id'],
             'platform_id' => ['required', 'integer', 'exists:platform_lists,id'],
-            'internal_affiliate' => ['required', 'boolean'],
+            'internal_affiliate' => ['nullable', 'boolean'],
             'name' => ['required', 'string', 'max:255'],
             'email' => [
                 'required', 'string', 'email', 'max:255',
