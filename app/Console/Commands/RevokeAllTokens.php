@@ -29,10 +29,9 @@ class RevokeAllTokens extends Command
      */
     public function handle()
     {
-        // DB::table('personal_access_tokens')->delete();
-        $isDeleted = PageSetting::where('page', 'report')->where('type', 'table')->delete();
-
-        $this->info($isDeleted ? 'Deleted' : 'Not deleted');
+        DB::table('personal_access_tokens')->delete();
+        // $isDeleted = PageSetting::where('page', 'report')->where('type', 'table')->delete();
+        // $this->info($isDeleted ? 'Deleted' : 'Not deleted');
 
         $this->info('All users have been logged out');
 
