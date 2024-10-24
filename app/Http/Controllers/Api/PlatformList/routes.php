@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\PlatformList\PlatformIntegrationController;
 use App\Http\Controllers\Api\PlatformList\PlatformListController;
+use App\Http\Controllers\Api\PlatformList\PlatformSettingsController;
 use App\Http\Controllers\Api\PlatformList\PlatformSpecsController;
 use Illuminate\Support\Facades\Route;
 
@@ -38,4 +39,11 @@ Route::prefix('platform-specs')->as('platform.specs.')
         $route->delete('delete-specs/{specsId}', 'deleteSpecs')->name('delete.specs');
         $route->post('save-specs/{specsId}', 'saveSpecs')->name('save.specs');
         $route->post('store-specs', 'storeSpecs')->name('store.specs');
+    });
+
+Route::prefix('platform-settings')->as('platform.settings.')
+    ->controller(PlatformSettingsController::class)
+    ->middleware('auth:sanctum')
+    ->group(function ($route) {
+        $route->post('save-settings', 'saveSettings')->name('save.settings');
     });
