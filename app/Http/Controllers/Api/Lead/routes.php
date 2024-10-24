@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('leads')->as('leads.')
     ->controller(LeadController::class)
-    ->middleware('auth:sanctum')
+   ->middleware('auth:sanctum')
     ->group(function ($route) {
         $route->post('list', 'list')->name('list');
         $route->get('list', 'list')->name('list.get');
