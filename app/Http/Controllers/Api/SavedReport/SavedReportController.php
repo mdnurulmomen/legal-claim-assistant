@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\SavedReport;
 use App\Http\Controllers\Api\SavedReport\Requests\SavedReportRequest;
 use App\Http\Controllers\Api\SavedReport\Resources\SavedReportResource;
 use App\Http\Controllers\Controller;
+use App\Models\PageSetting;
 use App\Models\SavedReport;
 use App\Services\SettingService;
 use Illuminate\Http\Request;
@@ -38,7 +39,6 @@ class SavedReportController extends Controller
             $savedReport = SavedReport::create($request->validated());
             $savedReport->pageSettings()->attach($request->page_setting_ids);
             $settingService->saveReportPageSettings($request, $savedReport);
-
             DB::commit();
 
             return withSuccess(new SavedReportResource($savedReport), 'Report created successfully');
@@ -113,6 +113,7 @@ class SavedReportController extends Controller
             DB::beginTransaction();
 
             $report->pageSettings()->detach();
+            PageSetting::where('uid', $uid)->delete();
             $report->delete();
 
             DB::commit();
