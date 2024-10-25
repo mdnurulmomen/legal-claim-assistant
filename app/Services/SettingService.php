@@ -34,6 +34,9 @@ class SettingService
 
         $pageSettings = PageSetting::where('page', 'report')
                             ->where('user_id', auth()->id())
+                            ->when(! empty($request->copy_uid), function ($query) use ($request) {
+                                return $query->where('uid', $request->copy_uid);
+                            })
                             ->get()
                             ->map(function($item) use ($savedReport, $now) {
                                 unset($item['id']);
