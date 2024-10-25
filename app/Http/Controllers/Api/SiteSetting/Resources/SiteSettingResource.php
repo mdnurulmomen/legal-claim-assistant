@@ -16,6 +16,7 @@ class SiteSettingResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'uid' => $this->uid,
             'page' => $this->page,
             'data' => $this->data,
             'type' => $this->type,

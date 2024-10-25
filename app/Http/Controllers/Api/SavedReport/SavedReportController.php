@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\SavedReport\Requests\SavedReportRequest;
 use App\Http\Controllers\Api\SavedReport\Resources\SavedReportResource;
 use App\Http\Controllers\Controller;
 use App\Models\SavedReport;
+use App\Services\SettingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -29,22 +30,23 @@ class SavedReportController extends Controller
      * @param SavedReportRequest $request
      * @return Response
      */
-    public function storeReport(SavedReportRequest $request): Response
+    public function storeReport(SavedReportRequest $request, SettingService $settingService): Response
     {
         try {
             DB::beginTransaction();
 
             $savedReport = SavedReport::create($request->validated());
             $savedReport->pageSettings()->attach($request->page_setting_ids);
+            $settingService->saveReportPageSettings($request, $savedReport);
 
             DB::commit();
 
             return withSuccess(new SavedReportResource($savedReport), 'Report created successfully');
 
         } catch (\Throwable $th) {
-           DB::rollBack();
-
-           return withError('Failed to create Report', 400);
+            DB::rollBack();
+            info($th->getMessage());
+            return withError('Failed to create Report', 400);
         }
     }
 
