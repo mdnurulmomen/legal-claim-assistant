@@ -237,7 +237,8 @@ class LeadController extends Controller
                             'platform_datas.lead_status',
                             'platform_datas.affm_source_id',
                             'platform_datas.affiliate_specs_id',
-                            'platform_datas.sold_type'
+                            'platform_datas.sold_type',
+                            'platform_datas.is_internal',
                         );
                     })
                     ->addSelect([
