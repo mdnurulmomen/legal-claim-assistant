@@ -25,6 +25,7 @@ class PlatformListResource extends JsonResource
             'cv_trigger' => $this->cv_trigger ?? [],
             'integrations' => $this->integrations,
             'lead_headers' => $this->lead_headers ?? [],
+            'options' => $this->options ?? [],
             'updated_at' => $this->updated_at ? $this->updated_at->diffForHumans() : '',
             'created_at' => $this->created_at ? $this->created_at->toDateTimeString() : ''
         ];

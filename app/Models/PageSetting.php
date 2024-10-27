@@ -11,6 +11,7 @@ class PageSetting extends Model
     use HasFactory;
 
     protected $fillable = [
+        'uid',
         'page',
         'user_id',
         'data',

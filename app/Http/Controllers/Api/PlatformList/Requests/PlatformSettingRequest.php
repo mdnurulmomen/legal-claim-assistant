@@ -1,14 +1,13 @@
 <?php
 
-namespace App\Http\Controllers\Api\SiteSetting\Requests;
+namespace App\Http\Controllers\Api\PlatformList\Requests;
 
-use App\Helpers\Utility;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Validation\Rule;
 
-class SiteSettingRequest extends FormRequest
+class PlatformSettingRequest extends FormRequest
 {
     /**
      * Determine if the Admin Role is authorized to make this request.
@@ -25,12 +24,24 @@ class SiteSettingRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'page' => ['required', 'string', 'max:255', Rule::in(array_keys(Utility::$pageSlugs))],
-            'data' => ['required', 'array'],
-            'type' => ['required', 'string', 'max:255'],
-            'uid' => ['nullable', 'string', 'max:255'],
+        $rules = [
+            'platform_id' => ['required', 'integer', 'exists:platform_lists,id'],
+            'name' => ['required', 'string', 'max:255'],
+            'campaign_name' => ['nullable', 'string', 'max:255'],
+            'additional_source' => ['nullable', 'array'],
+            'skip_duplicate' => ['sometimes', 'boolean'],
+            'is_high_level' => ['sometimes', 'boolean'],
+            'lead_distribution' => ['nullable', 'string', 'max:255'],
+            'min_ping_price' => ['nullable', 'numeric'],
+            'min_affiliate_ping_prices' => ['nullable', 'array'],
+            'global_postback' => ['nullable', 'array'],
+            'dynamic_margin' => ['nullable', 'array'],
+            'lead_posting' => ['nullable', 'array'],
+            'hidden_values' => ['nullable', 'array'],
+            'lead_headers' => ['nullable', 'array'],
         ];
+
+        return $rules;
     }
 
     /**

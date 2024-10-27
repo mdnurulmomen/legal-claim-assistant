@@ -79,6 +79,13 @@ class PlatformListController extends Controller
         return withSuccess($buyers);
     }
 
+    /**
+     * Retrieves a platform by its ID.
+     *
+     * @param Request $request
+     * @param int $platformId
+     * @return Response
+     */
     public function showPlatform(Request $request, int $platformId): Response
     {
         $platform = PlatformList::query()
@@ -94,6 +101,7 @@ class PlatformListController extends Controller
                             'cv_trigger',
                             'integrations',
                             'lead_headers',
+                            'options',
                             'updated_at',
                             'created_at'
                         )

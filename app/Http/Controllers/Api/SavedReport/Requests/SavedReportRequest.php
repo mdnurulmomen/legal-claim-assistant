@@ -34,8 +34,8 @@ class SavedReportRequest extends FormRequest
             'filters.timezone' => ['nullable', 'string'],
             'filters.event_values' => ['nullable', 'array'],
             'filters.filters' => ['nullable', 'json'],
-            'page_setting_ids' => ['required', 'array'],
-            'page_setting_ids.*' => ['required', 'integer', Rule::exists('page_settings', 'id')]
+            'page_setting_ids' => ['nullable', 'array'],
+            'page_setting_ids.*' => ['nullable', 'integer', Rule::exists('page_settings', 'id')]
         ];
 
         if (request()->isMethod('PUT') && ! empty($this->reportUid)) {

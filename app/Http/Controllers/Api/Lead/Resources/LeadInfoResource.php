@@ -26,7 +26,7 @@ class LeadInfoResource extends JsonResource
             'revenue' => $this->revenue,
             'profit' => $this->profit,
             'affiliate_payout' => $this->affiliate_payout,
-            'affiliate_margin' => $this->affiliate_margin
+            'affiliate_margin' => $this->affiliate_margin,
         ];
 
         if(! empty($request->is_all)){
@@ -39,7 +39,8 @@ class LeadInfoResource extends JsonResource
                 'lead_status' => $this->lead_status,
                 'affm_source_id' => $this->affm_source_id,
                 'affiliate_specs_id' => $this->affiliate_specs_id,
-                'sold_type' => $this->sold_type
+                'sold_type' => $this->sold_type,
+                'is_internal'      => $this->is_internal,
             ]);
         }
 
