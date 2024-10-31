@@ -62,15 +62,15 @@ class PlatformSpecsController extends Controller
                     ->when(! empty($request->search_txt), function ($query) use ($searchTxt) {
 
                         return $query->where(function($query) use ($searchTxt) {
-                            return $query->where('users.name', 'like', "%{$searchTxt}%")
-                                ->when(! hasAffiliateAccess(), function ($query) use ($searchTxt) {
-                                    $formattedTxt = explode(',', str_replace(' ', '', "%{$searchTxt}%"));
 
-                                    return $query->orWhere('affiliate.data->affids', 'like', "%{$searchTxt}%")
-                                        ->orWhereJsonContains('affiliate.data->affids', $formattedTxt);
-                                }, function ($query) use ($searchTxt) {
+                            $formattedTxt = explode(',', str_replace(' ', '', "%{$searchTxt}%"));
+
+                            return $query->where('users.name', 'like', "%{$searchTxt}%")
+                                ->when( hasAffiliateAccess(), function ($query) use ($searchTxt) {
                                     return $query->orWhere('affiliate.name', 'like', "%{$searchTxt}%");
-                                });
+                                })
+                                ->orWhere('affiliate.data->affids', 'like', "%{$searchTxt}%")
+                                ->orWhereJsonContains('affiliate.data->affids', $formattedTxt);
                         });
                     })
                     ->latest('id')

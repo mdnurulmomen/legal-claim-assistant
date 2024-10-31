@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\PlatformList\PlatformCriteriaController;
 use App\Http\Controllers\Api\PlatformList\PlatformIntegrationController;
 use App\Http\Controllers\Api\PlatformList\PlatformListController;
 use App\Http\Controllers\Api\PlatformList\PlatformSettingsController;
@@ -46,4 +47,11 @@ Route::prefix('platform-settings')->as('platform.settings.')
     ->middleware('auth:sanctum')
     ->group(function ($route) {
         $route->post('save-settings', 'saveSettings')->name('save.settings');
+    });
+
+Route::prefix('platform-criteria')->as('platform.criteria.')
+    ->controller(PlatformCriteriaController::class)
+    ->middleware('auth:sanctum')
+    ->group(function ($route) {
+        $route->get('accepted-criteria/{platformId}', 'acceptedCriteria')->name('accepted.criteria');
     });

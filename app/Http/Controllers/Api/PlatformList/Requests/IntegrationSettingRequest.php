@@ -36,7 +36,7 @@ class IntegrationSettingRequest extends FormRequest
             'phone_format' => ['required', 'string'],
             'save_data' => ['required', 'array'],
             'custom_params' => ['nullable', 'array'],
-            'ping' => ['required', 'array'],
+            'ping' => ['nullable', 'array'],
             'ping.required' => ['sometimes', 'boolean'],
             'ping.triggers' => ['nullable', 'array'],
             'ping.save_data' => ['nullable', 'array'],
@@ -51,7 +51,7 @@ class IntegrationSettingRequest extends FormRequest
             'cv_trigger' => ['nullable', 'array']
         ];
 
-        if($this->ping['required']) {
+        if($this->ping && $this->ping['required']) {
             $rules['ping.triggers'] = ['required', 'array'];
             $rules['ping.payout.params'] = ['required', 'string'];
             $rules['ping.save_data'] = ['required', 'array'];

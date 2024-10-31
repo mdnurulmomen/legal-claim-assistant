@@ -73,6 +73,12 @@ class PlatformIntegrationService
             abort(400, 'Integration not found');
         }
 
+        $ping = $requestData['ping'] ?? null;
+
+        if(! $ping) {
+            unset($integration['ping']);
+        }
+
         $integrations[$index] = array_merge($integration, $requestData);
         return $integrations;
     }
