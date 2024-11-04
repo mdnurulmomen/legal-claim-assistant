@@ -41,6 +41,17 @@ class PlatformData extends Model
     ];
 
     /**
+     * Get the list of this platform data.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+
+    public function list()
+    {
+        return $this->belongsTo(PlatformList::class, 'list_id', 'id');
+    }
+
+    /**
      * Get the lead report associated with this platform data.
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasOne
@@ -48,5 +59,22 @@ class PlatformData extends Model
     public function leadReport()
     {
         return $this->hasOne(LeadReport::class, 'lead_id', 'id');
+    }
+
+    /**
+     * Get the lead affiliate associated with this platform data.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasOneThrough
+     */
+    public function affiliate()
+    {
+        return $this->hasOneThrough(
+            User::class,
+            PartnerPlatformData::class,
+            'lead_id',
+            'id',
+            'lead_id',
+            'user_id'
+        );
     }
 }

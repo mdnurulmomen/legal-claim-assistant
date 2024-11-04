@@ -13,6 +13,7 @@ use App\Models\Integration;
 use App\Models\LeadReport;
 use App\Models\PlatformData;
 use App\Models\PlatformPings;
+use App\Models\PartnerPlatformConnection;
 use App\Models\LeadLog;
 use App\Models\PlatformList;
 use App\Services\ExcelService;
@@ -583,5 +584,98 @@ class LeadController extends Controller
             }
         }
         return withError('Invalid Lead Log request.');
+    }
+
+    public function retryLead(Request $request, $leadId)
+    {
+
+        try {
+
+            $datas      = PlatformData::where('id', $request->lead_id)->first();
+            $list       = $datas->list;
+            $payload    = [
+                'phone' => $datas->phone ?? null,
+                'email' => $datas->email ?? null
+            ];
+
+            $original_payload = $datas->lead_log->log_data['original_payload'] ?? $datas->datas;
+
+            $payload = array_merge($payload, $original_payload);
+
+            $affiliate = $datas->affiliate;
+
+            if ($affiliate) {
+                $connection_option = PartnerPlatformConnection::where('user_id', $affiliate->id)->where('platform_id', $list->id)->first();
+                $listData = [
+
+                    'options' => $list->options ?? [],
+                    'integrations' => $list->integrations ?? [],
+                    'list_id' => $list->id ?? null,
+                    'headers' => $list->headers ?? [],
+                    'cv_trigger' => $list->cv_trigger ?? [],
+                    'connection_option' => $connection_option ? ($connection_option->toArray()['options'] ?? []) : [],
+                    'advertiser_id'     => $affiliate->id ?? null,
+                    'advertiser_name'   => $affiliate->name ?? null,
+                    'mode'              => 'post',
+                    'ping_info'         => [],
+
+                ];
+
+                $ping_data = $datas->ping_data;
+
+                if ($ping_data) {
+
+                    $listData['mode'] = 'ping_post';
+                    $listData['ping_info'] = $ping_data->toArray();
+
+                }
+
+                // dd($listData);
+
+                $retry_lead = PlatformDataSaveService::savePublic($payload, $listData, true);
+            } else {
+                $payload['source'] = $list->source ?? null;
+
+                $retry_lead = PlatformDataSaveService::save($payload, $payload['phone'], true);
+
+            }
+
+            if (isset($retry_lead['lead_id'])) {
+
+                //call getLeadInfo
+                $new_request = new Request();
+                $new_request->merge([
+                    'lead_id' => $retry_lead['lead_id']
+                ]);
+                $lead_info = $this->getLeadInfo($new_request, $leadId);
+
+                return withSuccess([
+                    'status' => 200,
+                    'message' => 'Lead has been retried.',
+                    'lead_id' => $retry_lead['lead_id'],
+                    'view' => $lead_info->getData()->view
+                ]);
+
+            }
+
+            return withSuccess([
+                'status' => 400,
+                'message' => 'Something went wrong, please try again later.'
+            ]);
+
+        } catch (\Throwable $th) {
+            //throw $th;
+
+            //send to sentry
+            \Sentry\captureMessage($th->getMessage());
+
+            return withSuccess([
+                'status' => 400,
+                'message' => 'Failed to retry lead. (' . $th->getMessage() . ')',
+                'error' => $th->getMessage()
+            ]);
+
+        }
+
     }
 }

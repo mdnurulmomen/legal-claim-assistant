@@ -9,8 +9,9 @@ use App\Models\PlatformList;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Carbon\Carbon;
-use App\Models\PlatformDatas;
+use App\Models\PlatformData;
 use App\Models\PlatformPings;
+use App\Models\LeadLog;
 use App\Models\User;
 use DataTables;
 use DB;
@@ -225,21 +226,28 @@ class PlatformListPingController extends Controller
         return withSuccess($results);
         // return response()->json($results);
     }
-    
+
     /**
      * Retrieves lead, ping log, post log based on the request.
      *
      * @param Request $request
+     * @param Integer $leadId
      * @return Response
      */
     public function getPingInfo(Request $request, $leadId)
     {
-        $lead = PlatformPings::where('lead_id', $leadId)->first();
-        
+        $lead_log   = [];
+        // $lead       = PlatformPings::where('lead_id', $leadId)->first();
+        $lead       = LeadLog::with(['affiliate'])->where('lead_id', $leadId)->first();
+
+        if (!$lead) {
+            $lead = PlatformData::with(['affiliate'])->where('id', $leadId)->first();
+        } else {
+            $lead_log = $lead->log_data;
+            $lead     = $lead->lead;
+        }
+
         if($lead){
-            $lead_log = [];
-            $lead_log = $lead->ping_logs; 
-            
             //sort the order by order key
             if (isset($lead_log["direct_posts"])) {
                 uasort($lead_log["direct_posts"], function($a, $b) {
@@ -255,12 +263,13 @@ class PlatformListPingController extends Controller
                     return $bPrice - $aPrice;
                 });
             }
-            
+
             $results = array(
                 'log_data'  => $lead_log,
                 'lead'      => $lead,
+                'integrations' => $lead?->list?->integrations
             );
-            return withSuccess($results);  
+            return withSuccess($results);
         }
         return withError('Invalid Ping Log request.');
     }

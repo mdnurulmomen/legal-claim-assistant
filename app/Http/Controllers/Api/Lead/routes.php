@@ -23,4 +23,5 @@ Route::prefix('leads')->as('leads.')
         $route->get('get-lead-options/{type}', 'getLeadOptions')->name('get-lead-options');
         $route->put('update-filled-fields', 'updateFilledFields')->name('update.filled-fields');
         $route->get('lead-log-info/{leadId}',  'getLeadLogInfo')->name('lead-log-info');
+        $route->get('lead-retry/{leadId}',  'retryLead')->name('lead-log-info');
     });
