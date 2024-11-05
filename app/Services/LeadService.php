@@ -655,16 +655,16 @@ class LeadService extends ReportingService
             'is_retainer' => $formattedData['is_retainer']
         ];
 
-        $isReportUpdatable = ($report->is_retainer != $formattedData['is_retainer']) || ($isCreate && $formattedData['is_retainer']);
+        $isReportUpdatable = (bool) $formattedData['is_retainer'];
 
         $date = empty($request->created_at) ? now() : Carbon::parse($request->created_at)->startOfDay();
 
-        if($isReportUpdatable && ! empty($request->is_retainer) && ! empty($request->created_at)){
+        if(! empty($request->is_retainer) && ! empty($request->created_at)){
             $date = Carbon::parse($request->created_at)->midDay();
             $leadData['retained_date'] = $date;
         }
 
-        if($isReportUpdatable && empty($request->is_retainer)){
+        if(empty($request->is_retainer)){
             $leadData['retained_date'] = null;
         }
 
@@ -673,7 +673,7 @@ class LeadService extends ReportingService
             ->where('created_at', '!=', $date)
             ->update(['created_at' => $date]);
 
-        if($isReportUpdatable){
+        if($isReportUpdatable || $request->is_retainer){
             $this->updatePlatformData($request->lead_id, $leadData);
         }
     }
