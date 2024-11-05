@@ -41,21 +41,23 @@ class AffiliateController extends Controller
                 $searchTxt = "%{$request->search_txt}%";
 
                 return $query->where(function ($query) use ($searchTxt, $request) {
-                    $query->when(! hasAffiliateAccess(), function ($query) use ($request) {
-                            $formattedTxt = explode(',', str_replace(' ', '', $request->search_txt));
 
-                            return $query->where('data->affids', 'like', '%' . $request->search_txt . '%')
-                                        ->orWhereJsonContains('data->affids', $formattedTxt);
+                    $affIds = explode(',', str_replace(' ', '', $request->search_txt));
 
-                        }, function ($query) use($searchTxt) {
-                           return $query->where('name', 'like', $searchTxt)
+                    return $query->where(function($query) use ($request, $affIds) {
+                        return $query->where('data->affids', 'like', '%' . $request->search_txt . '%')
+                                    ->orWhereJsonContains('data->affids', $affIds);
+                    })
+                    ->when(hasAffiliateAccess(), function ($query) use ($request, $searchTxt) {
+                        return $query->orWhere('name', 'like', $searchTxt)
                                     ->orWhere('email', 'like', $searchTxt)
                                     ->orWhere('username', 'like', $searchTxt)
                                     ->orWhereHas('affiliate', function ($query) use ($searchTxt) {
                                             $query->where('country', 'like', $searchTxt)
                                             ->orWhere('company_name', 'like', $searchTxt);
                                     });
-                        });
+
+                    });
                 });
 
             })
