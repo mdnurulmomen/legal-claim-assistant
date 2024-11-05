@@ -674,7 +674,6 @@ class LeadService extends ReportingService
             ->update(['created_at' => $date]);
 
         if($isReportUpdatable || $request->is_retainer){
-            info(json_encode($leadData));
             $this->updatePlatformData($request->lead_id, $leadData);
         }
     }
