@@ -36,6 +36,7 @@ class PlatformSettingRequest extends FormRequest
             'min_affiliate_ping_prices' => ['nullable', 'array'],
             'global_postback' => ['nullable', 'array'],
             'dynamic_margin' => ['nullable', 'array'],
+            'buyer_revshare' => ['nullable', 'array'],
             'lead_posting' => ['nullable', 'array'],
             'hidden_values' => ['nullable', 'array'],
             'lead_headers' => ['nullable', 'array'],
