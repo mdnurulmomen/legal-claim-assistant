@@ -45,6 +45,7 @@ class PlatformSettingService
         $options['min_affiliate_ping_prices'] = $request->min_affiliate_ping_prices ?? [];
         $options['global_postback'] = $request->global_postback ?? [];
         $options['dynamic_margin'] = $request->dynamic_margin ?? [];
+        $options['buyer_revshare'] = $request->buyer_revshare ?? [];
         $options['lead_posting'] = $request->lead_posting ?? [];
         $options['hidden_values'] = $request->hidden_values ?? [];
 
