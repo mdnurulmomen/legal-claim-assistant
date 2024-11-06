@@ -143,7 +143,9 @@ class UserController extends Controller
             return withError('User not found', 404);
         }
 
-        $user->update($request->validated());
+        $formattedData = $userService->formatBasicInfo($request, $request->validated(), $user->logo);
+
+        $user->update($formattedData);
         return withSuccess(new AuthResource($user->refresh()), 'User updated successfully');
     }
 
