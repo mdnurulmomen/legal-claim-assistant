@@ -26,15 +26,22 @@ class UpdateBasicInfoRequest extends FormRequest
     {
         $userId = auth()->id();
 
-        return [
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'phone' => [
 
                         'required', 'string', 'max:255',
                         Rule::unique('users', 'phone')->ignore($userId)
                     ],
-            'workspace' => ['nullable', 'string', 'max:255']
+            'workspace' => ['nullable', 'string', 'max:255'],
+            'logo' => ['nullable']
         ];
+
+        if ($this->file('logo')) {
+            $rules['logo'] = 'image|max:5300|mimes:jpg,jpeg,png,svg,webp';
+        }
+
+        return $rules;
     }
 
     /**
