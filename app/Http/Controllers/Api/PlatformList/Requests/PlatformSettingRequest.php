@@ -36,7 +36,9 @@ class PlatformSettingRequest extends FormRequest
             'min_affiliate_ping_prices' => ['nullable', 'array'],
             'global_postback' => ['nullable', 'array'],
             'dynamic_margin' => ['nullable', 'array'],
+            'dynamic_margin.*' => ['nullable', 'numeric', 'max:100'],
             'buyer_revshare' => ['nullable', 'array'],
+            'buyer_revshare.*' => ['nullable', 'numeric', 'max:100'],
             'lead_posting' => ['nullable', 'array'],
             'hidden_values' => ['nullable', 'array'],
             'lead_headers' => ['nullable', 'array'],
@@ -66,6 +68,9 @@ class PlatformSettingRequest extends FormRequest
      */
     public function messages(): array
     {
-        return [];
+        return [
+            'buyer_revshare.*' => 'Buyer revshare value must be between 0 and 100',
+            'dynamic_margin.*' => 'Dynamic margin value must be between 0 and 100'
+        ];
     }
 }
