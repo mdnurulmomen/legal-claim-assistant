@@ -4,9 +4,13 @@ namespace App\Services;
 
 use App\Models\AdminRole;
 use App\Models\User;
+use App\Traits\FileHandlerTrait;
+use Illuminate\Http\Request;
 
 class UserService
 {
+    use FileHandlerTrait;
+
     /**
      * Create a new class instance.
      */
@@ -45,4 +49,26 @@ class UserService
                 ->find($userId);
     }
 
+    /**
+     * Formats the request data for updating basic user information.
+     * If the 'logo' key is present in the request, it will upload the file to the 'profile' directory.
+     * If the 'logo' key is empty, it will delete the old logo file.
+     * If the 'logo' key is not present, it will keep the current logo.
+     * @param Request $request
+     * @param array $data
+     * @param string|null $oldPic
+     * @return array
+     */
+    public function formatBasicInfo(Request $request, array $data, $oldPic = null): array
+    {
+        if ($request->file('logo')) {
+            $data['logo'] = $this->fileUpload($request->file('logo'), 'profile', $oldPic);
+        } elseif (empty($data['logo'])) {
+            $this->fileUnlink($oldPic);
+        } else {
+            if(array_key_exists('logo', $data)) unset($data['logo']);
+        }
+
+        return $data;
+    }
 }
