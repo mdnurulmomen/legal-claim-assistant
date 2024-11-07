@@ -25,7 +25,6 @@ class UserResource extends JsonResource
             'role' => $this->role,
             'admin_role_id' => $this->admin_role_id,
             'admin_role_name' => $this->admin_role_name,
-            'manager' => $this->accountManager?->id,
             'status' => $this->status,
             'user_access' => []
         ];
