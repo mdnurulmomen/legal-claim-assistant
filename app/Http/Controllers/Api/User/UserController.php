@@ -9,8 +9,10 @@ use App\Http\Controllers\Api\User\Requests\UpdateMyEmailRequest;
 use App\Http\Controllers\Api\User\Requests\UpdateMyPasswordRequest;
 use App\Http\Controllers\Api\User\Resources\UserResource;
 use App\Http\Controllers\Api\User\Resources\PartnerSelectResource;
+use App\Http\Controllers\Api\User\Resources\ManagerSelectResource;
 use App\Http\Controllers\Controller;
 use App\Models\AdminRole;
+use App\Models\AccountManager;
 use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Http\Request;
@@ -70,8 +72,16 @@ class UserController extends Controller
      */
     public function createUser(CreateOrUpdateUserRequest $request): Response
     {
-        $user = User::create($request->validated())->load('adminRole:id,admin_role');
+        $validatedData = $request->validated();
+        $user = User::create($validatedData)->load('adminRole:id,admin_role');
         $user->admin_role = $user->adminRole->admin_role;
+
+        if( isset($validatedData['manager']) && !empty($validatedData['manager']) ){
+            AccountManager::updateOrCreate(
+                [ 'affiliate_id'    => $user->id ],
+                [ 'user_id'         =>  $validatedData['manager'] ]
+            );
+        }
 
         return withSuccess(new UserResource($user), 'User created successfully');
     }
@@ -107,9 +117,18 @@ class UserController extends Controller
             return withError('User not found', 404);
         }
 
-        $formattedData = $userService->formatRequestData($request->validated());
+        $validatedData = $request->validated();
+        $formattedData = $userService->formatRequestData($validatedData);
 
         $user->update($formattedData);
+
+        if( isset($validatedData['manager']) && !empty($validatedData['manager']) ){
+            AccountManager::updateOrCreate(
+                [ 'affiliate_id'    => $user->id ],
+                [ 'user_id'         =>  $validatedData['manager'] ]
+            );
+        }
+
         return withSuccess(new UserResource($user->refresh()), 'User updated successfully');
     }
 
@@ -210,6 +229,20 @@ class UserController extends Controller
             ->distinct()
             ->get();
        return withSuccessResourceList(PartnerSelectResource::collection($partners));
+    }
+
+    /**
+     * Retrieves a list of manager.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function managerList()
+    {
+        $managers =  User::query()
+            ->where('users.role', '=', 'admin')
+            ->get();
+       return withSuccessResourceList(ManagerSelectResource::collection($managers));
     }
 
 }

@@ -83,6 +83,14 @@ class User extends Authenticatable
         return $this->hasOne(Affiliate::class);
     }
 
+    /**
+     * Get the affiliate record associated with the user.
+     */
+    public function accountManager()
+    {
+        return $this->hasOneThrough(User::class, AccountManager::class, 'affiliate_id', 'id', 'id', 'user_id');
+    }
+
     public function postingDocs(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
     {
         return $this->hasManyThrough(PartnerPlatformConnection::class, User::class, 'master_user_id', 'user_id', 'id', 'id');
