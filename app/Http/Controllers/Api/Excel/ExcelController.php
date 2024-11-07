@@ -22,27 +22,48 @@ class ExcelController extends Controller
     public function uploadLeadCsv(Request $request, ExcelService $excelService): Response
     {
         $validator = Validator::make($request->all(), [
-                        'file' => 'required|file|mimes:xlsx,csv,xls',
-                    ]);
+            'file' => 'required|file'
+        ]);
 
         if ($validator->fails()) {
             return withError($validator->errors()->first());
         }
 
-        try {
+        $originalFile = $request->file('file');
+        $extension = $originalFile->getClientOriginalExtension();
+        $allowedExtensions = ['csv', 'xls', 'xlsx'];
 
-            $file = $request->file('file')->store('public/import');
+        if (!in_array($extension, $allowedExtensions)) {
+            return withError('The file must be a CSV, XLS, or XLSX.');
+        }
+
+        try {
+            $file = $originalFile->storeAs('public/import', time() . '.' . $extension);
             $path = storage_path('app/' . $file);
+
+            if (!file_exists($path)) {
+                return withError('Uploaded file could not be found.');
+            }
+
             $data = (new FastExcel)->import($path);
+
             $data = $excelService->formatLeadCsvData($data);
-            unlink($path);
+
+            if (file_exists($path)) {
+                unlink($path);
+            }
 
             return withSuccess([
                 'lead_data' => $data,
                 'lead_columns' => $excelService->getLeadColumns($data)
             ]);
+
         } catch (\Throwable $th) {
-            unlink($path);
+
+            if (isset($path) && file_exists($path)) {
+                unlink($path);
+            }
+
             info($th->getMessage());
             return withError('File Upload Failed');
         }
