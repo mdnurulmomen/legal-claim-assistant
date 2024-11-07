@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['https://hub.affimedia.nl', 'http://localhost:5173', 'https://staging-hub.affimedia.nl'],
+    'allowed_origins' => ['https://hub.affimedia.nl', 'http://localhost:5173', 'https://staging-hub.affimedia.nl', 'http://localhost:5174'],
 
     // 'allowed_origins' => ['*'],
 

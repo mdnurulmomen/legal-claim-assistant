@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Affiliates\Resources\AffiliateResource;
 use App\Http\Controllers\Api\Affiliates\Resources\SingleAffiliateResource;
 use App\Http\Controllers\Controller;
 use App\Models\Affiliate;
+use App\Models\AccountManager;
 use App\Models\Impersonation;
 use App\Models\User;
 use App\Services\LeadService;
@@ -174,6 +175,13 @@ class AffiliateController extends Controller
             ]));
         }
 
+        if( isset($validatedData['manager']) && !empty($validatedData['manager']) ){
+            AccountManager::updateOrCreate(
+                [ 'affiliate_id'    => $user->id ],
+                [ 'user_id'         =>  $validatedData['manager'] ]
+            );
+        }
+
 
         return withSuccess(new SingleAffiliateResource($user->load('affiliate')), 'Affiliate updated successfully');
     }
@@ -229,6 +237,13 @@ class AffiliateController extends Controller
                 'vat_number',
             ]
         ));
+
+        if( isset($validatedData['manager']) && !empty($validatedData['manager']) ){
+            AccountManager::updateOrCreate(
+                [ 'affiliate_id'    => $affiliate->id ],
+                [ 'user_id'         =>  $validatedData['manager'] ]
+            );
+        }
 
         // return with success response
         return withSuccess(new AffiliateResource($affiliate->load('affiliate')), 'Affiliate created successfully');

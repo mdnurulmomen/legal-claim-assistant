@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\User\Requests\UpdateMyEmailRequest;
 use App\Http\Controllers\Api\User\Requests\UpdateMyPasswordRequest;
 use App\Http\Controllers\Api\User\Resources\UserResource;
 use App\Http\Controllers\Api\User\Resources\PartnerSelectResource;
+use App\Http\Controllers\Api\User\Resources\ManagerSelectResource;
 use App\Http\Controllers\Controller;
 use App\Models\AdminRole;
 use App\Models\User;
@@ -70,7 +71,8 @@ class UserController extends Controller
      */
     public function createUser(CreateOrUpdateUserRequest $request): Response
     {
-        $user = User::create($request->validated())->load('adminRole:id,admin_role');
+        $validatedData = $request->validated();
+        $user = User::create($validatedData)->load('adminRole:id,admin_role');
         $user->admin_role = $user->adminRole->admin_role;
 
         return withSuccess(new UserResource($user), 'User created successfully');
@@ -107,9 +109,11 @@ class UserController extends Controller
             return withError('User not found', 404);
         }
 
-        $formattedData = $userService->formatRequestData($request->validated());
+        $validatedData = $request->validated();
+        $formattedData = $userService->formatRequestData($validatedData);
 
         $user->update($formattedData);
+
         return withSuccess(new UserResource($user->refresh()), 'User updated successfully');
     }
 
@@ -138,7 +142,7 @@ class UserController extends Controller
      */
     public function updateMyInfo(UpdateBasicInfoRequest $request, UserService $userService): Response
     {
-        $user = $userService->getSingleUser(auth()->id());
+        $user = $userService->getSingleUser(auth('sanctum')->id());
         if(empty($user)){
             return withError('User not found', 404);
         }
@@ -210,6 +214,20 @@ class UserController extends Controller
             ->distinct()
             ->get();
        return withSuccessResourceList(PartnerSelectResource::collection($partners));
+    }
+
+    /**
+     * Retrieves a list of manager.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function managerList()
+    {
+        $managers =  User::query()
+            ->where('users.role', '=', 'admin')
+            ->get();
+       return withSuccessResourceList(ManagerSelectResource::collection($managers));
     }
 
 }
