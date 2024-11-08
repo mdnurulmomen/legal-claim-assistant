@@ -50,7 +50,6 @@ class CreateOrUpdateUserRequest extends FormRequest
             'workspace' => ['required', 'string', 'max:255'],
             'role' => ['required', 'string', Rule::in(array_keys(Utility::$userRoles))],
             'admin_role_id' => ['required', 'integer', Rule::exists('admin_roles', 'id')],
-            'manager' => ['nullable', 'integer', Rule::exists('users', 'id')],
             'status' => ['nullable', 'boolean', Rule::in(array_keys(Utility::$userStatus))]
         ];
     }
