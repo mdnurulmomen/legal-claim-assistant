@@ -15,22 +15,22 @@ trait CommonTrait
      * @param bool $isReturnDateObj
      * @return array
      */
-    public function formatStartEndDateWithTimezone( string $startDate = null, string $endDate = null, string $timezone = null, bool $isReturnDateObj = false): array
+    public function formatStartEndDateWithTimezone( string $startDate = null, string $endDate = null, string $timezone = null, bool $isReturnDateObj = false, $defaultTimezone = 'Europe/Amsterdam'): array
     {
         if(empty($startDate) || empty($endDate)){
             return [$startDate, $endDate];
         }
 
         if(empty($timezone)){
-            $timezone = 'Europe/Amsterdam';
+            $timezone = $defaultTimezone;
         }
 
         $reportStart = Carbon::parse($startDate, $timezone);
         $reportEnd = Carbon::parse($endDate, $timezone);
 
-        if ($timezone !== 'Europe/Amsterdam') {
-            $reportStart->setTimezone('Europe/Amsterdam');
-            $reportEnd->setTimezone('Europe/Amsterdam');
+        if ($timezone !== $defaultTimezone) {
+            $reportStart->setTimezone($defaultTimezone);
+            $reportEnd->setTimezone($defaultTimezone);
         }
 
         if($isReturnDateObj){
