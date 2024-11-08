@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Affiliates\Resources\AffiliateResource;
 use App\Http\Controllers\Api\Affiliates\Resources\SingleAffiliateResource;
 use App\Http\Controllers\Controller;
 use App\Models\Affiliate;
+use App\Models\AccountManager;
 use App\Models\Impersonation;
 use App\Models\User;
 use App\Services\LeadService;
@@ -41,21 +42,23 @@ class AffiliateController extends Controller
                 $searchTxt = "%{$request->search_txt}%";
 
                 return $query->where(function ($query) use ($searchTxt, $request) {
-                    $query->when(! hasAffiliateAccess(), function ($query) use ($request) {
-                            $formattedTxt = explode(',', str_replace(' ', '', $request->search_txt));
 
-                            return $query->where('data->affids', 'like', '%' . $request->search_txt . '%')
-                                        ->orWhereJsonContains('data->affids', $formattedTxt);
+                    $affIds = explode(',', str_replace(' ', '', $request->search_txt));
 
-                        }, function ($query) use($searchTxt) {
-                           return $query->where('name', 'like', $searchTxt)
+                    return $query->where(function($query) use ($request, $affIds) {
+                        return $query->where('data->affids', 'like', '%' . $request->search_txt . '%')
+                                    ->orWhereJsonContains('data->affids', $affIds);
+                    })
+                    ->when(hasAffiliateAccess(), function ($query) use ($request, $searchTxt) {
+                        return $query->orWhere('name', 'like', $searchTxt)
                                     ->orWhere('email', 'like', $searchTxt)
                                     ->orWhere('username', 'like', $searchTxt)
                                     ->orWhereHas('affiliate', function ($query) use ($searchTxt) {
                                             $query->where('country', 'like', $searchTxt)
                                             ->orWhere('company_name', 'like', $searchTxt);
                                     });
-                        });
+
+                    });
                 });
 
             })
@@ -172,6 +175,13 @@ class AffiliateController extends Controller
             ]));
         }
 
+        if( isset($validatedData['manager']) && !empty($validatedData['manager']) ){
+            AccountManager::updateOrCreate(
+                [ 'affiliate_id'    => $user->id ],
+                [ 'user_id'         =>  $validatedData['manager'] ]
+            );
+        }
+
 
         return withSuccess(new SingleAffiliateResource($user->load('affiliate')), 'Affiliate updated successfully');
     }
@@ -227,6 +237,13 @@ class AffiliateController extends Controller
                 'vat_number',
             ]
         ));
+
+        if( isset($validatedData['manager']) && !empty($validatedData['manager']) ){
+            AccountManager::updateOrCreate(
+                [ 'affiliate_id'    => $affiliate->id ],
+                [ 'user_id'         =>  $validatedData['manager'] ]
+            );
+        }
 
         // return with success response
         return withSuccess(new AffiliateResource($affiliate->load('affiliate')), 'Affiliate created successfully');

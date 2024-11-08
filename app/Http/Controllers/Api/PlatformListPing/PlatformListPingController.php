@@ -110,6 +110,7 @@ class PlatformListPingController extends Controller
 
         //group by list and affid
         $pingLogData = $platformPingQuery->selectRaw("
+            platform_pings.id,
             platform_pings.lead_id,
             platform_pings.affiliate_id,
             users.name,
@@ -225,21 +226,21 @@ class PlatformListPingController extends Controller
         return withSuccess($results);
         // return response()->json($results);
     }
-    
+
     /**
      * Retrieves lead, ping log, post log based on the request.
      *
      * @param Request $request
      * @return Response
      */
-    public function getPingInfo(Request $request, $leadId)
+    public function getPingInfo(Request $request, $id)
     {
-        $lead = PlatformPings::where('lead_id', $leadId)->first();
-        
+        $lead = PlatformPings::where('id', $id)->first();
+
         if($lead){
             $lead_log = [];
-            $lead_log = $lead->ping_logs; 
-            
+            $lead_log = $lead->ping_logs;
+
             //sort the order by order key
             if (isset($lead_log["direct_posts"])) {
                 uasort($lead_log["direct_posts"], function($a, $b) {
@@ -255,12 +256,12 @@ class PlatformListPingController extends Controller
                     return $bPrice - $aPrice;
                 });
             }
-            
+
             $results = array(
                 'log_data'  => $lead_log,
                 'lead'      => $lead,
             );
-            return withSuccess($results);  
+            return withSuccess($results);
         }
         return withError('Invalid Ping Log request.');
     }

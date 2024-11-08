@@ -21,7 +21,16 @@ class SiteSettingController extends Controller
      */
     public function getSiteSettings(Request $request, $slug): Response
     {
-        $settings = PageSetting::where('page', $slug)->get();
+        $settings = PageSetting::where('page', $slug)
+                    ->when($slug === 'report' && ! empty($request->report_id), function ($query) use ($request) {
+                        $query->where('uid', $request->report_id);
+                    })
+                    ->when($slug === 'report' && empty($request->report_id), function ($query) {
+                        $query->whereNull('uid');
+                    })
+                    ->where('user_id', auth()->id())
+                    ->get();
+
         return withSuccess(SiteSettingResource::collection($settings));
     }
 
@@ -35,10 +44,26 @@ class SiteSettingController extends Controller
     {
         $formattedData = $settingService->formatRequestData($request->validated());
 
-        $setting = PageSetting::updateOrCreate(
-                            ['page' => $request->page, 'type' => $request->type, 'user_id' => $formattedData['user_id']],
-                            $formattedData
-                        );
+        $setting = PageSetting::where([
+                            'page' => $request->page,
+                            'type' => $request->type,
+                            'user_id' => $formattedData['user_id']
+                        ])
+                        ->when($request->page === 'report' && ! empty($request->uid), function ($query) use ($request) {
+                            return $query->where('uid', $request->uid);
+                        })
+                        ->when($request->page === 'report' && empty($request->uid), function ($query) {
+                            return $query->whereNull('uid');
+                        })
+                        ->first();
+
+        if(empty($setting)){
+            $setting = PageSetting::create($formattedData);
+        }
+
+        if(! empty($setting)){
+            $setting->update($formattedData);
+        }
 
         return withSuccess(new SiteSettingResource($setting), 'Site setting saved successfully!');
     }

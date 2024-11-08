@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('leads')->as('leads.')
     ->controller(LeadController::class)
-    ->middleware('auth:sanctum')
+   ->middleware('auth:sanctum')
     ->group(function ($route) {
         $route->post('list', 'list')->name('list');
         $route->get('list', 'list')->name('list.get');
@@ -22,5 +22,5 @@ Route::prefix('leads')->as('leads.')
         $route->get('get-integrations', 'getIntegrations')->name('get-integrations');
         $route->get('get-lead-options/{type}', 'getLeadOptions')->name('get-lead-options');
         $route->put('update-filled-fields', 'updateFilledFields')->name('update.filled-fields');
-        $route->get('lead-log-info/{leadId}',  'getLeadLogInfo')->name('lead-log-info');
+        $route->get('lead-log-info/{id}',  'getLeadLogInfo')->name('lead-log-info');
     });
