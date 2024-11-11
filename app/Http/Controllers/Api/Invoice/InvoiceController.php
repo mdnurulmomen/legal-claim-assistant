@@ -28,9 +28,9 @@ class InvoiceController extends Controller
     {
         $invoices = Invoice::query();
 
-        // $invoices = $invoices->whereHas('user', function($query){
-        //     $query->where('role', 'affiliate');
-        // });
+        $invoices = $invoices->whereHas('user', function($query){
+            $query->where('role', 'affiliate');
+        });
 
         $invoices->when( $request->has('status') && (!empty($request->status) && $request->status != "all"), function ($query) use ($request) {
             $query_status = explode(',', $request->status);
