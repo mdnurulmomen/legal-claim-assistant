@@ -29,6 +29,17 @@ class Utility
     ];
 
     /**
+     * Define Invoice status
+     *
+     * @var array
+     */
+    public static $invoiceStatuses = [
+        'Pending' => 'Pending',
+        'Rejected' => 'Rejected',
+        'Unpaid' => 'Unpaid'
+    ];
+
+    /**
      * Define Report Tabs
      *
      * @var array
@@ -50,4 +61,6 @@ class Utility
         'report' => 'Report',
         'global_leads' => 'Global Leads',
     ];
+
+
 }
