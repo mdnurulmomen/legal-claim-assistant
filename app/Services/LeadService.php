@@ -317,6 +317,7 @@ class LeadService extends ReportingService
             'less_than' => $this->makeConditions($conditions['column'], '<', $conditions['value'], $isRelational),
             'equals' => $this->makeConditions($conditions['column'], '=', $conditions['value'], $isRelational),
             'not_equals' => $this->makeConditions($conditions['column'], '!=', $conditions['value'], $isRelational),
+            'equals_any' => $this->makeConditions($conditions['column'], '=', $conditions['value'], $isRelational),
             'exists' => $this->makeConditions($conditions['column'], 'exists', null, $isRelational),
             'does_not_exist' => $this->makeConditions($conditions['column'], 'does_not_exist', null, $isRelational),
             default => []

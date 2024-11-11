@@ -127,6 +127,16 @@ class MenuSeeder extends Seeder
                 'order' => 2.1,
                 'created_at' => $now,
                 'updated_at' => $now
+            ],
+            [
+                'id' => 11,
+                'title' => 'Caps Overview',
+                'route_name' => 'caps-overview',
+                'type' => 'endpoint',
+                'menu_id' => null,
+                'order' => 6.1,
+                'created_at' => $now,
+                'updated_at' => $now
             ]
         ];
 
