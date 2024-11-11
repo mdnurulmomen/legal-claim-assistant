@@ -209,6 +209,7 @@ class ReportingService
             'less_than' => $this->makeCondition($conditions['column'], '<', $conditions['value']),
             'equals' => $this->makeCondition($conditions['column'], '=', $conditions['value']),
             'not_equals' => $this->makeCondition($conditions['column'], '!=', $conditions['value']),
+            'equals_any' => $this->makeCondition($conditions['column'], '=', $conditions['value']),
             'exists' => $this->makeCondition($conditions['column'], 'exists'),
             'does_not_exist' => $this->makeCondition($conditions['column'], 'does_not_exist'),
             default => []
