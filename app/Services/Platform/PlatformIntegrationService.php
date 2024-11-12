@@ -235,16 +235,8 @@ class PlatformIntegrationService
     /**
      * Inserts or deletes cap history records for a given platform integration.
      *
-     * This function processes the caps associated with a specific platform integration
-     * and performs the following actions:
-     * 1. Deletes any existing cap records for the specified integration where the end date is null.
-     * 2. Inserts new cap records for each active cap configuration in the integration.
-     *
-     * The cap records include details such as the list ID, integration ID, buyer ID, cap settings,
-     * status, column scope, cap amount, duration, and timestamps.
-     *
-     * @param Request $request The HTTP request containing integration data, including the integration name.
-     * @param PlatformList $platform The platform object containing integration details and configurations.
+     * @param Request $request
+     * @param PlatformList $platform
      */
     public function insertOrDeleteCapsHistory(Request $request, PlatformList $platform): void
     {
@@ -320,7 +312,7 @@ class PlatformIntegrationService
      * @param array $columns Array of column => value pairs.
      * @return string|null
      */
-    public function formatColumnScope(array $columns): ?string
+    public function formatColumnScope(array | null $columns): ?string
     {
         if(empty($columns)) return null;
 
