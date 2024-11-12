@@ -2,8 +2,12 @@
 
 namespace App\Services\Platform;
 
+use App\Models\Caps;
+use App\Models\Integration;
 use App\Models\PlatformList;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class PlatformIntegrationService
 {
@@ -31,8 +35,8 @@ class PlatformIntegrationService
         $integrations = $platform->integrations;
 
         $index = collect($integrations)->search(function ($item) use ($name) {
-            return strtolower($item['name']) === strtolower($name);
-        });
+                    return strtolower($item['name']) === strtolower($name);
+                });
 
         if($this->isDuplicateName($name, $integrations, $index)) {
             abort(400, 'Integration name already exists');
@@ -226,5 +230,102 @@ class PlatformIntegrationService
             }
         }
         return $updatedArray;
+    }
+
+    /**
+     * Inserts or deletes cap history records for a given platform integration.
+     *
+     * This function processes the caps associated with a specific platform integration
+     * and performs the following actions:
+     * 1. Deletes any existing cap records for the specified integration where the end date is null.
+     * 2. Inserts new cap records for each active cap configuration in the integration.
+     *
+     * The cap records include details such as the list ID, integration ID, buyer ID, cap settings,
+     * status, column scope, cap amount, duration, and timestamps.
+     *
+     * @param Request $request The HTTP request containing integration data, including the integration name.
+     * @param PlatformList $platform The platform object containing integration details and configurations.
+     */
+    public function insertOrDeleteCapsHistory(Request $request, PlatformList $platform): void
+    {
+        $name = str()->slug($request->name, '_');
+        $listIntegration = collect($platform->integrations)->firstWhere('name', $name);
+        $caps = $listIntegration['caps'] ?? [];
+        $buyerId = (int) $listIntegration['buyer_profile'];
+
+        $integration = Integration::query()
+                            ->where('list_id', $platform->id)
+                            ->where('buyer_id', $buyerId)
+                            ->where('buyer_unique_id', $name)
+                            ->first();
+
+        Caps::where('integration_id', $integration->id)
+                ->where('buyer_id', $buyerId)
+                ->where('list_id', $platform->id)
+                ->whereNull('end_date')
+                ->delete();
+
+        $capsObject = [];
+        $now = now();
+
+        foreach ($caps as $cap) {
+
+            if(! $cap['active']) continue;
+
+            $capsObject[] = [
+                'list_id' => $platform->id,
+                'integration_id' => $integration->id,
+                'buyer_id' => $buyerId,
+                'caps' => json_encode($cap),
+                'status' => 'Active',
+                'column_scope' => $this->formatColumnScope($cap['column']),
+                'cap_amount' => (float) $cap['amount'],
+                'duration' => $cap['duration'],
+                'start_date' => $this->generateCapsDate($cap['duration']),
+                'end_date' => null,
+                'created_at' => $now,
+                'updated_at' => $now
+            ];
+        }
+
+        Caps::insert($capsObject);
+    }
+
+    /**
+     * Generates a Carbon date object based on the given duration.
+     *
+     * @param string|null $duration The duration type, which can be 'daily' or 'weekly'.
+     * @return \Illuminate\Support\Carbon|null
+     */
+    public function generateCapsDate(?string $duration) : Carbon | null
+    {
+
+        $timezone = 'America/New_York';
+
+        if ($duration === 'daily') {
+            return Carbon::now($timezone)->startOfDay();
+        }
+
+        if ($duration === 'weekly') {
+            return Carbon::now($timezone)->startOfWeek();
+        }
+
+        return null;
+    }
+
+    /**
+     * Returns a string representation of a column scope array in the format "column:value".
+     * If the array is empty, returns null.
+     *
+     * @param array $columns Array of column => value pairs.
+     * @return string|null
+     */
+    public function formatColumnScope(array $columns): ?string
+    {
+        if(empty($columns)) return null;
+
+        $key = key($columns);
+        $value = $columns[$key];
+        return "{$key}:{$value}";
     }
 }

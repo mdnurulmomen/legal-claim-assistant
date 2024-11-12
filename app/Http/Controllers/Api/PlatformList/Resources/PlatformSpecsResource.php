@@ -36,7 +36,7 @@ class PlatformSpecsResource extends JsonResource
             'label' => $this->label ? Str::title(Str::replace('_', ' ', $this->label)) : '',
             'posting_type' => $this->label,
             'platform_tag' => $this->platform_tag,
-            'is_active' => $this->is_active,
+            'is_active' => (bool) $this->is_active,
             'buyers_count' => $this->buyers_count,
             'ping_required_fields' => $this->ping_required_fields ? json_decode($this->ping_required_fields) : [],
             'buyers' => $this->buyers ? json_decode($this->buyers) : [],

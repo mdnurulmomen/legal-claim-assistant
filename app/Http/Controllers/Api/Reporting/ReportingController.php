@@ -62,21 +62,6 @@ class ReportingController extends Controller
                     ->leftJoin('buyers', 'lead_reports.buyer_id', '=', 'buyers.id')
                     ->leftJoin('integrations', 'lead_reports.buyer_integration_id', '=', 'integrations.id')
                     ->leftJoin('users as affiliate', 'lead_reports.affiliate_id', '=', 'affiliate.id')
-                    // ->when(in_array('lead_reports.affid', $groupBy), function ($query) {
-                    //     return $query->whereNotNull('lead_reports.affid');
-                    // })
-                    // ->when(in_array('lead_reports.buyer_id', $groupBy), function ($query) {
-                    //     return $query->whereNotNull('lead_reports.buyer_id');
-                    // })
-                    // ->when(in_array('lead_reports.buyer_integration_id', $groupBy), function ($query) {
-                    //     return $query->whereNotNull('lead_reports.buyer_integration_id');
-                    // })
-                    // ->when(in_array('lead_reports.list_id', $groupBy), function ($query) {
-                    //     return $query->whereNotNull('lead_reports.list_id');
-                    // })
-                    // ->when(in_array('lead_reports.affiliate_id', $groupBy), function ($query) {
-                    //     return $query->whereNotNull('lead_reports.affiliate_id');
-                    // })
                     ->when(! empty($relationalConditions), function (Builder $query) use ($relationalConditions, $reportingService) {
                         return $reportingService->convertRelationsToSql($query, $relationalConditions);
                     })

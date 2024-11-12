@@ -2,16 +2,22 @@
 
 namespace App\Http\Controllers\Api\Invoice;
 
+use App\Helpers\Utility;
 use App\Http\Controllers\Api\Invoice\Resources\InvoiceListResource;
 use App\Http\Controllers\Api\Invoice\Resources\InvoiceResource;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
+use App\Traits\CommonTrait;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class InvoiceController extends Controller
 {
+    use CommonTrait;
+
     /**
      * Retrieves a list of platforms based on the request parameters.
      *
@@ -111,6 +117,50 @@ class InvoiceController extends Controller
 
             return withSuccess('Updated Successfully');
         }
+    }
+
+    /**
+     * Retrieves the available invoice statuses and returns them in a successful response.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function invoiceStatus(Request $request)
+    {
+        $statuses = $this->convertToMultiDimensionalArray(Utility::$invoiceStatuses);
+        return withSuccess($statuses);
+    }
+
+    /**
+     * Updates the status of an invoice with the given ID.
+     *
+     * @param Request $request
+     * @param int $invoiceId
+     * @return Response
+     */
+    public function updateInvoiceStatus(Request $request, $invoiceId): Response
+    {
+        $validator = Validator::make($request->all(), [
+            'status' => ['required', 'string', Rule::in(array_keys(Utility::$invoiceStatuses))],
+            'comment' => [ 'required_if:status,Rejected', 'nullable', 'string',],
+        ]);
+
+        if ($validator->fails()) {
+            return withError($validator->errors()->first());
+        }
+
+        $invoice = Invoice::find($invoiceId);
+
+        if(empty($invoice)){
+            return withError('Invalid Invoice request.');
+        }
+
+        $invoice->status = $request->status;
+        $invoice->comment = $request->comment ?? null;
+
+        $invoice->save();
+
+        return withSuccess(message:'Invoice Status Updated Successfully');
     }
 
 }
