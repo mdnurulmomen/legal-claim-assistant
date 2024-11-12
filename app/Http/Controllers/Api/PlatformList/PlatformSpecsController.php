@@ -156,4 +156,23 @@ class PlatformSpecsController extends Controller
             return withError('Specs Saved Failed!');
         }
     }
+
+    /**
+     * Update the status of specs for a given platform
+     *
+     * @param Request $request
+     * @param int $specsId
+     * @return Response
+     */
+    public function updateStatus(Request $request, int $specsId): Response
+    {
+        $specs = PartnerPlatformConnection::find($specsId);
+        if(empty($specs)) {
+            return withError('Specs not found');
+        }
+
+        $specs->is_active = $specs->is_active ? 0 : 1;
+        $specs->save();
+        return withSuccess(message: 'Specs status updated successfully');
+    }
 }

@@ -40,6 +40,7 @@ Route::prefix('platform-specs')->as('platform.specs.')
         $route->delete('delete-specs/{specsId}', 'deleteSpecs')->name('delete.specs');
         $route->post('save-specs/{specsId}', 'saveSpecs')->name('save.specs');
         $route->post('store-specs', 'storeSpecs')->name('store.specs');
+        $route->put('update-status/{specsId}', 'updateStatus')->name('update.status');
     });
 
 Route::prefix('platform-settings')->as('platform.settings.')
