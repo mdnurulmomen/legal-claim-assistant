@@ -9,6 +9,7 @@
         "laravel/framework": "^11.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.9",
+        "predis/predis": "^2.2",
         "propaganistas/laravel-phone": "^5.3",
         "rap2hpoutre/fast-excel": "^5.5"
     },

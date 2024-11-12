@@ -6,11 +6,14 @@ use App\Helpers\Utility;
 use App\Http\Controllers\Api\Invoice\Resources\InvoiceListResource;
 use App\Http\Controllers\Api\Invoice\Resources\InvoiceResource;
 use App\Http\Controllers\Controller;
+use App\Mail\InvoiceRejectionMail;
 use App\Models\Invoice;
+use App\Services\InvoiceService;
 use App\Traits\CommonTrait;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -138,7 +141,7 @@ class InvoiceController extends Controller
      * @param int $invoiceId
      * @return Response
      */
-    public function updateInvoiceStatus(Request $request, $invoiceId): Response
+    public function updateInvoiceStatus(Request $request, $invoiceId, InvoiceService $invoiceService): Response
     {
         $validator = Validator::make($request->all(), [
             'status' => ['required', 'string', Rule::in(array_keys(Utility::$invoiceStatuses))],
@@ -159,6 +162,8 @@ class InvoiceController extends Controller
         $invoice->comment = $request->comment ?? null;
 
         $invoice->save();
+
+        $invoiceService->sendInvoiceRejectionMail($request);
 
         return withSuccess(message:'Invoice Status Updated Successfully');
     }
