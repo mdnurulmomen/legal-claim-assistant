@@ -152,7 +152,7 @@ class InvoiceController extends Controller
             return withError($validator->errors()->first());
         }
 
-        $invoice = Invoice::find($invoiceId);
+        $invoice = Invoice::with(['user:id,name,email'])->find($invoiceId);
 
         if(empty($invoice)){
             return withError('Invalid Invoice request.');
@@ -163,7 +163,9 @@ class InvoiceController extends Controller
 
         $invoice->save();
 
-        $invoiceService->sendInvoiceRejectionMail($request);
+        if($request->status === 'Rejected') {
+            $invoiceService->sendInvoiceRejectionMail($request, $invoice);
+        }
 
         return withSuccess(message:'Invoice Status Updated Successfully');
     }
