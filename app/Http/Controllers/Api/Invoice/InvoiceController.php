@@ -7,10 +7,12 @@ use App\Http\Controllers\Api\Invoice\Resources\InvoiceListResource;
 use App\Http\Controllers\Api\Invoice\Resources\InvoiceResource;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
+use App\Services\InvoiceService;
 use App\Traits\CommonTrait;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -90,6 +92,13 @@ class InvoiceController extends Controller
         return withError('Invalid Invoice request.');
     }
 
+    /**
+     * Updates the status of an invoice based on the request parameter tag.
+     *
+     * @param Request $request
+     * @param string $tag
+     * @return Response
+     */
     public function invoiceUpdate(Request $request, $tag)
     {
 
@@ -138,7 +147,7 @@ class InvoiceController extends Controller
      * @param int $invoiceId
      * @return Response
      */
-    public function updateInvoiceStatus(Request $request, $invoiceId): Response
+    public function updateInvoiceStatus(Request $request, $invoiceId, InvoiceService $invoiceService): Response
     {
         $validator = Validator::make($request->all(), [
             'status' => ['required', 'string', Rule::in(array_keys(Utility::$invoiceStatuses))],
@@ -149,16 +158,30 @@ class InvoiceController extends Controller
             return withError($validator->errors()->first());
         }
 
-        $invoice = Invoice::find($invoiceId);
+        $invoice = Invoice::with(['user:id,name,email'])->find($invoiceId);
 
         if(empty($invoice)){
             return withError('Invalid Invoice request.');
         }
 
-        $invoice->status = $request->status;
-        $invoice->comment = $request->comment ?? null;
+        try {
+            DB::beginTransaction();
 
-        $invoice->save();
+            $invoice->status = $request->status;
+            $invoice->comment = $request->comment ?? null;
+
+            $invoice->save();
+
+            if($request->status === 'Rejected') {
+                $invoiceService->sendInvoiceRejectionMail($request, $invoice);
+            }
+
+            DB::commit();
+
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return withError('Invoice Update Failed!');
+        }
 
         return withSuccess(message:'Invoice Status Updated Successfully');
     }

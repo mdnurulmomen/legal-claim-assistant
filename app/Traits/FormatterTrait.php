@@ -2,17 +2,14 @@
 
 namespace App\Traits;
 
+use Illuminate\Support\Carbon;
+
 trait FormatterTrait {
 
     /**
      * Determines if a given string is likely a randomly generated string.
      *
-     * A string is considered random if it is at least 8 characters long and
-     * has a Shannon entropy of at least 4.0. Additionally, the string must
-     * not contain at least 3 consecutive alphabetic characters.
-     *
      * @param string $string
-     *
      * @return bool
      */
     public function isRandomString($string): bool
@@ -37,14 +34,8 @@ trait FormatterTrait {
     /**
      * Calculates the Shannon entropy of a given string.
      *
-     * The Shannon entropy measures the amount of information in a string. It is
-     * calculated by summing the negative logarithm of the probability of each
-     * character in the string. The probability of a character is the number of
-     * times it appears divided by the total length of the string.
-     *
-     * @param string $string The string for which to calculate the entropy.
-     *
-     * @return float|int The Shannon entropy of the given string.
+     * @param string $string
+     * @return float|int
      */
     public function calculateStringEntropy($string): float|int
     {
@@ -59,5 +50,25 @@ trait FormatterTrait {
         }
 
         return $entropy;
+    }
+
+    /**
+     * Format a given date and time according to the given format.
+     *
+     * @param string|null $dateTime
+     * @param string $format
+     * @param string $timezone
+     * @param string $currentTimezone
+     * @return string|null Output: Aug 16, 2022 2.54 PM.
+     */
+    public function formatDateTime(?string $dateTime, string $format = 'M j, Y g.i A', string $timezone = 'America/New_York', string $currentTimezone = 'UTC'): ?string
+    {
+        if(empty($dateTime)) return null;
+
+        $formattedDate = Carbon::createFromFormat('Y-m-d H:i:s', $dateTime, $currentTimezone) // Assuming the input is in UTC
+                            ->setTimezone($timezone)
+                            ->format($format);
+
+        return $formattedDate;
     }
 }
