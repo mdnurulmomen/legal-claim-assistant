@@ -314,7 +314,7 @@ class PlatformIntegrationService
      */
     public function formatColumnScope(array | null $columns): ?string
     {
-        if(empty($columns)) return null;
+        if(empty($columns)) return 'None';
 
         $key = key($columns);
         $value = $columns[$key];
