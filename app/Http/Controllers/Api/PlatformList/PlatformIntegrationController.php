@@ -11,6 +11,7 @@ use App\Services\Platform\PlatformIntegrationService;
 use App\Traits\CommonTrait;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 
 class PlatformIntegrationController extends Controller
 {
@@ -109,18 +110,33 @@ class PlatformIntegrationController extends Controller
         }
 
         try {
+            DB::beginTransaction();
+
             $integrations = $integrationService->formatSettingData($request, $platform);
             $cvTriggers = $integrationService->formatTriggersData($request, $platform);
 
             $platform->integrations = $integrations;
             $platform->cv_trigger = $cvTriggers;
             $platform->save();
+
+            $integrationService->insertOrDeleteCapsHistory($request, $platform);
+
+            DB::commit();
             return withSuccess(message: 'Integration saved successfully');
         } catch (\Throwable $th) {
+            DB::rollBack();
             return withError($th->getMessage());
         }
     }
 
+    /**
+     * Updates the integration order and status for the given platform ID.
+     *
+     * @param Request $request
+     * @param int $platformId
+     * @param PlatformIntegrationService $integrationService
+     * @return Response
+     */
     public function updateIntegration(Request $request, int $platformId, PlatformIntegrationService $integrationService)
     {
         $platform = PlatformList::select('id', 'integrations')->find($platformId);
@@ -134,6 +150,14 @@ class PlatformIntegrationController extends Controller
         return withSuccess(message: 'Integration order and status updated successfully');
     }
 
+    /**
+     * Stores a new integration for the given platform ID.
+     *
+     * @param AddOrEditIntegrationRequest $request
+     * @param int $platformId
+     * @param PlatformIntegrationService $integrationService
+     * @return Response
+     */
     public function storeIntegration(AddOrEditIntegrationRequest $request, int $platformId, PlatformIntegrationService $integrationService)
     {
         $platform = PlatformList::select('id', 'integrations')->find($platformId);

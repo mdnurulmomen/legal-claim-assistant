@@ -6,14 +6,13 @@ use App\Helpers\Utility;
 use App\Http\Controllers\Api\Invoice\Resources\InvoiceListResource;
 use App\Http\Controllers\Api\Invoice\Resources\InvoiceResource;
 use App\Http\Controllers\Controller;
-use App\Mail\InvoiceRejectionMail;
 use App\Models\Invoice;
 use App\Services\InvoiceService;
 use App\Traits\CommonTrait;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -93,6 +92,13 @@ class InvoiceController extends Controller
         return withError('Invalid Invoice request.');
     }
 
+    /**
+     * Updates the status of an invoice based on the request parameter tag.
+     *
+     * @param Request $request
+     * @param string $tag
+     * @return Response
+     */
     public function invoiceUpdate(Request $request, $tag)
     {
 
@@ -158,13 +164,23 @@ class InvoiceController extends Controller
             return withError('Invalid Invoice request.');
         }
 
-        $invoice->status = $request->status;
-        $invoice->comment = $request->comment ?? null;
+        try {
+            DB::beginTransaction();
 
-        $invoice->save();
+            $invoice->status = $request->status;
+            $invoice->comment = $request->comment ?? null;
 
-        if($request->status === 'Rejected') {
-            $invoiceService->sendInvoiceRejectionMail($request, $invoice);
+            $invoice->save();
+
+            if($request->status === 'Rejected') {
+                $invoiceService->sendInvoiceRejectionMail($request, $invoice);
+            }
+
+            DB::commit();
+
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return withError('Invoice Update Failed!');
         }
 
         return withSuccess(message:'Invoice Status Updated Successfully');

@@ -70,9 +70,6 @@
             </ul>
             <p>Please review the reasons for rejection and make the necessary adjustments before resubmitting the invoice.</p>
             <p>If you have any questions or require further assistance, feel free to reach out to our support team.</p>
-            {{-- <p>
-                <a href="{{ $supportLink }}" class="button">Contact Support</a>
-            </p> --}}
             <p>Thank you for your understanding.</p>
             <p>Best regards,</p>
             <p>The {{ $data['company_name'] }} Team</p>
