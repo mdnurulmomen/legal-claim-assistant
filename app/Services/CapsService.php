@@ -90,6 +90,8 @@ class CapsService
     {
         [$startDate, $endDate] = $this->formatStartEndDateWithTimezone($request->start_date, $request->end_date, $request->timezone, defaultTimezone: 'America/New_York');
 
+        $block = explode(':', $request->column_scope);
+
         $capacities = PlatformData::query();
         $capacities = $capacities
                       ->where('created_at', '>=', $startDate)
@@ -97,16 +99,14 @@ class CapsService
                       ->where('list_id', $request->list_id)
                       ->where('buyer_integration_id', $request->integration_id)
                       ->where('buyer_id', $request->buyer_id)
-                      ->where(function($query) use ($request) {
-                            if ($request->column_scope !== 'None') {
-                                $block = explode(':', $request->column_scope);
-                                $columnName = $block[0];
-                                if (!in_array($columnName, ['affid', 'affm_source_id', 'page_source'])) {
-                                    $columnName = 'data->' . $columnName;
-                                }
-                                $query->where($columnName, $block[1]);
+                      ->when(! empty($request->column_scope) && $request->column_scope !== 'None' && ! empty($block), function($query) use ($block) {
+                            $columnName = $block[0];
+                            if (!in_array($columnName, ['affid', 'affm_source_id', 'page_source'])) {
+                                $columnName = 'datas->' . $columnName;
                             }
-                      })->count();
+                            return $query->where($columnName, $block[1]);
+                      })
+                      ->count();
 
 
         $capacities = [
