@@ -251,6 +251,8 @@ class PlatformIntegrationService
                             ->where('buyer_unique_id', $name)
                             ->first();
 
+        if(empty($integration)) return;
+
         Caps::where('integration_id', $integration->id)
                 ->where('buyer_id', $buyerId)
                 ->where('list_id', $platform->id)
