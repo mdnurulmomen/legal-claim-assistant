@@ -144,10 +144,10 @@ class InvoiceController extends Controller
      * Updates the status of an invoice with the given ID.
      *
      * @param Request $request
-     * @param int $invoiceId
+     * @param int $inUniqueKey
      * @return Response
      */
-    public function updateInvoiceStatus(Request $request, $invoiceId, InvoiceService $invoiceService): Response
+    public function updateInvoiceStatus(Request $request, int | string $inUniqueKey, InvoiceService $invoiceService): Response
     {
         $validator = Validator::make($request->all(), [
             'status' => ['required', 'string', Rule::in(array_keys(Utility::$invoiceStatuses))],
@@ -158,7 +158,12 @@ class InvoiceController extends Controller
             return withError($validator->errors()->first());
         }
 
-        $invoice = Invoice::with(['user:id,name,email'])->find($invoiceId);
+        $invoice = Invoice::with(['user:id,name,email'])
+                        ->where(function($query) use ($inUniqueKey) {
+                            return $query->where('id', $inUniqueKey)
+                                    ->orWhere('tag', $inUniqueKey);
+                        })
+                        ->first();
 
         if(empty($invoice)){
             return withError('Invalid Invoice request.');
