@@ -277,7 +277,7 @@ class LeadService extends ReportingService
                     continue;
                 }
 
-                if(in_array($item['column'], ['list_name', 'buyer_name', 'buyer_integration', 'affiliate_name', 'affid', 'lead_status', 'phone', 'email'])){
+                if(in_array($item['column'], ['list_name', 'buyer_name', 'buyer_integration', 'affiliate_name', 'affid', 'lead_status', 'phone', 'email', 'affm_lead_id'])){
                     $relationalTerms[] = $this->formatAdvanceConditionToSql($item);
                     continue;
                 }
@@ -431,6 +431,11 @@ class LeadService extends ReportingService
                     foreach ($conditionGroup as $index => $condition) {
 
                         $type = $this->getConditionType($condition['operator']);
+
+                        if(in_array($condition['operator'], ['=', '!='])) {
+                            $type = null;
+                        }
+
                         $method = $this->getConditionMethod($index, $type);
 
                         if($type) {
@@ -833,7 +838,8 @@ class LeadService extends ReportingService
             'affid' => 'platform_datas.affid',
             'phone' => 'platform_datas.phone',
             'email' => 'platform_datas.email',
-            'lead_status' => 'platform_datas.lead_status'
+            'lead_status' => 'platform_datas.lead_status',
+            'affm_lead_id' => 'platform_datas.affm_lead_id'
         ];
 
         return $this->convertConditionToSql([
