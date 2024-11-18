@@ -28,7 +28,7 @@ class InvoiceRejectionMail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Invoice Rejection Mail',
+            subject: 'Invoice Rejection - Legal Claim Assistant',
             from: new Address('info@legalclaimassistant.com', 'Legal Claim Assistant'),
             replyTo: [
                 new Address('info@legalclaimassistant.com', 'Legal Claim Assistant')

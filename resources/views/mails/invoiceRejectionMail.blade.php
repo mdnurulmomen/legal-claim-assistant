@@ -20,6 +20,13 @@
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo img {
+            max-width: 150px;
+        }
         .header {
             text-align: center;
             border-bottom: 2px solid #4CAF50;
@@ -58,6 +65,9 @@
 </head>
 <body>
     <div class="container">
+        <div class="logo">
+            <img src="{{ $message->embed($data['company_logo']) }}" alt="{{ $data['company_name'] }} Logo">
+        </div>
         <div class="header">
             <h1>Invoice Rejection Notice</h1>
         </div>

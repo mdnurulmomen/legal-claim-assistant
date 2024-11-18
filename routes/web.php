@@ -14,10 +14,7 @@ Route::get('/', function () {
 });
 
 Route::get('/test', function () {
+    // return asset('/assets/images/logo.png');
+    // return public_path('/assets/images/logo.png');
     return response('Hello World!', 200);
-    // $users = Cache::remember('active_users', 60, function () {
-    //     return User::query()->get();
-    // });
-
-    // return $users;
 });
