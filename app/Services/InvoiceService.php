@@ -34,7 +34,8 @@ class InvoiceService
             'invoice_amount' => ($invoice->currency ? $invoice->currency . ' ' : '') . number_format($invoice->amount, 2), //$invoice->amount,
             'submitted_date' => $this->formatDateTime($invoice->created_at),
             'rejection_reason' => $invoice->comment,
-            'company_name' => 'Legal Claim Assistant'
+            'company_name' => 'Legal Claim Assistant',
+            'company_logo' => asset('/assets/images/logo.png')
         ];
     }
 
