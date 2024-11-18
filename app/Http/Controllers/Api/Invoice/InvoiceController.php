@@ -30,9 +30,9 @@ class InvoiceController extends Controller
     {
         $invoices = Invoice::query();
 
-        // $invoices = $invoices->whereHas('user', function($query){
-        //     $query->where('role', 'affiliate');
-        // });
+        $invoices = $invoices->whereHas('user', function($query){
+            $query->where('role', 'affiliate');
+        });
 
         $invoices->when( $request->has('status') && (!empty($request->status) && $request->status != "all"), function ($query) use ($request) {
             $query_status = explode(',', $request->status);
@@ -185,7 +185,7 @@ class InvoiceController extends Controller
 
         } catch (\Throwable $th) {
             DB::rollBack();
-            return withError('Invoice Update Failed!'. $th->getMessage());
+            return withError('Invoice Update Failed!');
         }
 
         return withSuccess(message:'Invoice Status Updated Successfully');
