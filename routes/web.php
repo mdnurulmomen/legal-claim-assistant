@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\User;
-use Illuminate\Support\Facades\Cache;
+use App\Events\PublicEvent;
+
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -9,12 +9,12 @@ Route::get('/', function () {
         'Content-Type' => 'text/plain',
         'X-Content-Type-Options' => 'nosniff',
         'X-Frame-Options' => 'deny',
-        'X-XSS-Protection' => '1; mode=block'
+        'X-XSS-Protection' => '1;
+        mode=block'
     ]);
 });
 
 Route::get('/test', function () {
-    // return asset('/assets/images/logo.png');
-    // return public_path('/assets/images/logo.png');
+    // PublicEvent::dispatch('test', 'test');
     return response('Hello World!', 200);
 });
