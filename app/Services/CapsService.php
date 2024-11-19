@@ -117,4 +117,101 @@ class CapsService
         return $capacities;
     }
 
+    /**
+     * Retrieves the capacities for all formatted histories within the specified date range.
+     *
+     * @param Request $request
+     * @return array
+     */
+    public function getAllCapacities(Request $request): array
+    {
+        [$startDate, $endDate] = $this->formatStartEndDateWithTimezone($request->start_date, $request->end_date, $request->timezone, defaultTimezone: 'America/New_York');
+        $formattedHistories  = $this->formatHistories($request);
+        $filledItems = [];
+
+        $capacityQuery = PlatformData::where('created_at', '>=', $startDate)->where('created_at', '<=', $endDate);
+
+        foreach($formattedHistories as $key => $history) {
+
+           $count = $capacityQuery->where(function($query) use ($history) {
+                        foreach ($history as $key => $value) {
+                            $query->where($key, $value);
+                        }
+                    })
+                    ->count();
+
+            $filledItems[$key] = [
+                'id' => $key,
+                'filled' => $count
+            ];
+        }
+
+        return $filledItems;
+    }
+
+/**
+ * Formats and structures the histories from the request into an associative array.
+ *
+ * @param Request $request
+ * @return array
+ */
+    public function formatHistories(Request $request): array
+    {
+        $capacities = [];
+
+        foreach ($request->histories as $history) {
+
+            $item = [
+                'buyer_id' => $history['buyer_id'],
+                'list_id' => $history['list_id'],
+                'buyer_integration_id' => $history['integration_id'],
+            ];
+
+            $columScopes = $this->formatColumnScoped($history['column_scope'] ?? null);
+
+            if(! empty($columScopes)) {
+                $item = array_merge($item, $columScopes);
+            }
+
+            $capacities[$history['id']] = $item;
+        }
+
+        return $capacities;
+    }
+
+    /**
+     * Formats a column scope string into an associative array.
+     * If the column name is one of 'affid', 'affm_source_id', or 'page_source',
+     * it is not prefixed with 'datas->'.
+     *
+     * @param string|null $columnScope The column scope string.
+     * @return array|null The associative array or null if the input is empty.
+     */
+    public function formatColumnScoped(?string $columnScope): ?array
+    {
+        if(empty($columnScope)) return null;
+
+        $blocks =  explode(':', $columnScope);
+        if(count($blocks) < 2) return null;
+
+        $columnName = $blocks[0];
+
+        if (!in_array($columnName, ['affid', 'affm_source_id', 'page_source'])) {
+            $columnName = 'datas->' . $columnName;
+        }
+
+        return [$columnName => $blocks[1]];
+    }
+
+    /**
+     * Returns the appropriate query condition method based on the index.
+     *
+     * @param int $index
+     * @return string
+     */
+    public function getConditionMethod(int $index): string
+    {
+        return ($index == 0) ? 'where' : 'orWhere';
+    }
+
 }

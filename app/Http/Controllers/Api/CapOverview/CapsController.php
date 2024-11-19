@@ -42,4 +42,17 @@ class CapsController extends Controller
         return response()->json($capacities);
     }
 
+    /**
+     * Return all capacities based on the input parameters
+     *
+     * @param Request $request
+     * @param CapsService $capsService
+     * @return Response
+     */
+    public function allCapacities(Request $request, CapsService $capsService): Response
+    {
+        $histories = $capsService->getAllCapacities($request);
+        return withSuccess($histories);
+    }
+
 }

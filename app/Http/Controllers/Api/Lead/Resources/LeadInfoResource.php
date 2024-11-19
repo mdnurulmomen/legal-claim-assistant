@@ -27,6 +27,7 @@ class LeadInfoResource extends JsonResource
             'profit' => $this->profit,
             'affiliate_payout' => $this->affiliate_payout,
             'affiliate_margin' => $this->affiliate_margin,
+            'created_at' => $this->created_at
         ];
 
         if(! empty($request->is_all)){

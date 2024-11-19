@@ -10,4 +10,5 @@ Route::prefix('/caps/overview/')->as('caps.')
     ->group(function ($route) {
         $route->get('list', 'capsList')->name('list');
         $route->post('capacities', 'getCapacities')->name('capacities');
+        $route->post('all-capacities', 'allCapacities')->name('all.capacities');
     });

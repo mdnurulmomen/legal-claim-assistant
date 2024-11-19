@@ -36,7 +36,8 @@ class Utility
     public static $invoiceStatuses = [
         'Pending' => 'Pending',
         'Rejected' => 'Rejected',
-        'Unpaid' => 'Unpaid'
+        'Unpaid' => 'Unpaid',
+        'Paid' => 'Paid'
     ];
 
     /**
