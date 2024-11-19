@@ -129,16 +129,17 @@ class CapsService
         $formattedHistories  = $this->formatHistories($request);
         $filledItems = [];
 
-        $capacityQuery = PlatformData::where('created_at', '>=', $startDate)->where('created_at', '<=', $endDate);
-
         foreach($formattedHistories as $key => $history) {
 
-           $count = $capacityQuery->where(function($query) use ($history) {
-                        foreach ($history as $key => $value) {
-                            $query->where($key, $value);
-                        }
-                    })
-                    ->count();
+           $count = PlatformData::query()
+                        ->where('created_at', '>=', $startDate)
+                        ->where('created_at', '<=', $endDate)
+                        ->where(function($query) use ($history) {
+                            foreach ($history as $key => $value) {
+                                $query->where($key, $value);
+                            }
+                        })
+                        ->count();
 
             $filledItems[$key] = [
                 'id' => $key,
