@@ -366,12 +366,17 @@ class LeadController extends Controller
             return withError('Lead has been retained and cannot be created.');
         }
 
+        $lead = PlatformData::find($request->lead_id);
+        if(empty($lead)){
+            return withError('Invalid Lead Id Provided');
+        }
+
         $formattedData = $leadService->formatReportRequest($request->validated());
 
         try {
             DB::beginTransaction();
             $report = LeadReport::create($formattedData);
-            $leadService->updateReportData($report, $request, $formattedData, isCreate: true);
+            $leadService->updateReportData($report, $request, $formattedData, isCreate: true, platformData: $lead);
             $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer, $request->lead_status);
             $leadService->updateRevenuePayout($request->lead_id);
             DB::commit();
@@ -434,6 +439,11 @@ class LeadController extends Controller
             return withError('Invalid Report Id Provided');
         }
 
+        $lead = PlatformData::find($request->lead_id);
+        if(empty($lead)){
+            return withError('Invalid Lead Id Provided');
+        }
+
         if(! empty($request->is_retainer) && $leadService->hasAnyRetainedLead($request->lead_id, $reportId)){
             return withError('Lead has been retained and cannot be updated.');
         }
@@ -446,7 +456,7 @@ class LeadController extends Controller
 
             DB::beginTransaction();
             $report->update($formattedData);
-            $leadService->updateReportData($clonedReport, $request, $formattedData);
+            $leadService->updateReportData($clonedReport, $request, $formattedData, platformData: $lead);
             $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer, $request->lead_status);
             $leadService->updateRevenuePayout($request->lead_id);
             DB::commit();

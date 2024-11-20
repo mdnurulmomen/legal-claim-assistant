@@ -654,7 +654,7 @@ class LeadService extends ReportingService
      * @param string $date
      * @return void
      */
-    public function updateReportData(LeadReport $report, Request $request, array $formattedData, bool $isCreate = false): void
+    public function updateReportData(LeadReport $report, Request $request, array $formattedData, bool $isCreate = false, PlatformData $platformData = null): void
     {
         $leadData = [
             'retained_date' => null,
@@ -668,6 +668,10 @@ class LeadService extends ReportingService
         if(! empty($request->is_retainer) && ! empty($request->created_at)){
             $date = Carbon::parse($request->created_at)->midDay();
             $leadData['retained_date'] = $date;
+        }
+
+        if($platformData->created_at && ($platformData->created_at->greaterThan(Carbon::parse($request->created_at)))){
+            $date = $platformData->created_at->addHour();
         }
 
         if(empty($request->is_retainer)){
