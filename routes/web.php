@@ -15,6 +15,6 @@ Route::get('/', function () {
 });
 
 Route::get('/test', function () {
-    // PublicEvent::dispatch('test', 'test');
+    PublicEvent::dispatch('integration-setting', 'test');
     return response('Hello World!', 200);
 });

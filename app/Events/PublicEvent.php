@@ -17,7 +17,7 @@ class PublicEvent implements ShouldBroadcast
     /**
      * Create a new event instance.
      */
-    public function __construct(protected string $eventType, protected mixed $data)
+    public function __construct(protected string $event, protected mixed $data, protected ?int $sentBy = null)
     {
         //
     }
@@ -25,8 +25,9 @@ class PublicEvent implements ShouldBroadcast
     public function broadcastWith(): array
     {
         return [
-            'type' => $this->eventType,
-            'data' => $this->data
+            'event' => $this->event,
+            'data' => $this->data,
+            'sent_by' => $this->sentBy
         ];
     }
 
