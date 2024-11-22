@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
-class ConferenceEvents extends Model
+class NewestCampaign extends Model
 {
     use HasFactory;
 
@@ -15,8 +15,6 @@ class ConferenceEvents extends Model
         'title',
         'description',
         'thumb',
-        'event_start_date',
-        'event_end_date',
     ];
 
     public function setTagAttribute()

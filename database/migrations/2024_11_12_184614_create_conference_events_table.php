@@ -14,11 +14,12 @@ return new class extends Migration
         if( !Schema::hasTable('conference_events') ) {
             Schema::create('conference_events', function (Blueprint $table) {
                 $table->id();
+                $table->string('tag', 100)->unique();
                 $table->string('title');
-                $table->text('description')->nullable();
-                $table->date('event_date')->nullable();
-                $table->string('event_button_text')->default('Event Link');
-                $table->string('event_link')->nullable();
+                $table->string('thumb')->nullable();
+                $table->longText('description')->nullable();
+                $table->date('event_start_date')->nullable();
+                $table->date('event_end_date')->nullable();
                 $table->timestamps();
             });
         }

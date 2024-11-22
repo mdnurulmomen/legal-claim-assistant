@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\ConferenceEvent\Requests;
+namespace App\Http\Controllers\Api\NewestCampaign\Requests;
 
 use App\Helpers\Utility;
 use Illuminate\Foundation\Http\FormRequest;
@@ -8,7 +8,7 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Validation\Rule;
 
-class CreateOrUpdateConferenceEventRequest extends FormRequest
+class CreateOrUpdateNewestCampaignRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -28,8 +28,6 @@ class CreateOrUpdateConferenceEventRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'description' => [ 'string', 'nullable'],
-            'event_start_date' => ['required', 'string'],
-            'event_end_date' => ['string', 'nullable'],
         ];
     }
 

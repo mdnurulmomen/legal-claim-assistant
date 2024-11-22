@@ -1,18 +1,18 @@
 <?php
 
-namespace App\Http\Controllers\Api\ConferenceEvent;
+namespace App\Http\Controllers\Api\NewestCampaign;
 
 use App\Helpers\Utility;
-use App\Http\Controllers\Api\ConferenceEvent\Requests\CreateOrUpdateConferenceEventRequest;
-use App\Http\Controllers\Api\ConferenceEvent\Resources\ConferenceEventResource;
+use App\Http\Controllers\Api\NewestCampaign\Requests\CreateOrUpdateNewestCampaignRequest;
+use App\Http\Controllers\Api\NewestCampaign\Resources\NewestCampaignResource;
 use App\Http\Controllers\Controller;
-use App\Models\ConferenceEvents;
+use App\Models\NewestCampaign;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 
-class ConferenceEventController extends Controller
+class NewestCampaignController extends Controller
 {
     /**
      * Retrieves a list of Conference Event based on the request parameters.
@@ -24,7 +24,7 @@ class ConferenceEventController extends Controller
     {
         $limit = $request->input('limit', 10);
 
-        $conferences = ConferenceEvents::orderBy('created_at', 'desc');
+        $conferences = NewestCampaign::orderBy('created_at', 'desc');
         $conferences = $conferences->when( !empty($request->search_txt), function ($query) use ($request) {
             return $query->where('title', 'like', '%' . $request->search_txt . '%');
         });
@@ -34,7 +34,7 @@ class ConferenceEventController extends Controller
 
         // paginate($limit);
 
-        return withSuccessResourceList(ConferenceEventResource::collection($conferences));
+        return withSuccessResourceList(NewestCampaignResource::collection($conferences));
     }
 
     /**
@@ -43,26 +43,25 @@ class ConferenceEventController extends Controller
      * @param Request $request
      * @return Response
      */
-    public function create(CreateOrUpdateConferenceEventRequest $request)
+    public function create(CreateOrUpdateNewestCampaignRequest $request)
     {
         $data = $request->only([
+            'id',
             'title',
             'description',
-            'event_start_date',
-            'event_end_date'
         ]);
 
         if($request->hasFile('thumb')){
-            $thumbPath = Storage::disk('s3')->put('upload/conference', $request->thumb);
+            $thumbPath = Storage::disk('s3')->put('upload/newest-campaign', $request->thumb);
             $data['thumb'] = $thumbPath;
         }
 
         // strtoupper(Str::random(15));
 
-        $conference = ConferenceEvents::create($data);
+        $conference = NewestCampaign::create($data);
 
         // return with success response
-        return withSuccess(new ConferenceEventResource($conference), 'Conference Event created successfully');
+        return withSuccess(new NewestCampaignResource($conference), 'Campaign created successfully');
     }
 
     /**
@@ -74,13 +73,13 @@ class ConferenceEventController extends Controller
      */
     public function show(Request $request, $tag)
     {
-        $conference = ConferenceEvents::where('tag', $tag)->firstOrFail();
+        $conference = NewestCampaign::where('tag', $tag)->firstOrFail();
 
         if (!$conference) {
             return withError('Invalid Conference ID');
         }
 
-        return withSuccess(new ConferenceEventResource($conference));
+        return withSuccess(new NewestCampaignResource($conference));
     }
 
     /**
@@ -90,9 +89,9 @@ class ConferenceEventController extends Controller
      * @param int $id
      * @return Response
      */
-    public function update(CreateOrUpdateConferenceEventRequest $request, $tag)
+    public function update(CreateOrUpdateNewestCampaignRequest $request, $tag)
     {
-        $conference = ConferenceEvents::where('tag', $tag)->firstOrFail();
+        $conference = NewestCampaign::where('tag', $tag)->firstOrFail();
 
         if (!$conference) {
             return withError('Invalid Conference ID');
@@ -100,12 +99,10 @@ class ConferenceEventController extends Controller
         $data = $request->only([
             'title',
             'description',
-            'event_start_date',
-            'event_end_date',
         ]);
 
         if($request->hasFile('thumb')){
-            $thumbPath = Storage::disk('s3')->put('upload/conference', $request->thumb);
+            $thumbPath = Storage::disk('s3')->put('upload/newest-campaign', $request->thumb);
             $thumb = $thumbPath;
             $data['thumb'] = $thumb;
         }
@@ -113,7 +110,7 @@ class ConferenceEventController extends Controller
         $conference->update($data);
 
 
-        return withSuccess(new ConferenceEventResource($conference), 'Conference Event updated successfully');
+        return withSuccess(new NewestCampaignResource($conference), 'Campaign updated successfully');
     }
 
     /**
@@ -125,24 +122,13 @@ class ConferenceEventController extends Controller
      */
     public function delete(Request $request, $tag)
     {
-        $conference = ConferenceEvents::where('tag', $tag)->firstOrFail();
+        $conference = NewestCampaign::where('tag', $tag)->firstOrFail();
 
         if (!$conference) {
             return withError('Invalid Conference ID');
         }
         $conference->delete();
 
-        return withSuccess(message: 'Conference deleted successfully');
-    }
-
-    public function postUpload(Request $request)
-    {
-        // dd( $request->file );
-        // $path = Storage::disk('s3')->put('test/images', $request->file);
-        // $imgurl = Storage::disk('s3')->url('test/images/3gkrXeUkWTiq9LUXZAzUDYF90UhKbPVGQ3KEUdQO.png');
-
-        // dd($imgurl);
-
-        return withSuccess('Image Successfully Saved');
+        return withSuccess(message: 'Campaign deleted successfully');
     }
 }

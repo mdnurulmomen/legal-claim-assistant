@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Controllers\Api\ConferenceEvent\Resources;
+namespace App\Http\Controllers\Api\NewestCampaign\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
 
-class ConferenceEventResource extends JsonResource
+class NewestCampaignResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -21,8 +21,6 @@ class ConferenceEventResource extends JsonResource
             'title' => $this->title,
             'description' => $this->description,
             'thumb' => !empty($this->thumb) ? Storage::disk('s3')->url($this->thumb) : '',
-            'event_start_date' => $this->event_start_date,
-            'event_end_date' => $this->event_end_date,
         ];
     }
 }
