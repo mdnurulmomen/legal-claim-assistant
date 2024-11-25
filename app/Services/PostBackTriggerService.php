@@ -11,6 +11,11 @@ class PostBackTriggerService {
     {
         //get the postbacks
         $postbacks = GlobalPostback::where('postback_event', 'on_retainer_added')->get();
+
+        if( $postbacks->isEmpty() ){
+            return;
+        }
+
         $postback_url = null;
 
         foreach ($postbacks as $postback) {
@@ -66,7 +71,8 @@ class PostBackTriggerService {
                           }
 
                           //check if passed
-                          if (! $this->calculate($target_value, $logic, $logic_value)) {
+                          $check = $this->calculate($target_value, $logic, $logic_value);
+                          if (! $check) {
                             $skip_postback = true;
                             break;
                           }
@@ -131,6 +137,7 @@ class PostBackTriggerService {
                     continue;
                 }
 
+                // info($postback_url);
                 // file_get_contents($postback_url);
                 $res = Http::get($postback_url);
                 // if(! $res->ok()) {
@@ -160,43 +167,67 @@ class PostBackTriggerService {
 
     public function calculate($subject, string $operator, $target): bool
     {
-        return match ($operator) {
-            '==' => $subject == $target,
-            '!=' => $subject != $target,
-            '>=' => $subject >= $target,
-            '<=' => $subject <= $target,
-            '>' => $subject > $target,
-            '<' => $subject < $target,
+        if ($operator == '==') {
+            return $subject == $target;
+        } elseif ($operator == '!=') {
+            return $subject != $target;
+        } elseif ($operator == '>=') {
+            return $subject >= $target;
+        } elseif ($operator == '<=') {
+            return $subject <= $target;
+        } elseif ($operator == '>') {
+            return $subject > $target;
+        } elseif ($operator == '<') {
+            return $subject < $target;
+        } elseif ($operator == 'contains') {
+            return strpos($subject, $target) !== false;
+        } elseif ($operator == 'not_contains') {
+            return strpos($subject, $target) === false;
+        } elseif ($operator == 'starts_with') {
+            return strpos($subject, $target) === 0;
+        } elseif ($operator == 'ends_with') {
+            return strpos($subject, $target) === strlen($subject) - strlen($target);
+        } elseif ($operator == 'between_num') {
+            return $subject >= $target[0] && $subject <= $target[1];
+        } elseif ($operator == 'not_between_num') {
+            return $subject < $target[0] || $subject > $target[1];
+        } elseif ($operator == 'between_date') {
+            return strtotime($subject) >= strtotime($target[0]) && strtotime($subject) <= strtotime($target[1]);
+        } elseif ($operator == 'not_between_date') {
+            return strtotime($subject) < strtotime($target[0]) || strtotime($subject) > strtotime($target[1]);
+        } elseif ($operator == 'more_than_date') {
+            return strtotime($subject) > strtotime($target);
+        } elseif ($operator == 'less_than_date') {
+            return strtotime($subject) < strtotime($target);
+        } elseif ($operator == 'in') {
+            return in_array($subject, explode(',', $target));
+        } elseif ($operator == 'not_in') {
+            return !in_array($subject, explode(',', $target));
+        } elseif ($operator == 'is_empty') {
+            return empty($subject);
+        } elseif ($operator == 'is_not_empty') {
+            return !empty($subject);
+        } elseif ($operator == 'is_null') {
+            return is_null($subject);
+        } elseif ($operator == 'is_not_null') {
+            return !is_null($subject);
+        } elseif ($operator == 'is_true') {
+            return $subject == true;
+        } elseif ($operator == 'is_false') {
+            return $subject == false;
+        } elseif ($operator == 'is_numeric') {
+            return is_numeric($subject);
+        } elseif ($operator == 'is_not_numeric') {
+            return !is_numeric($subject);
+        } elseif ($operator == 'is_string') {
+            return is_string($subject);
+        }
 
-            'contains' => strpos($subject, $target) !== false,
-            'not_contains' => strpos($subject, $target) === false,
-            'starts_with' => str_starts_with($subject, $target),
-            'ends_with' => str_ends_with($subject, $target),
+        //unknown operator
+        //report to sentry
+        \Sentry\captureMessage('Unknown operator: ' . $operator);
 
-            'between_num' => $this->isBetween($subject, $target),
-            'not_between_num' => !$this->isBetween($subject, $target),
-
-            'between_date' => $this->isBetweenDate($subject, $target),
-            'not_between_date' => !$this->isBetweenDate($subject, $target),
-
-            'more_than_date' => strtotime($subject) > strtotime($target),
-            'less_than_date' => strtotime($subject) < strtotime($target),
-
-            'in' => in_array($subject, explode(',', $target), true),
-            'not_in' => !in_array($subject, explode(',', $target), true),
-
-            'is_empty' => empty($subject),
-            'is_not_empty' => !empty($subject),
-            'is_null' => is_null($subject),
-            'is_not_null' => !is_null($subject),
-            'is_true' => $subject === true,
-            'is_false' => $subject === false,
-            'is_numeric' => is_numeric($subject),
-            'is_not_numeric' => !is_numeric($subject),
-            'is_string' => is_string($subject),
-
-            default => $this->handleUnknownOperator($operator),
-        };
+        return false;
     }
 
     /**

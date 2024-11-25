@@ -54,6 +54,7 @@ class GlobalPostBackTriggerJob implements ShouldQueue
         }
 
         LeadReport::query()
+            ->where('is_retainer', '=', 1)
             ->where(function($query) use ($newReportConditions) {
                 foreach($newReportConditions as $key => $newReportCondition) {
                     $method = $this->getConditionMethod($key);
