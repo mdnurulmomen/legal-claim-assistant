@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::table('global_postbacks', function (Blueprint $table) {
             $table->string('postback_event')->nullable()->after('conditions');
+            $table->text('url')->change();
         });
     }
 
@@ -23,6 +24,7 @@ return new class extends Migration
     {
         Schema::table('global_postbacks', function (Blueprint $table) {
             $table->dropColumn(['postback_event']);
+            $table->string('url', 255)->change();
         });
     }
 };

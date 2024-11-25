@@ -477,12 +477,17 @@ class LeadController extends Controller
             return withError('Lead Report Update Failed!');
         }
 
-        if(empty($clonedReport->is_retainer) && $request->is_retainer){
-            GlobalPostBackTriggerJob::dispatch([
-                'type' => 'single_retainer',
-                'lead_id' => $report->lead_id
-            ]);
-        }
+        // if(empty($clonedReport->is_retainer) && $request->is_retainer){
+        //     GlobalPostBackTriggerJob::dispatch([
+        //         'type' => 'single_retainer',
+        //         'lead_id' => $report->lead_id
+        //     ]);
+        // }
+
+        GlobalPostBackTriggerJob::dispatch([
+            'type' => 'single_retainer',
+            'lead_id' => $report->lead_id
+        ]);
 
         return withSuccess(message: 'Lead Report Updated Successfully!');
     }

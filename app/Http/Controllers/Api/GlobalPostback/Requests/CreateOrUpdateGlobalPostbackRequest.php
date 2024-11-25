@@ -28,7 +28,7 @@ class CreateOrUpdateGlobalPostbackRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'url' => ['required', 'string', 'max:255'],
+            'url' => ['required', 'string'],
             'status' => ['required'],
             'conditions' =>  ['required'],
             'postback_event' => ['nullable', 'string', 'max:255', Rule::in(array_keys(SettingHandler::$postBackEvents))],
