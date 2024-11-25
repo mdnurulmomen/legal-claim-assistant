@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Lead;
 
+use App\Events\OnRetainerAddedEvent;
 use App\Http\Controllers\Api\Lead\Requests\StoreLeadReportRequest;
 use App\Http\Controllers\Api\Lead\Requests\UpdateFilledRequest;
 use App\Http\Controllers\Api\Lead\Requests\UpdateLeadsRequest;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Api\Lead\Resources\LeadInfoResource;
 use App\Http\Controllers\Api\Lead\Resources\LeadReportResource;
 use App\Http\Controllers\Api\Lead\Resources\LeadResource;
 use App\Http\Controllers\Controller;
+use App\Jobs\GlobalPostBackTriggerJob;
 use App\Models\Integration;
 use App\Models\LeadReport;
 use App\Models\PlatformData;
@@ -381,12 +383,18 @@ class LeadController extends Controller
             $leadService->updateRevenuePayout($request->lead_id);
             DB::commit();
 
-            return withSuccess(message: 'Lead Created Successfully');
         } catch (\Throwable $th) {
             DB::rollBack();
             info($th->getMessage());
             return withError('Lead Report Creation Failed');
         }
+
+        GlobalPostBackTriggerJob::dispatch([
+            'type' => 'single_retainer',
+            'lead_id' => $report->lead_id
+        ]);
+
+        return withSuccess(message: 'Lead Created Successfully');
     }
 
     /**
@@ -461,12 +469,13 @@ class LeadController extends Controller
             $leadService->updateRevenuePayout($request->lead_id);
             DB::commit();
 
-            return withSuccess(message: 'Lead Report Updated Successfully!');
         } catch (\Throwable $th) {
             DB::rollBack();
             info($th->getMessage());
             return withError('Lead Report Update Failed!');
         }
+
+        return withSuccess(message: 'Lead Report Updated Successfully!');
     }
 
     /**

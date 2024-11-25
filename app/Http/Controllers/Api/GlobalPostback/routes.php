@@ -10,5 +10,6 @@ Route::prefix('settings/global-postback')->as('globalPostbacks.')
         $route->get('show/{id}', 'globalPostback')->name('show.globalPostback');
         $route->put('update/{id}', 'update')->name('update');
         $route->post('create', 'create')->name('store');
-        $route->delete('delete/{id}', 'delete')->name('delete'); 
+        $route->delete('delete/{id}', 'delete')->name('delete');
+        $route->get('post-back-events', 'getPostBackEvents')->name('post.back.events');
     });

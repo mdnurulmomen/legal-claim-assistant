@@ -17,8 +17,9 @@ class SingleGlobalPostbackResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'url' => $this->url, 
-            'conditions' => $this->conditions, 
+            'url' => $this->url,
+            'conditions' => $this->conditions,
+            'postback_event' => $this->postback_event,
             'status' => $this->status,
             'created_at' => $this->created_at,
         ];

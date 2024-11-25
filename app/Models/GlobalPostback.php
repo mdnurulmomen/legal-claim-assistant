@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class GlobalPostback extends Model
 {
     use HasFactory;
-    
+
     protected $table = 'global_postbacks';
 
     /**
@@ -31,8 +31,9 @@ class GlobalPostback extends Model
         'name',
         'url',
         'conditions',
+        'postback_event',
         'status',
     ];
 
-    
+
 }

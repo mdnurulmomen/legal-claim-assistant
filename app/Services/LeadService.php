@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Http\Controllers\Api\Lead\Resources\LeadResource;
+use App\Jobs\GlobalPostBackTriggerJob;
 use App\Models\Integration;
 use App\Models\LeadLog;
 use App\Models\LeadReport;
@@ -785,8 +786,8 @@ class LeadService extends ReportingService
                     ->first();
 
         $this->updatePlatformData($leadId, [
-            'revenue' => (float) $report->revenue,
-            'payout' => (float) $report->revenue - (float) $report->payout
+            'revenue' => $report ? (float) $report->revenue : 0,
+            'payout' => $report ? (float) $report->revenue - (float) $report->payout : 0
         ]);
     }
 
@@ -1176,7 +1177,6 @@ class LeadService extends ReportingService
 
         $leadReportDataGenerator = $this->generateLeadReportData($leadReports->toArray(), $leadGroup, $updatableReportFields, $leadRevenuePayouts);
         $leadReportData = iterator_to_array($leadReportDataGenerator, false);
-        if (empty($leadReportData)) return;
 
         if(count($leadReportData) > 0) {
             LeadReport::upsert(
@@ -1184,6 +1184,11 @@ class LeadService extends ReportingService
                 ['id'],
                 $updatableReportFields
             );
+
+            GlobalPostBackTriggerJob::dispatch([
+                'type' => 'bulk_retainer',
+                'lead_reports' => $leadReportData
+            ]);
         }
 
         if(count($leadRevenuePayouts) > 0) {

@@ -2,20 +2,20 @@
 
 namespace App\Http\Controllers\Api\GlobalPostback;
 
+use App\Helpers\SettingHandler;
 use App\Helpers\Utility;
 use App\Http\Controllers\Api\GlobalPostback\Requests\CreateOrUpdateGlobalPostbackRequest;
 use App\Http\Controllers\Api\GlobalPostback\Resources\GlobalPostbackResource;
 use App\Http\Controllers\Api\GlobalPostback\Resources\SingleGlobalPostbackResource;
 use App\Http\Controllers\Controller;
 use App\Models\GlobalPostback;
-use App\Models\Impersonation;
-use App\Models\User;
+use App\Traits\CommonTrait;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class GlobalPostbackController extends Controller
 {
+    use CommonTrait;
+
     /**
      * Retrieves a list of GlobalPoatback based on the request parameters.
      *
@@ -30,7 +30,7 @@ class GlobalPostbackController extends Controller
         $status = array_search($request->input('status'), Utility::$userStatus);
 
         // user role is affiliate and load relationship affiliate
-        $affiliates = GlobalPostback::query() 
+        $affiliates = GlobalPostback::query()
 
             ->when(!empty($request->search_txt), function ($query) use ($request) {
 
@@ -80,16 +80,16 @@ class GlobalPostbackController extends Controller
      */
     public function update(CreateOrUpdateGlobalPostbackRequest $request, $id)
     {
-        
-        $existingPostBack = GlobalPostback::query() 
+
+        $existingPostBack = GlobalPostback::query()
             ->where('id', '=', $id)
             ->first();
 
         //get the validated data
-        $validatedData = $request->validated();  
-        
-        $conditionData = []; 
-        
+        $validatedData = $request->validated();
+
+        $conditionData = [];
+
         if( isset($validatedData['conditions']) ){
             foreach($validatedData['conditions'] as $condition){
                 $conditionData[$condition['column']] = [
@@ -97,13 +97,14 @@ class GlobalPostbackController extends Controller
                     'value' =>  $condition['value']
                 ];
             }
-        } 
+        }
         $existingPostBack->update([
-            'name' => $validatedData['name'], 
-            'url' => $validatedData['url'], 
-            'status' => $validatedData['status'] == true ? 1 : 0, 
-            'conditions' => json_encode($conditionData)
-        ]); 
+            'name' => $validatedData['name'],
+            'url' => $validatedData['url'],
+            'status' => $validatedData['status'] == true ? 1 : 0,
+            'conditions' => json_encode($conditionData),
+            'postback_event' => $validatedData['postback_event'] ?? null
+        ]);
 
 
         return withSuccess(new SingleGlobalPostbackResource($existingPostBack), 'Global Postback updated successfully');
@@ -118,10 +119,10 @@ class GlobalPostbackController extends Controller
     public function create(CreateOrUpdateGlobalPostbackRequest $request)
     {
         //get the validated data
-        $validatedData = $request->validated(); 
-        
-        $conditionData = []; 
-        
+        $validatedData = $request->validated();
+
+        $conditionData = [];
+
         if( isset($validatedData['conditions']) ){
             foreach($validatedData['conditions'] as $condition){
                 $conditionData[$condition['column']] = [
@@ -130,16 +131,17 @@ class GlobalPostbackController extends Controller
                 ];
             }
         }
-        
+
         $affiliate = GlobalPostback::create([
-            'name' => $validatedData['name'], 
-            'url' => $validatedData['url'], 
-            'status' => $validatedData['status'] == true ? 1 : 0, 
-            'conditions' => json_encode($conditionData)
-        ]); 
+            'name' => $validatedData['name'],
+            'url' => $validatedData['url'],
+            'status' => $validatedData['status'] == true ? 1 : 0,
+            'conditions' => json_encode($conditionData),
+            'postback_event' => $validatedData['postback_event'] ?? null
+        ]);
 
         // return with success response
-         return withSuccess(new SingleGlobalPostbackResource($affiliate), 'Global Postback created successfully'); 
+         return withSuccess(new SingleGlobalPostbackResource($affiliate), 'Global Postback created successfully');
     }
 
     /**
@@ -159,6 +161,16 @@ class GlobalPostbackController extends Controller
         $postback->delete();
 
         return withSuccess('Successfully deleted the postback');
+    }
+
+    /**
+     * Return the list of Postback events in a multi-dimensional array format.
+     *
+     * @return array
+     */
+    public function getPostbackEvents(){
+        $events = $this->convertToMultiDimensionalArray(SettingHandler::$postBackEvents);
+        return withSuccess($events);
     }
 
 }

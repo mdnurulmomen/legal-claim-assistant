@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\GlobalPostback\Requests;
 
+use App\Helpers\SettingHandler;
 use App\Helpers\Utility;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -25,11 +26,12 @@ class CreateOrUpdateGlobalPostbackRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [ 
+        return [
             'name' => ['required', 'string', 'max:255'],
-            'url' => ['required', 'string', 'max:255'], 
+            'url' => ['required', 'string', 'max:255'],
             'status' => ['required'],
             'conditions' =>  ['required'],
+            'postback_event' => ['nullable', 'string', 'max:255', Rule::in(array_keys(SettingHandler::$postBackEvents))],
         ];
     }
 
