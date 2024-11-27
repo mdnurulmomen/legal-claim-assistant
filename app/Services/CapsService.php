@@ -126,19 +126,28 @@ class CapsService
     public function getAllCapacities(Request $request): array
     {
         [$startDate, $endDate] = $this->formatStartEndDateWithTimezone($request->start_date, $request->end_date, $request->timezone, defaultTimezone: 'America/New_York');
-        $formattedHistories  = $this->formatHistories($request);
+        [$formattedHistories, $columnNames]  = $this->formatHistories($request);
+
         $filledItems = [];
 
-        $capacityQuery = PlatformData::where('created_at', '>=', $startDate)->where('created_at', '<=', $endDate);
+        $capsQuery = PlatformData::query()
+                        ->where('created_at', '>=', $startDate)
+                        ->where('created_at', '<=', $endDate)
+                        ->select('id', 'buyer_id', 'list_id', 'buyer_integration_id')
+                        ->when(! empty($columnNames), function($query) use ($columnNames) {
+                            return $query->addSelect($columnNames);
+                        })
+                        ->get();
 
         foreach($formattedHistories as $key => $history) {
 
-           $count = $capacityQuery->where(function($query) use ($history) {
-                        foreach ($history as $key => $value) {
-                            $query->where($key, $value);
-                        }
-                    })
-                    ->count();
+            $count = $capsQuery->where('buyer_id', $history['buyer_id'])
+                        ->where('list_id', $history['list_id'])
+                        ->where('buyer_integration_id', $history['buyer_integration_id'])
+                        ->when(! empty($history['addition_columns']), function($query) use ($history) {
+                            return $query->where($history['addition_columns']['key'], $history['addition_columns']['value']);
+                        })
+                        ->count();
 
             $filledItems[$key] = [
                 'id' => $key,
@@ -149,15 +158,16 @@ class CapsService
         return $filledItems;
     }
 
-/**
- * Formats and structures the histories from the request into an associative array.
- *
- * @param Request $request
- * @return array
- */
+    /**
+     * Formats and structures the histories from the request into an associative array.
+     *
+     * @param Request $request
+     * @return array
+     */
     public function formatHistories(Request $request): array
     {
         $capacities = [];
+        $columnNames = [];
 
         foreach ($request->histories as $history) {
 
@@ -165,18 +175,23 @@ class CapsService
                 'buyer_id' => $history['buyer_id'],
                 'list_id' => $history['list_id'],
                 'buyer_integration_id' => $history['integration_id'],
+                'addition_columns' => []
             ];
 
-            $columScopes = $this->formatColumnScoped($history['column_scope'] ?? null);
+            $columnScopes = $this->formatColumnScoped($history['column_scope'] ?? null);
 
-            if(! empty($columScopes)) {
-                $item = array_merge($item, $columScopes);
+            if(! empty($columnScopes)) {
+                $columnNames[] = $columnScopes['raw_column'];
+                $item['addition_columns'] = $columnScopes;
             }
 
             $capacities[$history['id']] = $item;
         }
 
-        return $capacities;
+        return [
+            $capacities,
+            $columnNames
+        ];
     }
 
     /**
@@ -195,12 +210,17 @@ class CapsService
         if(count($blocks) < 2) return null;
 
         $columnName = $blocks[0];
+        $rawColumn = $columnName;
 
         if (!in_array($columnName, ['affid', 'affm_source_id', 'page_source'])) {
             $columnName = 'datas->' . $columnName;
         }
 
-        return [$columnName => $blocks[1]];
+        return [
+            'key' => $columnName,
+            'value' => $blocks[1],
+            'raw_column' => "{$columnName} as {$rawColumn}"
+        ];
     }
 
     /**
