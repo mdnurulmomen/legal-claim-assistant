@@ -3,7 +3,7 @@
 use App\Http\Controllers\Api\NewestCampaign\NewestCampaignController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('newest-campaign')->as('conference.')
+Route::prefix('newest-campaign')->as('newestcampaign.')
     ->controller(NewestCampaignController::class)
     ->middleware('auth:sanctum')
     ->group(function ($route) {
