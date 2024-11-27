@@ -126,7 +126,7 @@ class PlatformListPingController extends Controller
             platform_pings.sold,
             platform_pings.accepted,
             platform_pings.created_at
-        ")
+        ")->orderBy('created_at', 'desc')
         ->paginate($limit);
 
         return withSuccessResourceList(PlatformListPingResource::collection($pingLogData));
@@ -206,7 +206,7 @@ class PlatformListPingController extends Controller
 
         // use simple pagination can improve performance
         // $data = $data->simplePaginate(10);
-        $data = $data->get();
+        $data = $data->orderBy('created_at', 'desc')->get();
 
         $morePages = true;
 
