@@ -18,9 +18,7 @@ class GeneralInformationResource extends JsonResource
         return [
             'id' => $this->id,
             'tag' => $this->tag,
-            'title' => $this->title,
             'description' => $this->description,
-            'thumb' => !empty($this->thumb) ? Storage::disk('s3')->url($this->thumb) : '',
         ];
     }
 }

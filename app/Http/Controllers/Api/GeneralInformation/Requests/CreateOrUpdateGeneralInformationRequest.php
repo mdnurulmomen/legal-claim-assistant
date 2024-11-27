@@ -26,8 +26,7 @@ class CreateOrUpdateGeneralInformationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => ['required', 'string', 'max:255'],
-            'description' => [ 'string', 'nullable'],
+            'description' => [ 'string', 'required'],
         ];
     }
 

@@ -46,17 +46,8 @@ class GeneralInformationController extends Controller
     public function create(CreateOrUpdateGeneralInformationRequest $request)
     {
         $data = $request->only([
-            'id',
-            'title',
             'description',
         ]);
-
-        if($request->hasFile('thumb')){
-            $thumbPath = Storage::disk('s3')->put('upload/general-information', $request->thumb);
-            $data['thumb'] = $thumbPath;
-        }
-
-        // strtoupper(Str::random(15));
 
         $conference = GeneralInformation::create($data);
 
@@ -76,7 +67,25 @@ class GeneralInformationController extends Controller
         $conference = GeneralInformation::where('tag', $tag)->firstOrFail();
 
         if (!$conference) {
-            return withError('Invalid Conference ID');
+            return withError('Invalid General Information ID');
+        }
+
+        return withSuccess(new GeneralInformationResource($conference));
+    }
+
+     /**
+     * Retrieves a single Conference Event based on the provided ID.
+     *
+     * @param Request $request
+     * @param int $id
+     * @return Response
+     */
+    public function showFirstOne(Request $request, )
+    {
+        $conference = GeneralInformation::firstOrFail();
+
+        if (!$conference) {
+            return withError('Invalid General Information ID');
         }
 
         return withSuccess(new GeneralInformationResource($conference));
@@ -94,18 +103,11 @@ class GeneralInformationController extends Controller
         $conference = GeneralInformation::where('tag', $tag)->firstOrFail();
 
         if (!$conference) {
-            return withError('Invalid Conference ID');
+            return withError('Invalid General Information ID');
         }
         $data = $request->only([
-            'title',
             'description',
         ]);
-
-        if($request->hasFile('thumb')){
-            $thumbPath = Storage::disk('s3')->put('upload/general-information', $request->thumb);
-            $thumb = $thumbPath;
-            $data['thumb'] = $thumb;
-        }
 
         $conference->update($data);
 
@@ -125,7 +127,7 @@ class GeneralInformationController extends Controller
         $conference = GeneralInformation::where('tag', $tag)->firstOrFail();
 
         if (!$conference) {
-            return withError('Invalid Conference ID');
+            return withError('Invalid General Information ID');
         }
         $conference->delete();
 

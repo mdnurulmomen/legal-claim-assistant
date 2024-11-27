@@ -61,7 +61,7 @@ class NewestCampaignController extends Controller
         $conference = NewestCampaign::create($data);
 
         // return with success response
-        return withSuccess(new NewestCampaignResource($conference), 'Campaign created successfully');
+        return withSuccess(new NewestCampaignResource($conference), 'Campaign News created successfully');
     }
 
     /**
@@ -76,7 +76,7 @@ class NewestCampaignController extends Controller
         $conference = NewestCampaign::where('tag', $tag)->firstOrFail();
 
         if (!$conference) {
-            return withError('Invalid Conference ID');
+            return withError('Invalid Campaign ID');
         }
 
         return withSuccess(new NewestCampaignResource($conference));
@@ -94,7 +94,7 @@ class NewestCampaignController extends Controller
         $conference = NewestCampaign::where('tag', $tag)->firstOrFail();
 
         if (!$conference) {
-            return withError('Invalid Conference ID');
+            return withError('Invalid Campaign ID');
         }
         $data = $request->only([
             'title',
@@ -110,7 +110,7 @@ class NewestCampaignController extends Controller
         $conference->update($data);
 
 
-        return withSuccess(new NewestCampaignResource($conference), 'Campaign updated successfully');
+        return withSuccess(new NewestCampaignResource($conference), 'Campaign News updated successfully');
     }
 
     /**
@@ -129,6 +129,6 @@ class NewestCampaignController extends Controller
         }
         $conference->delete();
 
-        return withSuccess(message: 'Campaign deleted successfully');
+        return withSuccess(message: 'Campaign News deleted successfully');
     }
 }

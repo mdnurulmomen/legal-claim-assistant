@@ -14,9 +14,7 @@ return new class extends Migration
         Schema::create('general_information', function (Blueprint $table) {
             $table->id();
             $table->string('tag', 100)->unique();
-            $table->string('title');
-            $table->longText('description')->nullable();
-            $table->string('thumb')->nullable();
+            $table->longText('description');
             $table->timestamps();
         });
     }
