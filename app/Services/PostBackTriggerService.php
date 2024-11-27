@@ -70,12 +70,6 @@ class PostBackTriggerService {
                                 }
                           }
 
-                          info(json_encode($data['payload']['datas']));
-
-                          info("target value: " . $target_value);
-                          info("logic: " . $logic);
-                          info("logic value: " . $logic_value);
-
                           //check if passed
                           $check = $this->calculate($target_value, $logic, $logic_value);
                           if (! $check) {
@@ -85,9 +79,6 @@ class PostBackTriggerService {
                     }
 
                 }
-
-                // info("postback url: " . $target_value);
-                // info("skip postback: " . $skip_postback ? "true" : "false");
 
                 //postback Url
                 if ($postback->url && !$skip_postback) {
@@ -147,8 +138,6 @@ class PostBackTriggerService {
                     continue;
                 }
 
-                info($postback_url);
-                // file_get_contents($postback_url);
                 $res = Http::get($postback_url);
                 // if(! $res->ok()) {
                 //     \Sentry\captureMessage($res->body());
