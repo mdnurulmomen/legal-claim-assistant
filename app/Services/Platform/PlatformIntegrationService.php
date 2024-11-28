@@ -83,6 +83,10 @@ class PlatformIntegrationService
             unset($integration['ping']);
         }
 
+        if(empty($requestData['brand_data'] ?? null) && array_key_exists('brand_data', $integration)) {
+            unset($integration['brand_data']);
+        }
+
         $integrations[$index] = array_merge($integration, $requestData);
         return $integrations;
     }
