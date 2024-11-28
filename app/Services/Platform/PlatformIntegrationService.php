@@ -79,7 +79,21 @@ class PlatformIntegrationService
 
         $ping = $requestData['ping'] ?? null;
 
-        if(! $ping) {
+        if($ping && array_key_exists('save_data', $ping)) {
+            $ping['save_data'] = $this->convertNullToString($ping['save_data']);
+        }
+
+        if($ping && array_key_exists('triggers', $ping)) {
+            $ping['triggers'] = $this->convertNullToString($ping['triggers']);
+        }
+
+        if($ping && array_key_exists('custom_params', $ping)) {
+            $ping['custom_params'] = $this->convertNullToString($ping['custom_params']);
+        }
+
+        $requestData['ping'] = $ping;
+
+        if(empty($ping) && array_key_exists('ping', $integration)) {
             unset($integration['ping']);
         }
 
@@ -89,6 +103,12 @@ class PlatformIntegrationService
 
         $integrations[$index] = array_merge($integration, $requestData);
         return $integrations;
+    }
+
+    public function convertNullToString($data) {
+        return array_map(function ($value) {
+            return $value === null || $value === 'null' ? '' : $value;
+        }, $data);
     }
 
     /**
