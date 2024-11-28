@@ -32,8 +32,6 @@ class AuthController extends Controller
             return withError('The provided credentials are incorrect.', 404);
         }
 
-        info(json_encode($user));
-
         if (! Hash::check($request->password, $user->password)) {
             return withError('The provided credentials are incorrect.', 400);
         }
