@@ -65,6 +65,10 @@ class PlatformIntegrationService
             $requestData['convert_maps'] = $this->replaceStringWithBool($requestData['convert_maps']);
         }
 
+        if($requestData['custom_maps'] ?? null){
+            $requestData['custom_maps'] = $this->replaceStringWithBool($requestData['custom_maps']);
+        }
+
         if($index === false) {
             $requestData['order'] = count($integrations) + 1;
 
@@ -217,17 +221,24 @@ class PlatformIntegrationService
     {
         $updatedArray = [];
         foreach ($array as $key => $value) {
+
             if (is_array($value)) {
-                $updatedArray[$key] = $this->replaceStringWithBool($value); // Recursive call for nested arrays
-            } elseif ($value === "null") {
-                $updatedArray[$key] = null; // Replace "null" string with null value
-            } elseif ($value === "true") {
-                $updatedArray[$key] = true; // Replace "true" string with true value
-            } elseif ($value === "false") {
-                $updatedArray[$key] = false; // Replace "false" string with false value
-            } else {
-                $updatedArray[$key] = $value; // Copy the original value
+                $updatedArray[$key] = $this->replaceStringWithBool($value);
+                continue;
             }
+
+            $newValue = match ($value) {
+                'null' => '',
+                null => null,
+                'true' => true,
+                'false' => false,
+                '0' => 0,
+                is_bool($value) => $value,
+                is_numeric($value) => (int)$value,
+                default => $value,
+            };
+
+            $updatedArray[$key] = $newValue;
         }
         return $updatedArray;
     }
