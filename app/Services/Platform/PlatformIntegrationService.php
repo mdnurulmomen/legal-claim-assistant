@@ -65,6 +65,10 @@ class PlatformIntegrationService
             $requestData['convert_maps'] = $this->replaceStringWithBool($requestData['convert_maps']);
         }
 
+        if($requestData['custom_maps'] ?? null){
+            $requestData['custom_maps'] = $this->replaceStringWithBool($requestData['custom_maps']);
+        }
+
         $ping = $requestData['ping'] ?? null;
 
         if($ping && array_key_exists('save_data', $ping)) {
