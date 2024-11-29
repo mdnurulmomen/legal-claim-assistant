@@ -65,8 +65,27 @@ class PlatformIntegrationService
             $requestData['convert_maps'] = $this->replaceStringWithBool($requestData['convert_maps']);
         }
 
-        if($requestData['custom_maps'] ?? null){
-            $requestData['custom_maps'] = $this->replaceStringWithBool($requestData['custom_maps']);
+        $ping = $requestData['ping'] ?? null;
+
+        if($ping && array_key_exists('save_data', $ping)) {
+            $ping['save_data'] = $this->convertNullToString($ping['save_data']);
+        }
+
+        if($ping && array_key_exists('triggers', $ping)) {
+            $ping['triggers'] = $this->convertNullToString($ping['triggers']);
+        }
+
+        $requestData['ping'] = $ping;
+
+        if(empty($requestData['ping'])) {
+            unset($requestData['ping']);
+        }
+
+        $brandData = $requestData['brand_data'] ?? null;
+        $requestData['brand_data'] = $brandData;
+
+        if(empty($requestData['brand_data'])) {
+            unset($requestData['brand_data']);
         }
 
         if($index === false) {
@@ -81,27 +100,11 @@ class PlatformIntegrationService
             abort(400, 'Integration not found');
         }
 
-        $ping = $requestData['ping'] ?? null;
-
-        if($ping && array_key_exists('save_data', $ping)) {
-            $ping['save_data'] = $this->convertNullToString($ping['save_data']);
-        }
-
-        if($ping && array_key_exists('triggers', $ping)) {
-            $ping['triggers'] = $this->convertNullToString($ping['triggers']);
-        }
-
-        if($ping && array_key_exists('custom_params', $ping)) {
-            $ping['custom_params'] = $this->convertNullToString($ping['custom_params']);
-        }
-
-        $requestData['ping'] = $ping;
-
         if(empty($ping) && array_key_exists('ping', $integration)) {
             unset($integration['ping']);
         }
 
-        if(empty($requestData['brand_data'] ?? null) && array_key_exists('brand_data', $integration)) {
+        if(empty($brandData) && array_key_exists('brand_data', $integration)) {
             unset($integration['brand_data']);
         }
 
