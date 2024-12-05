@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Http\Controllers\Api\Lead\Resources\LeadResource;
+use App\Library\Service\CountryFuzzyMatcher;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Rap2hpoutre\FastExcel\FastExcel;
@@ -38,8 +39,17 @@ class ExcelService
     public function formatLeadCsvData(Collection $data): array
     {
         return $data->map(function ($item) {
-            return collect($item)->mapWithKeys(function ($value, $key) {
-                return [str()->slug($key, '_') => $value];
+            $country = isset($item['country']) ? $item['country'] : null;
+
+            return collect($item)->mapWithKeys(function ($value, $key) use ($country) {
+                $slugKey = str()->slug($key, '_');
+                $newValue = $value;
+
+                if(in_array($slugKey, ['phone', 'mobile', 'phone_number', 'mobile_number', 'mobile_no', 'phone_no', 'number'])) {
+                    $newValue = (new CountryFuzzyMatcher())->formatPhoneNumber($value, $country);
+                }
+
+                return [$slugKey => $newValue];
             })->all();
         })->all();
     }

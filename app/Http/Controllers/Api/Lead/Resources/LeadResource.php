@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\Lead\Resources;
 
 use App\Models\PlatformList;
-use App\Services\LeadService;
+use App\Services\Lead\LeadService;
 use App\Traits\AffiliateTrait;
 use Illuminate\Http\Resources\Json\JsonResource;
 

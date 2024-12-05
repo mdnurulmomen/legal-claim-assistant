@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Lead;
 
 use App\Http\Controllers\Api\Lead\Resources\LeadResource;
 use App\Jobs\GlobalPostBackTriggerJob;
@@ -11,6 +11,7 @@ use App\Models\PageSetting;
 use App\Models\PlatformData;
 use App\Models\PlatformList;
 use App\Models\User;
+use App\Services\ReportingService;
 use App\Traits\FormatterTrait;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
