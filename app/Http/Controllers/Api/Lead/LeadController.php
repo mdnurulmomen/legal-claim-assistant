@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\Lead;
 
-use App\Events\OnRetainerAddedEvent;
 use App\Http\Controllers\Api\Lead\Requests\StoreLeadReportRequest;
 use App\Http\Controllers\Api\Lead\Requests\UpdateFilledRequest;
 use App\Http\Controllers\Api\Lead\Requests\UpdateLeadsRequest;
@@ -18,7 +17,8 @@ use App\Models\PlatformPings;
 use App\Models\LeadLog;
 use App\Models\PlatformList;
 use App\Services\ExcelService;
-use App\Services\LeadService;
+use App\Services\Lead\LeadService;
+use App\Services\Lead\PlatformService;
 use App\Traits\CommonTrait;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -612,5 +612,11 @@ class LeadController extends Controller
             }
         }
         return withError('Invalid Lead Log request.');
+    }
+
+    public function filteredLeads(Request $request, PlatformService $platformService): Response
+    {
+        $data = $platformService->getFilteredLeads($request);
+        return withSuccess($data);
     }
 }
