@@ -11,7 +11,7 @@ use App\Models\Affiliate;
 use App\Models\AccountManager;
 use App\Models\Impersonation;
 use App\Models\User;
-use App\Services\LeadService;
+use App\Services\Lead\LeadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Http\Response;

@@ -1,7 +1,6 @@
 <?php
 
-use App\Models\User;
-use Illuminate\Support\Facades\Cache;
+use App\Library\Service\CountryFuzzyMatcher;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -14,7 +13,5 @@ Route::get('/', function () {
 });
 
 Route::get('/test', function () {
-    // return asset('/assets/images/logo.png');
-    // return public_path('/assets/images/logo.png');
     return response('Hello World!', 200);
 });
