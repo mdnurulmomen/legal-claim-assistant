@@ -50,7 +50,7 @@ class LeadResource extends JsonResource
             "diagnosed_before_70" => '',
             "description" => '',
             "ip_address" => '',
-            "list_id" => '',
+            "list_id" => $this->list_id,
             "clickId" => '',
             "affid" => '',
             "jornaya_leadid" => '',
@@ -80,6 +80,10 @@ class LeadResource extends JsonResource
 
         if (array_key_exists('lead_status', $data)) {
             unset($data['lead_status']);
+        }
+
+        if (array_key_exists('list_id', $data)) {
+            unset($data['list_id']);
         }
 
         $leads = array_merge($leads, $data);
