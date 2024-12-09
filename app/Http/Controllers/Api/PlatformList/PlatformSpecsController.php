@@ -43,6 +43,7 @@ class PlatformSpecsController extends Controller
                         'pl.tag as platform_tag',
                         'partner_platform_connections.created_at',
                         'partner_platform_connections.is_active',
+                        'partner_platform_connections.approve_test_lead',
                         'partner_platform_connections.options->posting_type as label',
                         'partner_platform_connections.options->force_pingpost_sell as force_pingpost_sell',
                         'partner_platform_connections.options->affid as affid',
