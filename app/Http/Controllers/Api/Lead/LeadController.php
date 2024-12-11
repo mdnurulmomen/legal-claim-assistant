@@ -58,6 +58,7 @@ class LeadController extends Controller
                         ->when(empty($request->is_total), function($query) use ($request) {
                             return $query->select(
                                 'platform_datas.id',
+                                'platform_datas.list_id',
                                 'platform_datas.datas',
                                 'platform_datas.email',
                                 'platform_datas.phone',

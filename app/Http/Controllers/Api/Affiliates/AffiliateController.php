@@ -142,6 +142,12 @@ class AffiliateController extends Controller
         //unset the affids from the validated data
         unset($validatedData['affids']);
 
+        // unset password is empty
+        if( empty(trim($validatedData['password'])) || empty(trim($validatedData['password_confirmation'])) ){
+            unset($validatedData['password']);
+            unset($validatedData['password_confirmation']);
+        }
+
         $user->update($validatedData);
 
         // check if affiliate exists
@@ -180,6 +186,8 @@ class AffiliateController extends Controller
                 [ 'affiliate_id'    => $user->id ],
                 [ 'user_id'         =>  $validatedData['manager'] ]
             );
+        } else {
+            AccountManager::where('affiliate_id', $user->id)->delete();
         }
 
 
