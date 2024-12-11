@@ -36,7 +36,8 @@ class PostbackLogController extends Controller
 
                 return $query->orWhere(function ($query) use ($searchTxt) {
                     $query->where('request_id', 'like', $searchTxt)
-                        ->orWhere('type', 'like', $searchTxt);
+                        ->orWhere('type', 'like', $searchTxt)
+                        ->orWhere('data', 'like', $searchTxt);
                 })->orWhereHas('lead',function ($query) use ($searchTxt){
                     $query->where('affm_lead_id', 'like', $searchTxt);
                 });
