@@ -65,6 +65,33 @@ class PlatformIntegrationService
             $requestData['convert_maps'] = $this->replaceStringWithBool($requestData['convert_maps']);
         }
 
+        if($requestData['custom_maps'] ?? null){
+            $requestData['custom_maps'] = $this->replaceStringWithBool($requestData['custom_maps']);
+        }
+
+        $ping = $requestData['ping'] ?? null;
+
+        if($ping && array_key_exists('save_data', $ping)) {
+            $ping['save_data'] = $this->convertNullToString($ping['save_data']);
+        }
+
+        if($ping && array_key_exists('triggers', $ping)) {
+            $ping['triggers'] = $this->convertNullToString($ping['triggers']);
+        }
+
+        $requestData['ping'] = $ping;
+
+        if(empty($requestData['ping'])) {
+            unset($requestData['ping']);
+        }
+
+        $brandData = $requestData['brand_data'] ?? null;
+        $requestData['brand_data'] = $brandData;
+
+        if(empty($requestData['brand_data'])) {
+            unset($requestData['brand_data']);
+        }
+
         if($index === false) {
             $requestData['order'] = count($integrations) + 1;
 
@@ -77,18 +104,22 @@ class PlatformIntegrationService
             abort(400, 'Integration not found');
         }
 
-        $ping = $requestData['ping'] ?? null;
-
-        if(! $ping) {
+        if(empty($ping) && array_key_exists('ping', $integration)) {
             unset($integration['ping']);
         }
 
-        if(empty($requestData['brand_data'] ?? null) && array_key_exists('brand_data', $integration)) {
+        if(empty($brandData) && array_key_exists('brand_data', $integration)) {
             unset($integration['brand_data']);
         }
 
         $integrations[$index] = array_merge($integration, $requestData);
         return $integrations;
+    }
+
+    public function convertNullToString($data) {
+        return array_map(function ($value) {
+            return $value === null || $value === 'null' ? '' : $value;
+        }, $data);
     }
 
     /**
@@ -197,17 +228,24 @@ class PlatformIntegrationService
     {
         $updatedArray = [];
         foreach ($array as $key => $value) {
+
             if (is_array($value)) {
-                $updatedArray[$key] = $this->replaceStringWithBool($value); // Recursive call for nested arrays
-            } elseif ($value === "null") {
-                $updatedArray[$key] = null; // Replace "null" string with null value
-            } elseif ($value === "true") {
-                $updatedArray[$key] = true; // Replace "true" string with true value
-            } elseif ($value === "false") {
-                $updatedArray[$key] = false; // Replace "false" string with false value
-            } else {
-                $updatedArray[$key] = $value; // Copy the original value
+                $updatedArray[$key] = $this->replaceStringWithBool($value);
+                continue;
             }
+
+            $newValue = match ($value) {
+                'null' => '',
+                null => null,
+                'true' => true,
+                'false' => false,
+                '0' => 0,
+                is_bool($value) => $value,
+                is_numeric($value) => (int)$value,
+                default => $value,
+            };
+
+            $updatedArray[$key] = $newValue;
         }
         return $updatedArray;
     }
