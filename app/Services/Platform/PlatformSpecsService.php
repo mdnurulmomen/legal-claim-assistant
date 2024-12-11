@@ -50,7 +50,8 @@ class PlatformSpecsService
         $options['lead_posting']['optional_fields'] = $request->optional_fields;
         $options['lead_posting']['required_fields'] = $request->required_fields;
 
-        $specs->approve_test_lead = $request->approve_test_lead;
+        $specs->approve_test_lead   = $request->approve_test_lead;
+        $specs->campaign_name       = $request->campaign_name ?? null;
         $specs->options = $options;
         $specs->save();
     }
