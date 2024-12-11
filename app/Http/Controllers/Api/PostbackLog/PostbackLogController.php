@@ -34,9 +34,11 @@ class PostbackLogController extends Controller
 
                 $searchTxt = "%{$request->search_txt}%";
 
-                return $query->where(function ($query) use ($searchTxt) {
+                return $query->orWhere(function ($query) use ($searchTxt) {
                     $query->where('request_id', 'like', $searchTxt)
                         ->orWhere('type', 'like', $searchTxt);
+                })->orWhereHas('lead',function ($query) use ($searchTxt){
+                    $query->where('affm_lead_id', 'like', $searchTxt);
                 });
 
             })

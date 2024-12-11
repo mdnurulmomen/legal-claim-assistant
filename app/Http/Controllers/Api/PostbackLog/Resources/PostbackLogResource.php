@@ -22,6 +22,7 @@ class PostbackLogResource extends JsonResource
             'type' => $this->type,
             'success' => $this->success,
             'data' => $this->data,
+            'url' => $this->data['url'],
             'created_at' => $this->created_at,
         ];
     }
