@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\GlobalPostback;
+use App\Models\PostbackLog;
 use Illuminate\Support\Facades\Http;
 
 class PostBackTriggerService {
@@ -138,10 +139,7 @@ class PostBackTriggerService {
                     continue;
                 }
 
-                $res = Http::get($postback_url);
-                // if(! $res->ok()) {
-                //     \Sentry\captureMessage($res->body());
-                // }
+                $this->postBackTrigger($postback_url, $data['payload']['id'], 'retainer_global_postback');
 
             } catch (\Throwable $th) {
                 // throw $th;
@@ -256,6 +254,76 @@ class PostBackTriggerService {
     {
         \Sentry\captureMessage('Unknown operator: ' . $operator);
         return false;
+    }
+
+    public function postBackTrigger($url, $lead_id = null, $type = 'global_postback')
+    {
+        try {
+            // Perform the GET request
+            $response = Http::get($url);
+
+            $logData = [
+                'data' => [
+                    'url' => $url,
+                    'status' => $response->status(),
+                    'headers' => $response->headers(),
+                    'body' => $response->body(),
+                ],
+                'success' => true,
+                'type' => $type,
+            ];
+
+
+            info('Response: ', $logData);
+
+            if ($lead_id) {
+                $logData['lead_id'] = $lead_id;
+            }
+
+            //log it
+            $this->logPostback($logData);
+
+            return true;
+        } catch (\Exception $e) {
+            //send the error to the sentry
+            \Sentry\captureException($e);
+            info($e->getMessage());
+            // Handle any exceptions and log the error
+            $logData = [
+                'data' => [
+                    'url' => $url,
+                    'error' => $e->getMessage(),
+                ],
+                'type' => $type,
+            ];
+
+            if ($lead_id) {
+                $logData['lead_id'] = $lead_id;
+            }
+
+            //log it
+            $this->logPostback($logData);
+
+            return false;
+        }
+    }
+
+    public function logPostback($data)
+    {
+        // Log the postback data
+        //make sure the request_id is unique
+        $request_id = uniqid();
+        while (PostbackLog::where('request_id', $request_id)->exists()) {
+            $request_id = uniqid();
+        }
+
+        //merge the request_id
+        $data['request_id'] = $request_id;
+
+        // Save the log data
+        PostbackLog::create($data);
+
+        return true;
     }
 
 }
