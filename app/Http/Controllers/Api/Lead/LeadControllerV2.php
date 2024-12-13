@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Lead\Requests\BulkUpdateLeadRequest;
 use App\Http\Controllers\Controller;
 use App\Services\Lead\PlatformService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
 class LeadControllerV2 extends Controller
@@ -19,7 +20,7 @@ class LeadControllerV2 extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function bulkUpdateLeads(BulkUpdateLeadRequest $request, PlatformService $platformService)
+    public function bulkUpdateLeads(BulkUpdateLeadRequest $request, PlatformService $platformService): Response
     {
         try {
             DB::beginTransaction();
@@ -27,7 +28,7 @@ class LeadControllerV2 extends Controller
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
-            return withError('Lead Filled Fields Update Failed.');
+            return withError('Lead Filled Fields Update Failed.' . $th->getMessage());
         }
 
         return withSuccess(message: 'Lead Filled Fields Updated Successfully!');
