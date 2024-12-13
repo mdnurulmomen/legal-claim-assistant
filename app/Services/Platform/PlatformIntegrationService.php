@@ -69,6 +69,10 @@ class PlatformIntegrationService
             $requestData['custom_maps'] = $this->replaceStringWithBool($requestData['custom_maps']);
         }
 
+        if($requestData['maps'] ?? null){
+            $requestData['maps'] = $this->replaceStringWithBool($requestData['maps']);
+        }
+
         $ping = $requestData['ping'] ?? null;
 
         if($ping && array_key_exists('save_data', $ping)) {
@@ -227,6 +231,7 @@ class PlatformIntegrationService
     public function replaceStringWithBool($array): array
     {
         $updatedArray = [];
+
         foreach ($array as $key => $value) {
 
             if (is_array($value)) {
@@ -234,15 +239,17 @@ class PlatformIntegrationService
                 continue;
             }
 
-            $newValue = match ($value) {
-                'null' => '',
-                null => null,
-                'true' => true,
-                'false' => false,
-                '0' => 0,
-                is_bool($value) => $value,
-                is_numeric($value) => (int)$value,
-                default => $value,
+            $trimmedInput = trim($value);
+
+            $newValue = match (true) {
+                strcasecmp($trimmedInput, 'true') === 0 => true,     // Boolean true
+                strcasecmp($trimmedInput, 'false') === 0 => false,   // Boolean false
+                strcasecmp($trimmedInput, 'null') === 0 => null,     // Null
+                strcasecmp($trimmedInput, 'undefined') === 0 => null, // Null
+                is_numeric($trimmedInput) => strpos($trimmedInput, '.') === false
+                    ? (int) $trimmedInput                           // Integer
+                    : (float) $trimmedInput,                        // Float
+                default => $trimmedInput,                                  // Fallback to string
             };
 
             $updatedArray[$key] = $newValue;
