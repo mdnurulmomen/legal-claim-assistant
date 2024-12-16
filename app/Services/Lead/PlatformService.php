@@ -27,9 +27,23 @@ class PlatformService
         $fillableKeys = (new PlatformData())->getFillable();
         $selectableKeys = $this->formatSelectableKeys($request, $fillableKeys);
         $conditions = $this->formatConditions($request, $fillableKeys);
+        $isAmountField = in_array('revenue', $request->mapped_headers) || in_array('affiliate_payout', $request->mapped_headers);
 
         $leads = PlatformData::query()
                     ->select($selectableKeys)
+                    ->when($isAmountField, function ($query) {
+                        return $query->addSelect([
+                            'revenue' => LeadReport::selectRaw('SUM(lead_revenue)')
+                                            ->whereColumn('lead_id', 'platform_datas.id')
+                                            ->where('is_retainer', 0)
+                                            ->limit(1),
+
+                            'affiliate_payout' => LeadReport::selectRaw('SUM(lead_revenue) - SUM(affiliate_payout)')
+                                                    ->whereColumn('lead_id', 'platform_datas.id')
+                                                    ->where('is_retainer', 0)
+                                                    ->limit(1)
+                        ]);
+                    })
                     ->when(! empty($conditions), function ($query) use ($conditions) {
                         foreach ($conditions as $index => $condition) {
 
@@ -62,11 +76,15 @@ class PlatformService
      */
     public function formatSelectableKeys(Request $request, array $fillableKeys): array
     {
-        $columns = array_map(function ($header) use ($fillableKeys) {
-            return in_array($header, $fillableKeys) ? $header : "datas->{$header} as {$header}";
-        }, $request->mapped_headers);
+        $columns = collect($request->mapped_headers)
+                    ->filter(fn($header) => !in_array($header, ['revenue', 'affiliate_payout']))
+                    ->map(function ($header) use ($fillableKeys) {
+                        return in_array($header, $fillableKeys) ? $header : "datas->{$header} as {$header}";
+                    })
+                    ->push('id', 'lead_status')
+                    ->toArray();
 
-        return array_merge(['id', 'lead_status'], $columns);
+        return $columns;
     }
 
     /**
@@ -142,7 +160,13 @@ class PlatformService
         $fields = collect($filledData[0])->keys();
 
         $selectableFields = $fields->filter(fn($field) => in_array($field, $fillable))->toArray();
-        $isAmountField = in_array('revenue', $fields->toArray()) || in_array('affiliate_payout', $fields->toArray());
+
+        $isAmountField = in_array('revenue', $fields->toArray());
+
+        if(in_array('affiliate_payout', $fields->toArray())) {
+            $selectableFields[] = 'payout';
+            $isAmountField = true;
+        }
 
         $leads = PlatformData::query()
                     ->select('id', 'datas', ... $selectableFields)
@@ -155,7 +179,8 @@ class PlatformService
                             'affid',
                             'buyer_integration_id',
                             'affiliate_specs_id',
-                            'affm_source_id'
+                            'affm_source_id',
+                            'created_at'
                         ]);
                     })
                     ->get();
@@ -164,14 +189,16 @@ class PlatformService
             throw new \Exception('No leads found');
         }
 
-        $allLeadData = iterator_to_array($this->generateLeadData($filledData, $leads->toArray(), $fillable), false);
+        $leadAdditionalData = [];
+
+        $allLeadData = iterator_to_array($this->generateLeadData($filledData, $leads->toArray(), $fillable, $leadAdditionalData), false);
 
         if(empty($allLeadData)) {
             throw new \Exception('No leads found');
         }
 
         $platformUpdatableField = collect($selectableFields)
-                                    ->filter(fn($field) => ! in_array($field, ['revenue', 'affiliate_payout']))
+                                    ->filter(fn($field) => ! in_array($field, ['revenue', 'affiliate_payout', 'retained_date']))
                                     ->push('datas')
                                     ->toArray();
 
@@ -181,7 +208,7 @@ class PlatformService
             $platformUpdatableField
         );
 
-        $leadData = collect($allLeadData);
+        $leadData = collect($leadAdditionalData);
         $leadGroup = $leadData->groupBy('id')->all();
         $leadIds = $leadData->pluck('id')->all();
 
@@ -360,7 +387,6 @@ class PlatformService
         $updatableReportFields = collect($updatableReportFields);
         $generalUpdatableFields = $updatableReportFields->filter(fn($field) => ! in_array($field, ['lead_revenue', 'affiliate_payout']));
         $revenuePayoutFields = $updatableReportFields->filter(fn($field) => in_array($field, ['lead_revenue', 'affiliate_payout']));
-        $date = now();
 
         if(empty($generalUpdatableFields) && empty($revenuePayoutFields)) return;
 
@@ -388,7 +414,7 @@ class PlatformService
 
 
             if((empty($newRetainer) || ($newRetainer['lead_id'] != $report['lead_id'])) && ! empty($revenuePayoutFields)) {
-                $newRetainer = $this->getFormData($lead, $date);
+                $newRetainer = $this->getFormData($lead);
                 $this->sumRevenuePayout($revenue, $payout, $newRetainer);
                 yield $newRetainer;
             }
@@ -402,7 +428,6 @@ class PlatformService
         if(! empty($lead) && count($revenuePayoutFields)) {
             $leadRevenuePayouts[] = $this->getRevenuePayout($lead, $revenue, $payout, $newRetainer);
         }
-
 
     }
 
@@ -446,9 +471,9 @@ class PlatformService
             'id' => $lead['id'],
             'revenue' => $revenue,
             'payout' => $revenue - $payout,
-            'is_retainer' => 1,
+            'is_retainer' => $lead['is_retainer'],
             'lead_status' => 'Retained',
-            'retained_date' => $leadReport['created_at'] ?? now()
+            'retained_date' => $leadReport['created_at']
         ];
     }
 
@@ -459,8 +484,15 @@ class PlatformService
     * @param array $leadReportData
     * @return array
     */
-    public function getFormData(array $lead, $date): array
+    public function getFormData(array $lead): array
     {
+        $createdAt = Carbon::parse($lead['created_at']) ?? null;
+        $newRetainedDate = Carbon::parse($lead['new_retained_date'])->midDay();
+
+        if($createdAt && ($createdAt->greaterThan($newRetainedDate))){
+            $newRetainedDate = $createdAt->addHour();
+        }
+
         $formData = [
             'id' => null,
             'affiliate_id' => $lead['affiliate_id'] ?? null,
@@ -477,8 +509,8 @@ class PlatformService
             'lead_profit' => 0,
             'affiliate_margin' => 0,
             'profit_margin' => 0,
-            'created_at' => $date,
-            'updated_at' => $date
+            'created_at' => $newRetainedDate,
+            'updated_at' => $newRetainedDate
         ];
 
         $reportData = $this->calculateRevenuePayout((float) $formData['lead_revenue'], (float) $formData['affiliate_payout']);
@@ -515,9 +547,10 @@ class PlatformService
      *
      * @return Generator
      */
-    private function generateLeadData(Collection $filledData, array $leads, array $fillable): Generator
+    private function generateLeadData(Collection $filledData, array $leads, array $fillable, array &$leadAdditionalData): Generator
     {
         $groupFilledData = $filledData->groupBy('id')->all();
+        $formattedFillable = collect($fillable)->reject(fn($item) => in_array($item, ['retained_date']))->all();
 
         foreach ($leads as &$lead) {
 
@@ -528,12 +561,8 @@ class PlatformService
 
             foreach($newLead as $key => $value) {
 
-                if(in_array($key, $fillable)) {
+                if(in_array($key, $formattedFillable)) {
                     $lead[$key] = $value;
-                }
-
-                if($key === 'affiliate_payout') {
-                    $lead['payout'] = $value;
                 }
 
                 if(array_key_exists($key, $data)) {
@@ -544,6 +573,20 @@ class PlatformService
             $lead['datas'] = json_encode($data);
 
             yield $lead;
+
+            if($isRetainer = $newLead['is_show_portal'] ?? null) {
+                $lead['is_retainer'] = $isRetainer;
+            }
+
+            if($payout = $newLead['affiliate_payout'] ?? 0) {
+                $lead['payout'] = $payout;
+            }
+
+            if($retainedDate = $newLead['retained_date'] ?? null) {
+                $lead['new_retained_date'] = $retainedDate;
+            }
+
+            $leadAdditionalData[] = $lead;
         }
     }
 }
