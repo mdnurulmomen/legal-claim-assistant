@@ -11,6 +11,7 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class PlatformService
 {
@@ -33,12 +34,12 @@ class PlatformService
                     ->select($selectableKeys)
                     ->when($isAmountField, function ($query) {
                         return $query->addSelect([
-                            'revenue' => LeadReport::selectRaw('SUM(lead_revenue)')
+                            'revenue' => LeadReport::selectRaw('IFNULL(SUM(lead_revenue), 0)')
                                             ->whereColumn('lead_id', 'platform_datas.id')
                                             ->where('is_retainer', 0)
                                             ->limit(1),
 
-                            'affiliate_payout' => LeadReport::selectRaw('SUM(lead_revenue) - SUM(affiliate_payout)')
+                            'affiliate_payout' => LeadReport::selectRaw('IFNULL(SUM(lead_revenue) - SUM(affiliate_payout), 0)')
                                                     ->whereColumn('lead_id', 'platform_datas.id')
                                                     ->where('is_retainer', 0)
                                                     ->limit(1)
@@ -212,7 +213,7 @@ class PlatformService
         $leadGroup = $leadData->groupBy('id')->all();
         $leadIds = $leadData->pluck('id')->all();
 
-        $this->updateRelevantLeadReports($fields, $leadGroup, $leadIds);
+        $this->updateRelevantLeadReports($fields, $leadData, $leadIds);
         $this->updateRelevantLeadLog($fields, $leadGroup, $leadIds, $fillable);
     }
 
@@ -220,18 +221,19 @@ class PlatformService
      * Updates the lead reports in the database based on the provided updated leads data.
      *
      * @param Collection $fields
-     * @param array $leadGroup
+     * @param Collection $leadGroup
      * @param array $leadIds
      *
      * @return void
      */
-    public function updateRelevantLeadReports(Collection $fields, array $leadGroup, array $leadIds): void
+    public function updateRelevantLeadReports(Collection $fields, Collection $leadData, array $leadIds): void
     {
         $updatableReportFields = $fields
                                     ->filter(fn($item) => in_array($item, ['affid', 'revenue', 'affiliate_payout']))
                                     ->map(fn($item) => $item === 'revenue' ? 'lead_revenue' : $item)
-                                    ->values()
-                                    ->all();
+                                    ->values();
+
+        $isRevenuePayoutField = $updatableReportFields->contains(fn($field) => in_array($field, ['revenue', 'affiliate_payout']));
 
         if(empty($updatableReportFields)) return;
 
@@ -242,41 +244,60 @@ class PlatformService
                                 'affiliate_id',
                                 'list_id',
                                 'buyer_id',
+                                'affid',
                                 'buyer_integration_id',
                                 'affiliate_specs_id',
                                 'affm_source_id',
                                 'is_retainer',
-                                'affid',
                                 'lead_revenue',
                                 'affiliate_payout',
                                 'lead_profit',
                                 'affiliate_margin',
-                                'profit_margin'
+                                'profit_margin',
+                                'sold_type',
+                                'created_at',
+                                'updated_at'
                             )
                             ->orderBy('lead_id', 'asc')
                             ->get();
 
-        if(empty($leadReports)) return;
-
         $leadRevenuePayouts = [];
-        $oldRetainerIds = [];
 
         $leadReportData = iterator_to_array(
-            $this->generateLeadReportData($leadReports->toArray(), $leadGroup, $updatableReportFields, $leadRevenuePayouts, $oldRetainerIds),
+            $this->generateLeadReportDataV2(
+                $leadReports->toArray(),
+                $leadData->toArray(),
+                $leadRevenuePayouts,
+                $updatableReportFields->toArray()
+            ),
             false
         );
 
         if(count($leadReportData) > 0) {
-            LeadReport::upsert(
-                $leadReportData,
-                ['id'],
-                $updatableReportFields
-            );
+            $leadReportData = collect($leadReportData);
 
-            GlobalPostBackTriggerJob::dispatch([
-                'type' => 'bulk_retainer',
-                'lead_reports' => $leadReportData
-            ]);
+            $existingData = $leadReportData->filter(fn($item) => array_key_exists('id', $item))->all();
+
+            if(count($existingData) > 0) {
+                LeadReport::upsert(
+                    $leadReportData->filter(fn($item) => array_key_exists('id', $item))->all(),
+                    ['id'],
+                    ['lead_revenue', 'affiliate_payout', 'lead_profit', 'affiliate_margin', 'profit_margin', 'created_at', 'updated_at', 'affid', 'sold_type']
+                );
+            }
+
+            $newReports = $leadReportData->filter(fn($item) => ! array_key_exists('id', $item))->all();
+
+            if(count($newReports) > 0) {
+                LeadReport::insert($newReports);
+            }
+
+            if($isRevenuePayoutField) {
+                GlobalPostBackTriggerJob::dispatch([
+                    'type' => 'bulk_retainer',
+                    'lead_reports' => $leadReportData->toArray()
+                ]);
+            }
         }
 
         if(count($leadRevenuePayouts) > 0) {
@@ -285,10 +306,6 @@ class PlatformService
                 ['id'],
                 ['payout', 'revenue', 'is_retainer', 'lead_status', 'retained_date']
             );
-        }
-
-        if(count($oldRetainerIds) > 0) {
-            LeadReport::whereIn('id', $oldRetainerIds)->delete();
         }
     }
 
@@ -368,67 +385,63 @@ class PlatformService
     }
 
     /**
-     * Generator to generate lead report data from the given $leadReports and $leadGroup data.
+     * Generator to generate lead report data from the given $leadReports and $leadData data.
      * This will also update the $leadRevenuePayouts array with the revenue and payout data.
      *
      * @param array $leadReports
-     * @param array $leadGroup
+     * @param array $leadData
      * @param array $updatableReportFields
      * @param array $leadRevenuePayouts
+     * @param array $oldRetainerIds
      * @return Generator
      */
-    private function generateLeadReportData(array $leadReports, array $leadGroup, array $updatableReportFields, &$leadRevenuePayouts, &$oldRetainerIds): Generator
+    private function generateLeadReportDataV2(array $leadReports, array $leadData, &$leadRevenuePayouts, array $updatableReportFields): Generator
     {
-        $lead = null;
         $revenue = 0;
         $payout = 0;
-        $newRetainer = null;
 
         $updatableReportFields = collect($updatableReportFields);
-        $generalUpdatableFields = $updatableReportFields->filter(fn($field) => ! in_array($field, ['lead_revenue', 'affiliate_payout']));
-        $revenuePayoutFields = $updatableReportFields->filter(fn($field) => in_array($field, ['lead_revenue', 'affiliate_payout']));
+        $generalUpdatableFields = $updatableReportFields->filter(fn($field) => ! in_array($field, ['lead_revenue', 'affiliate_payout']))->all();
+        $revenuePayoutFields = $updatableReportFields->filter(fn($field) => in_array($field, ['lead_revenue', 'affiliate_payout']))->all();
 
         if(empty($generalUpdatableFields) && empty($revenuePayoutFields)) return;
 
-        foreach($leadReports as $report) {
+        $leadReports = collect($leadReports)->groupBy('lead_id')->all();
 
-            if(! empty($report['is_retainer']) && count($revenuePayoutFields)) {
-                $oldRetainerIds[] = $report['id'];
-                continue;
-            }
+        foreach($leadData as $lead) {
 
-            if(empty($lead) || (($lead['id'] != $report['lead_id']))) {
+            $reports = $leadReports[$lead['id']] ?? [];
+            $oldRetainer = null;
 
-                if(! empty($lead) && count($revenuePayoutFields)) {
-                    $leadRevenuePayouts[] = $this->getRevenuePayout($lead, $revenue, $payout, $newRetainer);
+            foreach($reports as $report) {
+
+                if( ! empty($revenuePayoutFields)) {
+
+                    if(! empty($report['is_retainer'])) {
+                        $oldRetainer = $report;
+                        continue;
+                    }
+
+                    $this->sumRevenuePayout($revenue, $payout, $report);
                 }
 
-                $lead = $leadGroup[$report['lead_id']][0] ?? null;
-                $this->resetRevenuePayout($revenue, $payout);
-                $newRetainer = null;
+                foreach ($generalUpdatableFields as $field) {
+                    $report[$field] = $lead[$field];
+                }
+
+                yield $report;
             }
 
-            foreach ($generalUpdatableFields as $field) {
-                $report[$field] = $lead[$field];
-            }
-
-
-            if((empty($newRetainer) || ($newRetainer['lead_id'] != $report['lead_id'])) && ! empty($revenuePayoutFields)) {
-                $newRetainer = $this->getFormData($lead);
+            if(! empty($revenuePayoutFields)) {
+                $newRetainer = $this->getFormData($lead, $oldRetainer);
                 $this->sumRevenuePayout($revenue, $payout, $newRetainer);
+
+                $leadRevenuePayouts[] = $this->getRevenuePayout($lead, $revenue, $payout, $newRetainer);
+                $this->resetRevenuePayout($revenue, $payout);
+
                 yield $newRetainer;
             }
-
-            $this->sumRevenuePayout($revenue, $payout, $report);
-
-            yield $report;
-
         }
-
-        if(! empty($lead) && count($revenuePayoutFields)) {
-            $leadRevenuePayouts[] = $this->getRevenuePayout($lead, $revenue, $payout, $newRetainer);
-        }
-
     }
 
     /**
@@ -484,7 +497,7 @@ class PlatformService
     * @param array $leadReportData
     * @return array
     */
-    public function getFormData(array $lead): array
+    public function getFormData(array $lead, ?array $oldRetainer = null): array
     {
         $createdAt = Carbon::parse($lead['created_at']) ?? null;
         $newRetainedDate = Carbon::parse($lead['new_retained_date'])->midDay();
@@ -494,9 +507,8 @@ class PlatformService
         }
 
         $formData = [
-            'id' => null,
-            'affiliate_id' => $lead['affiliate_id'] ?? null,
             'lead_id' => $lead['id'] ?? null,
+            'affiliate_id' => $lead['affiliate_id'] ?? null,
             'list_id' => $lead['list_id'] ?? null,
             'buyer_id' => $lead['buyer_id'] ?? null,
             'affid' => $lead['affid'] ?? null,
@@ -509,9 +521,14 @@ class PlatformService
             'lead_profit' => 0,
             'affiliate_margin' => 0,
             'profit_margin' => 0,
+            'sold_type' => 'Retained',
             'created_at' => $newRetainedDate,
             'updated_at' => $newRetainedDate
         ];
+
+        if($oldRetainer) {
+            $formData['id'] = $oldRetainer['id'];
+        }
 
         $reportData = $this->calculateRevenuePayout((float) $formData['lead_revenue'], (float) $formData['affiliate_payout']);
 
