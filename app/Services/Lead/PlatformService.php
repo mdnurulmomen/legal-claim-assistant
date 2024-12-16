@@ -27,9 +27,23 @@ class PlatformService
         $fillableKeys = (new PlatformData())->getFillable();
         $selectableKeys = $this->formatSelectableKeys($request, $fillableKeys);
         $conditions = $this->formatConditions($request, $fillableKeys);
+        $isAmountField = in_array('revenue', $request->mapped_headers) || in_array('affiliate_payout', $request->mapped_headers);
 
         $leads = PlatformData::query()
                     ->select($selectableKeys)
+                    ->when($isAmountField, function ($query) {
+                        return $query->addSelect([
+                            'revenue' => LeadReport::selectRaw('SUM(lead_revenue)')
+                                            ->whereColumn('lead_id', 'platform_datas.id')
+                                            ->where('is_retainer', 0)
+                                            ->limit(1),
+
+                            'affiliate_payout' => LeadReport::selectRaw('SUM(lead_revenue) - SUM(affiliate_payout)')
+                                                    ->whereColumn('lead_id', 'platform_datas.id')
+                                                    ->where('is_retainer', 0)
+                                                    ->limit(1)
+                        ]);
+                    })
                     ->when(! empty($conditions), function ($query) use ($conditions) {
                         foreach ($conditions as $index => $condition) {
 
@@ -63,22 +77,14 @@ class PlatformService
     public function formatSelectableKeys(Request $request, array $fillableKeys): array
     {
         $columns = collect($request->mapped_headers)
+                    ->filter(fn($header) => !in_array($header, ['revenue', 'affiliate_payout']))
                     ->map(function ($header) use ($fillableKeys) {
-                        $newHeader = in_array($header, $fillableKeys) ? $header : "datas->{$header} as {$header}";
-                        if($header === 'affiliate_payout') {
-                            $newHeader = 'payout as affiliate_payout';
-                        }
-                        return $newHeader;
+                        return in_array($header, $fillableKeys) ? $header : "datas->{$header} as {$header}";
                     })
                     ->push('id', 'lead_status')
                     ->toArray();
 
         return $columns;
-        // $columns = array_map(function ($header) use ($fillableKeys) {
-        //     return in_array($header, $fillableKeys) ? $header : "datas->{$header} as {$header}";
-        // }, $request->mapped_headers);
-
-        // return array_merge(['id', 'lead_status'], $columns);
     }
 
     /**
@@ -259,11 +265,6 @@ class PlatformService
             $this->generateLeadReportData($leadReports->toArray(), $leadGroup, $updatableReportFields, $leadRevenuePayouts, $oldRetainerIds),
             false
         );
-
-        info('leadReportData', $leadReportData);
-        info('leadRevenuePayouts', $leadRevenuePayouts);
-
-        abort(400, 'FAiled');
 
         if(count($leadReportData) > 0) {
             LeadReport::upsert(
