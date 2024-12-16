@@ -44,36 +44,15 @@ class GlobalPostBackTriggerJob implements ShouldQueue
     public function triggerBulkRetainer(array $leadReports) {
 
         $reportGroups = collect($leadReports)->pluck('lead_id')->unique()->all();
-        // $reportGroups = collect($leadReports)->groupBy('lead_id');
-        // $newReportConditions = [];
-
-        // foreach($reportGroups as $leadId => $leadReport) {
-        //     $newReportConditions[] = [
-        //         'lead_id' => $leadId,
-        //         'report_ids' => collect($leadReport)->pluck('id')->filter()->values()
-        //     ];
-        // }
 
         $leadReports = LeadReport::query()
             ->where('is_retainer', '=', 1)
             ->whereIn('lead_id', $reportGroups)
-            // ->where(function($query) use ($newReportConditions) {
-            //     foreach($newReportConditions as $key => $newReportCondition) {
-            //         $method = $this->getConditionMethod($key);
-
-            //         $query->$method(function($query) use ($newReportCondition) {
-            //             $query->where('lead_id', $newReportCondition['lead_id'])
-            //             ->whereNotIn('id', $newReportCondition['report_ids']);
-            //         });
-            //     }
-            // })
             ->select('id', 'lead_id')
-            ->get();
-            info('lead', $leadReports->toArray());
-            // ->lazy(1000)
-            // ->each(function($leadReport) {
-            //     $this->triggerSingleRetainer($leadReport->lead_id);
-            // });
+            ->lazy(1000)
+            ->each(function($leadReport) {
+                $this->triggerSingleRetainer($leadReport->lead_id);
+            });
     }
 
     /**
