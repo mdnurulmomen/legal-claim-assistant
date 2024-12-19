@@ -513,7 +513,7 @@ class LeadController extends Controller
      * @param Request $request
      * @return Response
      */
-    public function getIntegrations(Request $request): Response
+    public function getIntegrations(Request $request, LeadService $leadService): Response
     {
         $platformId = $request->platform_id;
         $searchText = strtolower($request->search_txt);
@@ -536,6 +536,7 @@ class LeadController extends Controller
                             ->limit(100)
                             ->get();
 
+        $integrations = $leadService->formatIntegrations($request, $integrations);
         return withSuccess($integrations);
     }
 
