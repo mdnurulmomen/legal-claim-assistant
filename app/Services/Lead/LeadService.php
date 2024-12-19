@@ -1361,10 +1361,10 @@ class LeadService extends ReportingService
         return $integrations
                     ->map(function ($integration) {
                         preg_match_all('/\"([^\"]+)\"/', $integration->headers, $matches);
-
+                        // return $matches[1];
                         return [
                             'buyer_unique_id' => $integration->buyer_unique_id,
-                            'buyer_headers' => array_unique($matches[1], SORT_REGULAR),
+                            'buyer_headers' => array_unique(array_values($matches[1]), SORT_REGULAR),
                         ];
                     })
                     ->toArray();
