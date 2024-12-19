@@ -1,6 +1,5 @@
 <?php
 
-use App\Library\Service\CountryFuzzyMatcher;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
