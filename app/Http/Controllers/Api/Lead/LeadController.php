@@ -518,21 +518,20 @@ class LeadController extends Controller
         $platformId = $request->platform_id;
         $searchText = strtolower($request->search_txt);
 
-        $selectColumns = [];
-        if(! empty($request->select_columns)){
-            $selectColumns = explode(',', $request->select_columns);
-        }
-
         $integrations = Integration::query()
-                            ->select('buyer_unique_id', 'buyer_headers')
+                            ->select('buyer_unique_id')
+                            ->selectRaw('GROUP_CONCAT(buyer_headers) as headers')
                             ->whereNotNull('buyer_headers')
                             ->when(! empty($searchText), function ($query) use ($searchText) {
-                                return $query->where('buyer_unique_id', 'like', "%{$searchText}%")
-                                            ->orWhereRaw('LOWER(buyer_headers) like ?', ["%{$searchText}%"]);
+                                return $query->where(function($query) use ($searchText) {
+                                    return $query->where('buyer_unique_id', 'like', "%{$searchText}%")
+                                        ->orWhereRaw('LOWER(buyer_headers) like ?', ["%{$searchText}%"]);
+                                });
                             })
                             ->when(! empty($platformId), function ($query) use ($platformId) {
                                 return $query->where('list_id', $platformId);
                             })
+                            ->groupBy('buyer_unique_id')
                             ->limit(100)
                             ->get();
 

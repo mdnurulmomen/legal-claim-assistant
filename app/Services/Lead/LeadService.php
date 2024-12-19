@@ -1359,17 +1359,14 @@ class LeadService extends ReportingService
     public function formatIntegrations(Request $request, Collection $integrations): array
     {
         return $integrations
-                ->groupBy('buyer_unique_id')
-                ->map(fn ($group, $buyerUniqueId) => [
-                    'buyer_unique_id' => $buyerUniqueId,
-                    'buyer_headers' => $group
-                        ->pluck('buyer_headers')
-                        ->flatten(1)
-                        ->unique()
-                        ->values()
-                        ->toArray(),
-                ])
-                ->values()
-                ->toArray();
+                    ->map(function ($integration) {
+                        preg_match_all('/\"([^\"]+)\"/', $integration->headers, $matches);
+
+                        return [
+                            'buyer_unique_id' => $integration->buyer_unique_id,
+                            'buyer_headers' => array_unique($matches[1], SORT_REGULAR),
+                        ];
+                    })
+                    ->toArray();
     }
 }
