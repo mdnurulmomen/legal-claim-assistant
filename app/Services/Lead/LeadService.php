@@ -143,7 +143,7 @@ class LeadService extends ReportingService
                 return $query->where($searchCol, $searchText);
             }
 
-            if (PlatformData::where('platform_datas.affm_lead_id', $searchText)->exists()) {
+            if (strlen($searchText) === 10 && PlatformData::where('platform_datas.affm_lead_id', $searchText)->exists()) {
                 return $query->where('platform_datas.affm_lead_id', $searchText);
             }
 
