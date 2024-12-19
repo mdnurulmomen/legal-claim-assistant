@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Http\Controllers\Api\Lead\Resources\LeadResource;
-use App\Library\Service\CountryFuzzyMatcher;
+use App\Library\Services\CountryFuzzyMatcher;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Rap2hpoutre\FastExcel\FastExcel;

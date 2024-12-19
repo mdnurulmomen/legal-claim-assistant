@@ -143,8 +143,15 @@ class LeadService extends ReportingService
                 return $query->where($searchCol, $searchText);
             }
 
-            return $query->where('platform_datas.affm_lead_id', $searchText)
-                    ->orWhereRaw('LOWER(datas) like ?', ["%{$searchText}%"]);
+            if (strlen($searchText) === 8 && PlatformData::where('platform_datas.affm_lead_id', $searchText)->exists()) {
+                return $query->where('platform_datas.affm_lead_id', $searchText);
+            }
+
+            if(PlatformData::where('platform_datas.affid', $searchText)->exists()) {
+                return $query->where('platform_datas.affid', $searchText);
+            }
+
+            return $query->whereRaw('LOWER(datas) like ?', ["%{$searchText}%"]);
 
                 // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.first_name"))) LIKE ?', ["%{$searchText}%"])
                 // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.last_name"))) LIKE ?', ["%{$searchText}%"]);
