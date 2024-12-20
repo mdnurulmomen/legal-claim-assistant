@@ -1348,4 +1348,28 @@ class LeadService extends ReportingService
 
         return array_merge($formData, $reportData);
     }
+
+    /**
+     * Formats the given integrations by grouping them by buyer unique ID and plucking the buyer headers.
+     *
+     * @param Request $request
+     * @param Collection $integrations
+     * @return array
+     */
+    public function formatIntegrations(Request $request, Collection $integrations): array
+    {
+        return $integrations
+                ->groupBy('buyer_unique_id')
+                ->map(fn ($group, $buyerUniqueId) => [
+                    'buyer_unique_id' => $buyerUniqueId,
+                    'buyer_headers' => $group
+                        ->pluck('buyer_headers')
+                        ->flatten(1)
+                        ->unique()
+                        ->values()
+                        ->toArray(),
+                ])
+                ->values()
+                ->toArray();
+    }
 }
