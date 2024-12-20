@@ -53,7 +53,7 @@ class IntegrationSettingRequest extends FormRequest
 
         if(array_key_exists('brand_data', $this->all())) {
             $rules['brand_data'] = ['required', 'array'];
-            $rules['brand_data.sort_by'] = ['required', 'string'];
+            $rules['brand_data.sort_by'] = ['nullable', 'string'];
             $rules['brand_data.save_data'] = ['required', 'array'];
             $rules['brand_data.save_data.*.save_as'] = ['required', 'string'];
             $rules['brand_data.save_data.*.buyer_key'] = ['required', 'string'];
