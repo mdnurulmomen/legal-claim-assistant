@@ -20,6 +20,10 @@ class PublicController extends Controller
      */
     public function leadDetails(LeadDetailsRequest $request, PublicService $publicService): Response
     {
+        return withError('error', data: [
+            'incoming key' => $request->header('platform_key'),
+            'config key' => config('app.platform_key')
+        ]);
         if($request->header('platform_key') !== config('app.platform_key')) {
             return withError('Invalid key provided!');
         }
