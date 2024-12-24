@@ -123,4 +123,6 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'platform_key' => env('PLATFORM_KEY', ''),
+
 ];
