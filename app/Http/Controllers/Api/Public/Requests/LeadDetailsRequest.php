@@ -17,17 +17,6 @@ class LeadDetailsRequest extends FormRequest
     }
 
     /**
-     * Prepare the data for validation.
-     */
-    protected function prepareForValidation(): void
-    {
-        // Merge the `platform_key` header into the request data
-        $this->merge([
-            'platform_key' => $this->header('platform_key'),
-        ]);
-    }
-
-    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
@@ -36,8 +25,7 @@ class LeadDetailsRequest extends FormRequest
     {
         return [
             'phone' => ['required', 'string', 'max:20'],
-            'email' => ['required', 'email', 'max:255'],
-            'platform_key' => ['required', 'string'],
+            'email' => ['required', 'email', 'max:255']
         ];
     }
 
