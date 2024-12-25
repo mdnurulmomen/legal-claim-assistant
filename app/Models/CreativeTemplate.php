@@ -6,19 +6,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
-class CreativeUpload extends Model
+class CreativeTemplate extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'tag',
-        'user_id',
-        'template_offer_id',
-        'creative_template_id',
         'name',
-        'description',
-        'attachments',
-        'status'
+        'template_offer_id',
+        'attachments'
     ];
 
     /**
@@ -26,9 +22,9 @@ class CreativeUpload extends Model
      *
      * @var array
      */
-    protected $casts = [
-        'attachments' => 'array',
-    ];
+    // protected $casts = [
+    //     'attachments' => 'array',
+    // ];
 
     public function setTagAttribute()
     {
@@ -46,24 +42,8 @@ class CreativeUpload extends Model
     /**
      * Get the user that owns the affiliate.
      */
-    public function user() : \Illuminate\Database\Eloquent\Relations\BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    /**
-     * Get the offer of creative
-     */
     public function offer()
     {
         return $this->belongsTo(TemplateOffer::class, 'template_offer_id', 'id');
-    }
-
-    /**
-     * Get the template of creative
-     */
-    public function template()
-    {
-        return $this->belongsTo(CreativeTemplate::class, 'creative_template_id', 'id');
     }
 }
