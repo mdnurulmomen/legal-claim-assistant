@@ -20,7 +20,7 @@ class PublicController extends Controller
      */
     public function leadDetails(LeadDetailsRequest $request, PublicService $publicService): Response
     {
-        if($request->header('platform_key') !== config('app.platform_key')) {
+        if($request->header('X-PLATFORM-KEY') !== config('app.platform_key')) {
             return withError('Invalid key provided!');
         }
 
