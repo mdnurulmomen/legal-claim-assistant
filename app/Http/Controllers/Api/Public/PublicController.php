@@ -33,7 +33,8 @@ class PublicController extends Controller
                 ->latest('platform_datas.id')
                 ->select([
                     'platform_datas.*',
-                    'pl.lead_headers'
+                    'pl.lead_headers',
+                    'pl.name as list_name'
                 ])
                 ->first();
 

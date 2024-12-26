@@ -16,7 +16,7 @@ class PublicService
         $headers = json_decode($lead['lead_headers'], true);
         $data = $lead['datas'] ?? [];
 
-        array_push($headers, 'id');
+        array_push($headers, 'id', 'list_name');
         unset($lead['datas'], $lead['lead_headers']);
 
         $mergedLead = array_merge($lead, $data);
