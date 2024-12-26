@@ -240,10 +240,6 @@ class PlatformIntegrationService
                 continue;
             }
 
-            if($type === 'custom_maps') {
-                info($value . ' ' . gettype($value));
-            }
-
             $newValue = match (true) {
                 strcasecmp($value, 'true') === 0 => true,     // Boolean true
                 strcasecmp($value, 'false') === 0 => false,   // Boolean false
