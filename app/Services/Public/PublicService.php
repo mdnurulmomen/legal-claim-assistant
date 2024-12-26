@@ -13,9 +13,13 @@ class PublicService
      */
     public function formatLead(array $lead): array
     {
+        $headers = json_decode($lead['lead_headers'], true);
         $data = $lead['datas'] ?? [];
-        unset($lead['datas']);
-        $filteredLead = array_filter($lead, fn($value) => !empty($value));
-        return array_merge($filteredLead, $data);
+
+        array_push($headers, 'id');
+        unset($lead['datas'], $lead['lead_headers']);
+
+        $mergedLead = array_merge($lead, $data);
+        return array_filter($mergedLead, fn($value, $key) => !empty($value) && in_array($key, $headers), ARRAY_FILTER_USE_BOTH);
     }
 }
