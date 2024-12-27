@@ -89,6 +89,32 @@ class LeadService extends ReportingService
     }
 
     /**
+     * Formats an array of headers into a sorted and formatted array for the
+     * columns only.
+     *
+     * @param Collection $headers
+     * @return array
+     */
+    public function formatHeadersOnly(Collection $headers): array
+    {
+        $serialization = $this->getSortFields();
+
+        return collect($headers)
+                    ->sortBy(function ($item) use ($serialization) {
+                        $index = array_search($item, $serialization);
+                        return $index === false ? PHP_INT_MAX : $index;
+                    })
+                    ->map(function (string $header) {
+                        return [
+                            'value' => $header,
+                            'label' => (string) ucwords(str_replace('_', ' ', $header))
+                        ];
+                    })
+                    ->values()
+                    ->all();
+    }
+
+    /**
      * Retrieves performance data for the given request parameters.
      *
      * @param Builder $baseQuery

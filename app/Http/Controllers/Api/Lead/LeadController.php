@@ -200,6 +200,10 @@ class LeadController extends Controller
                                 ->unique()
                                 ->values();
 
+        if(! empty($request->without_format)) {
+            return withSuccess($leadService->formatHeadersOnly($platformDataColumns));
+        }
+
         $platformDataColumns = $leadService->formatHeaders($platformDataColumns);
 
         return withSuccess([
