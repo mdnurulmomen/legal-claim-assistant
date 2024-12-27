@@ -26,10 +26,16 @@ class PublicController extends Controller
 
         $lead = PlatformData::query()
                 ->where([
-                    'phone' => $request->phone,
-                    'email' => $request->email
+                    'platform_datas.phone' => $request->phone,
+                    'platform_datas.email' => $request->email
                 ])
-                ->latest('id')
+                ->leftJoin('platform_lists as pl', 'platform_datas.list_id', '=', 'pl.id')
+                ->latest('platform_datas.id')
+                ->select([
+                    'platform_datas.*',
+                    'pl.lead_headers',
+                    'pl.name as list_name'
+                ])
                 ->first();
 
         if(empty($lead)) {

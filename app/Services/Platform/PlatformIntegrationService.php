@@ -66,7 +66,7 @@ class PlatformIntegrationService
         }
 
         if($requestData['custom_maps'] ?? null){
-            $requestData['custom_maps'] = $this->replaceStringWithBool($requestData['custom_maps']);
+            $requestData['custom_maps'] = $this->replaceStringWithBool($requestData['custom_maps'], 'custom_maps');
         }
 
         if($requestData['maps'] ?? null){
@@ -228,8 +228,9 @@ class PlatformIntegrationService
      * @param array $array The array to replace string values in.
      * @return array The array with string values replaced by their corresponding values.
      */
-    public function replaceStringWithBool($array): array
+    public function replaceStringWithBool($array, $type = null): array
     {
+
         $updatedArray = [];
 
         foreach ($array as $key => $value) {
@@ -239,17 +240,16 @@ class PlatformIntegrationService
                 continue;
             }
 
-            $trimmedInput = trim($value);
-
             $newValue = match (true) {
-                strcasecmp($trimmedInput, 'true') === 0 => true,     // Boolean true
-                strcasecmp($trimmedInput, 'false') === 0 => false,   // Boolean false
-                strcasecmp($trimmedInput, 'null') === 0 => null,     // Null
-                strcasecmp($trimmedInput, 'undefined') === 0 => null, // Null
-                is_numeric($trimmedInput) => strpos($trimmedInput, '.') === false
-                    ? (int) $trimmedInput                           // Integer
-                    : (float) $trimmedInput,                        // Float
-                default => $trimmedInput,                                  // Fallback to string
+                strcasecmp($value, 'true') === 0 => true,     // Boolean true
+                strcasecmp($value, 'false') === 0 => false,   // Boolean false
+                strcasecmp($value, 'null') === 0 => null,     // Null
+                strcasecmp($value, 'undefined') === 0 => null, // Null
+                is_numeric($value) => strpos($value, '.') === false
+                    ? (int) $value                           // Integer
+                    : (float) $value,                        // Float
+
+                default => $value,                                  // Fallback to string
             };
 
             $updatedArray[$key] = $newValue;
