@@ -52,10 +52,10 @@ class LeadController extends Controller
         [$orderBy, $orderIn] = $leadService->formatLeadOrderByIn($request);
 
         $leadQuery = PlatformData::query()
-                        ->when(! empty($request->is_total), function($query) {
+                        ->when(! empty($request->is_total) || ! empty($request->is_export), function($query) {
                             return $query->select('platform_datas.id');
                         })
-                        ->when(empty($request->is_total), function($query) use ($request) {
+                        ->when(empty($request->is_total) && empty($request->is_export), function($query) use ($request) {
                             return $query->select(
                                 'platform_datas.id',
                                 'platform_datas.list_id',
@@ -63,14 +63,14 @@ class LeadController extends Controller
                                 'platform_datas.email',
                                 'platform_datas.phone',
                                 'platform_datas.buyer_integration_id',
-                                'integrations.name as buyer_integration',
                                 'platform_datas.buyer_id',
                                 'buyers.name as buyer_name',
-                                'platform_datas.affiliate_id',
                                 'users.name as affiliate_name',
+                                'platform_lists.name as list_name',
+                                'integrations.name as buyer_integration',
+                                'platform_datas.affiliate_id',
                                 'users.data->affids as affids',
                                 'platform_datas.lead_status',
-                                'platform_lists.name as list_name',
                                 'platform_datas.created_at',
                                 'platform_datas.retained_date',
                                 'platform_datas.sold_type',
@@ -82,7 +82,7 @@ class LeadController extends Controller
                         ->leftJoin('buyers', 'buyers.id', '=', 'platform_datas.buyer_id')
                         ->leftJoin('users', 'users.id', '=', 'platform_datas.affiliate_id')
                         ->leftJoin('platform_lists', 'platform_lists.id', '=', 'platform_datas.list_id')
-                        ->when(empty($request->is_total), function($query) use ($orderBy, $orderIn) {
+                        ->when(empty($request->is_total) && empty($request->is_export), function($query) use ($orderBy, $orderIn) {
                             return $query->addSelect([
                                 'revenue' => LeadReport::select(DB::raw('sum(lead_reports.lead_revenue)'))
                                                 ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
@@ -128,7 +128,7 @@ class LeadController extends Controller
                         ->latest('platform_datas.id');
 
         if(! empty($request->is_export)){
-            return $excelService->formatLeadExportData($leadQuery);
+            return $excelService->formatLeadExportData($request, $leadQuery);
         }
 
         if(! empty($request->is_total)) {
