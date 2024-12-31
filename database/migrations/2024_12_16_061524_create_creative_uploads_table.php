@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('tag', 100)->unique();
             $table->foreignId('user_id');
+            $table->foreignId('template_offer_id');
+            $table->foreignId('creative_template_id');
             $table->string('name');
             $table->longText('description')->nullable();
             $table->mediumText('attachments')->nullable();

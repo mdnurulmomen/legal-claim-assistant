@@ -14,6 +14,7 @@ class CreativeTemplate extends Model
         'tag',
         'name',
         'template_offer_id',
+        'description',
         'attachments'
     ];
 
@@ -22,9 +23,9 @@ class CreativeTemplate extends Model
      *
      * @var array
      */
-    // protected $casts = [
-    //     'attachments' => 'array',
-    // ];
+    protected $casts = [
+        'attachments' => 'array',
+    ];
 
     public function setTagAttribute()
     {

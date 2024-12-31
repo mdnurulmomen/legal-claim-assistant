@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('tag', 100)->unique();
             $table->foreignId('template_offer_id');
             $table->string('name');
+            $table->longText('description')->nullable();
             $table->mediumText('attachments')->nullable();
             $table->timestamps();
         });

@@ -21,6 +21,7 @@ class CreativeUploadResource extends JsonResource
             'id'                    => $this->id,
             'tag'                   => $this->tag,
             'name'                  => $this->name,
+            'affiliate_name'        => $this->user->name,
             'template_offer_id'     => $this->template_offer_id,
             'creative_template_id'  => $this->creative_template_id,
             'template'              => $this->template ? new CreativeTemplateResource($this->template) : null,

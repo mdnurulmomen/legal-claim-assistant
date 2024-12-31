@@ -56,13 +56,33 @@ class CreativeTemplateController extends Controller
     {
         $data = $request->only([
             'name',
+            'description',
             'template_offer_id',
         ]);
 
-        if($request->hasFile('attachments')){
-            $thumbPath = Storage::disk('s3')->put('upload/creative-template', $request->attachments);
-            $data['attachments'] = $thumbPath;
+        if( $request->hasFile('attachments') ){
+            $attachments = [];
+            $files = $request->file('attachments');
+
+            // dd($files);
+            foreach( $files as $file ){
+                $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+                $extension = $file->getClientOriginalExtension();
+
+                // Generate a filename with timestamp, replace spaces with underscores
+                $timestamp = time();
+                $sanitizedFileName = preg_replace('/\s+/', '_', $originalName); // Replace spaces with underscores
+                $uniqueName = "{$sanitizedFileName}_{$timestamp}.{$extension}";
+
+
+                $thumbPath = Storage::disk('s3')->putFileAs('upload/creative-template', $file, $uniqueName);
+                $attachments[] = $thumbPath;
+                // $attachments[] = Storage::disk('s3')->url($thumbPath);
+            }
+
+            $data['attachments'] = $attachments;
         }
+
         $creative = CreativeTemplate::create($data);
         return withSuccess(new CreativeTemplateResource($creative), 'Creative Template Successfully');
     }
@@ -81,15 +101,37 @@ class CreativeTemplateController extends Controller
         $data = $request->only([
             'name',
             'template_offer_id',
+            'description',
         ]);
 
-        if($request->hasFile('attachments')){
-            if(!empty($creative->attachments)){
-                Storage::disk('s3')->delete('upload/creative-template', $creative->attachments);
+        if( $request->has('attachments_paths') ){
+            foreach( $creative->attachments as $oldFile ){
+                if(in_array($oldFile, $request->attachments_paths) ){
+                    $data['attachments'][] = $oldFile;
+                } else {
+                    Storage::disk('s3')->delete('upload/creative-template', $oldFile);
+                }
             }
+        }
 
-            $thumbPath = Storage::disk('s3')->put('upload/creative-template', $request->attachments);
-            $data['attachments'] = $thumbPath;
+        if( $request->hasFile('attachments') ){
+            $files = $request->file('attachments');
+
+            foreach( $files as $file ){
+
+                $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+                $extension = $file->getClientOriginalExtension();
+
+                // Generate a filename with timestamp, replace spaces with underscores
+                $timestamp = time();
+                $sanitizedFileName = preg_replace('/\s+/', '_', $originalName); // Replace spaces with underscores
+                $uniqueName = "{$sanitizedFileName}_{$timestamp}.{$extension}";
+
+
+                $thumbPath = Storage::disk('s3')->putFileAs('upload/creative-template', $file, $uniqueName);
+                $data['attachments'][] = $thumbPath;
+                // $attachments[] = Storage::disk('s3')->url($thumbPath);
+            }
         }
 
         $creative->update($data);
@@ -106,6 +148,14 @@ class CreativeTemplateController extends Controller
     public function delete(Request $request, $tag)
     {
         $creative = CreativeTemplate::where('tag', $tag)->first();
+
+        if( count($creative->attachments) > 0 ){
+            foreach( $creative->attachments as $file ){
+                if(!empty($file) ){
+                    Storage::disk('s3')->delete('upload/creative-template', $file);
+                }
+            }
+        }
 
         $creative->delete();
         return withSuccess(message: 'Creative Template Deleted Successfully');

@@ -21,8 +21,11 @@ class CreativeTemplateResource extends JsonResource
             'name'              => $this->name,
             'offer_name'        => $this->offer->name ?? null,
             'template_offer_id' => $this->template_offer_id,
-            'attachments' => !empty($this->attachments) ? Storage::disk('s3')->url($this->attachments) : '',
-            'attachments_path' => $this->attachments,
+            'description'       => $this->description ?? '',
+            'attachments_paths'   => $this->attachments ?? [],
+            'attachments'   => array_map(function($item){
+                return Storage::disk('s3')->url($item);
+            }, !empty($this->attachments) ? $this->attachments : []),
             'created_at'        => $this->created_at,
         ];
     }

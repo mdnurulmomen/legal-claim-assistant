@@ -77,7 +77,7 @@ class CreativeUploadController extends Controller
                     [
                         'status'    => $creative->status,
                         'template' => 'mails.creative_approved',
-                        'subject' => 'Creative is approved ( ' . $creative->name . ' )',
+                        'subject' => 'Your Creative ' . $creative->name . ' is approved',
                         'message' => [
                             'emailData' => $emailData
                         ],
@@ -117,7 +117,7 @@ class CreativeUploadController extends Controller
                     [
                         'status'    => $creative->status,
                         'template' => 'mails.creative_rejected',
-                        'subject' => 'Creative is rejected ( ' . $creative->name . ' )',
+                        'subject' => 'Your Creative ' . $creative->name . ' is rejected',
                         'message' => [
                             'emailData' => $emailData
                         ],

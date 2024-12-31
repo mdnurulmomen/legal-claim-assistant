@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Creative Approved Notice</title>
+    <title>Your Creative <strong>{{ $emailData['creative_name'] }}</strong> is Approved</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -69,11 +69,11 @@
             <img src="{{ $message->embed($emailData['company_logo']) }}" alt="{{ $emailData['company_name'] }} Logo">
         </div>
         <div class="header">
-            <h1>Creative Approval Notice</h1>
+            <h1>Your Creative <strong>{{ $emailData['creative_name'] }}</strong>  is Approved</h1>
         </div>
         <div class="content">
             <p>Dear {{ $emailData['username'] }},</p>
-            <p>We regret to inform you that your creative ( <strong>{{ $emailData['creative_name'] }}</strong> ) submitted on <strong>{{ $emailData['submitted_date'] }}</strong> has been Approved.</p>
+            <p>We are glad to inform you that your creative <strong>{{ $emailData['creative_name'] }}</strong> submitted on <strong>{{ $emailData['submitted_date'] }}</strong> has been Approved.</p>
 
             <p>If you have any questions or require further assistance, feel free to reach out to our support team.</p>
             <p>Thank you for your understanding.</p>

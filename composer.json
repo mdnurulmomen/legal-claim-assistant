@@ -10,6 +10,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.9",
         "league/flysystem-aws-s3-v3": "^3.0",
+        "league/flysystem-read-only": "^3.0",
         "predis/predis": "^2.2",
         "propaganistas/laravel-phone": "^5.3",
         "rap2hpoutre/fast-excel": "^5.5",
