@@ -63,5 +63,13 @@ class Utility
         'global_leads' => 'Global Leads',
     ];
 
+    /**
+     * Define Log Types
+     *
+     * @var array
+     */
+    public static $aliasLogTypes = [
+        'lead_export' => 'lead_export',
+    ];
 
 }

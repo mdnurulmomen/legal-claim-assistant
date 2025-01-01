@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\Utility;
 use App\Http\Controllers\Api\Lead\Resources\ExcelLeadResource;
 use App\Http\Controllers\Api\Lead\Resources\LeadResource;
 use App\Library\Services\CountryFuzzyMatcher;
@@ -31,7 +32,6 @@ class ExcelService
 
         $skip = $from - ($from === 1 ? 1 : 0);
         $take = $to - $skip;
-
 
         $columns = $request->columns ? json_decode($request->columns, true) : [];
         if(empty($columns)) {
@@ -66,9 +66,21 @@ class ExcelService
 
         $fileName = 'Lead Export - ' . $this->formatDateTime(now(), 'M j Y g:i:s a', timezone: config('app.timezone')) . '.csv';
 
-        return (new FastExcel(leadGenerators($leadQuery)))
-                    ->configureCsv(',', '"', 'UTF-8', false)
-                    ->download($fileName);
+        $exportLead = (new FastExcel(leadGenerators($leadQuery)))
+                        ->configureCsv(',', '"', 'UTF-8', false)
+                        ->download($fileName);
+
+
+        (new GlobalLogService())
+            ->saveLogs(
+                [
+                    'loggable_type' => Utility::$aliasLogTypes['lead_export'],
+                    'loggable_id' => $request->user ? $request->user->id : null,
+                ],
+                [ 'data' => $columns ]
+            );
+
+        return $exportLead;
     }
 
     /**
