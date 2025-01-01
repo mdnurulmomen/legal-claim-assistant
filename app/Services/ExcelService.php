@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Lead\Resources\ExcelLeadResource;
 use App\Http\Controllers\Api\Lead\Resources\LeadResource;
 use App\Library\Services\CountryFuzzyMatcher;
 use App\Models\PlatformData;
+use App\Traits\FormatterTrait;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -15,6 +16,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExcelService
 {
+    use FormatterTrait;
+
     /**
      * Formats the lead export data and returns it as a CSV file or a string.
      *
@@ -61,9 +64,11 @@ class ExcelService
             }
         }
 
+        $fileName = 'Lead Export - ' . $this->formatDateTime(now(), 'M j Y g:i:s a', timezone: config('app.timezone')) . '.csv';
+
         return (new FastExcel(leadGenerators($leadQuery)))
                     ->configureCsv(',', '"', 'UTF-8', false)
-                    ->download('leads.csv');
+                    ->download($fileName);
     }
 
     /**

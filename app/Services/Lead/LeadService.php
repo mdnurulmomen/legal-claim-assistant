@@ -77,7 +77,7 @@ class LeadService extends ReportingService
         ->map(function ($header) use ($serialization) {
             return [
                 'field' => $header,
-                'headerName' => ucwords(str_replace('_', ' ', $header)),
+                'headerName' => $header,
                 'minWidth' => 200,
                 'hide' => ! in_array($header, $serialization),
                 'editable' => true,
@@ -107,7 +107,7 @@ class LeadService extends ReportingService
                     ->map(function (string $header) {
                         return [
                             'value' => $header,
-                            'label' => (string) ucwords(str_replace('_', ' ', $header))
+                            'label' => $header
                         ];
                     })
                     ->values()
