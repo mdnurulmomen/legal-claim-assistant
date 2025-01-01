@@ -77,7 +77,7 @@ class LeadService extends ReportingService
         ->map(function ($header) use ($serialization) {
             return [
                 'field' => $header,
-                'headerName' => ucwords(str_replace('_', ' ', $header)),
+                'headerName' => $header,
                 'minWidth' => 200,
                 'hide' => ! in_array($header, $serialization),
                 'editable' => true,
@@ -86,6 +86,32 @@ class LeadService extends ReportingService
         })
         ->values()
         ->all();
+    }
+
+    /**
+     * Formats an array of headers into a sorted and formatted array for the
+     * columns only.
+     *
+     * @param Collection $headers
+     * @return array
+     */
+    public function formatHeadersOnly(Collection $headers): array
+    {
+        $serialization = $this->getSortFields();
+
+        return collect($headers)
+                    ->sortBy(function ($item) use ($serialization) {
+                        $index = array_search($item, $serialization);
+                        return $index === false ? PHP_INT_MAX : $index;
+                    })
+                    ->map(function (string $header) {
+                        return [
+                            'value' => $header,
+                            'label' => $header
+                        ];
+                    })
+                    ->values()
+                    ->all();
     }
 
     /**
