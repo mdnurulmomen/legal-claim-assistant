@@ -19,14 +19,12 @@ class ExcelLeadResource extends JsonResource
     {
         $columns = json_decode($request->columns, true);
 
-        $leads = [
-            'id' => $this->id
-        ];
+        if (!is_array($columns)) {
+            return [];
+        }
 
-        collect($columns)->each(function($field) use (&$leads) {
-            $leads[$field] = $this->{$field};
-        });
-
-        return $leads;
+        return collect($columns)
+            ->mapWithKeys(fn($field) => [$field => $this->{$field}])
+            ->toArray();
     }
 }
