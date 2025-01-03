@@ -56,6 +56,7 @@ class ExcelService
                                 $query->addSelect(DB::raw($leadReport($this->convertKeyToColumn($column)) . " AS {$column}"));
                             }
                         })
+                        ->selectRaw("platform_datas.created_at")
                         ->skip($skip)
                         ->take($take);
 
@@ -91,7 +92,7 @@ class ExcelService
         ];
 
         $amountColumns = [];
-        $tableColumns = ['platform_datas.id', 'platform_datas.created_at'];
+        $tableColumns = ['platform_datas.id'];
 
         foreach ($columns as $column) {
             if (in_array($column, ['revenue', 'profit', 'affiliate_payout', 'affiliate_margin'], true)) {
