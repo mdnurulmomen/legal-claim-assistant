@@ -90,7 +90,7 @@ class ExcelService
         ];
 
         $amountColumns = [];
-        $tableColumns = ['platform_datas.id'];
+        $tableColumns = ['platform_datas.id', 'platform_datas.created_at'];
 
         foreach ($columns as $column) {
             if (in_array($column, ['revenue', 'profit', 'affiliate_payout', 'affiliate_margin'], true)) {
