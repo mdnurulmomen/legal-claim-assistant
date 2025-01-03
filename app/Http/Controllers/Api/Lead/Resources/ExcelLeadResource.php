@@ -23,6 +23,9 @@ class ExcelLeadResource extends JsonResource
             return [];
         }
 
+        info($this->created_at);
+        info(in_array('timestamp', $columns) ? 'true' : 'false');
+
         $data = collect($columns)
                     ->mapWithKeys(fn($field) => [$field => $this->{$field}])
                     ->toArray();

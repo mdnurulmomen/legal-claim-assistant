@@ -49,7 +49,8 @@ class ExcelService
             )";
         };
 
-        $leadQuery = $leadQuery->select($tableColumns)
+        $leadQuery = $leadQuery
+                        ->select($tableColumns)
                         ->when(! empty($amountColumns), function ($query) use ($amountColumns, $leadReport) {
                             foreach ($amountColumns as $column) {
                                 $query->addSelect(DB::raw($leadReport($this->convertKeyToColumn($column)) . " AS {$column}"));
