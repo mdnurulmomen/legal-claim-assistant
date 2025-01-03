@@ -10,4 +10,6 @@ Route::prefix('global-log')
     ->middleware('auth:sanctum')
     ->group(function ($route) {
         $route->get('user-log/{type}', 'userLog')->name('user-logs');
+        $route->get('log-list/{type}/{loggableId}', 'logList')->name('log-list');
+        $route->delete('delete-log/{id}', 'deleteLog')->name('delete-log');
     });

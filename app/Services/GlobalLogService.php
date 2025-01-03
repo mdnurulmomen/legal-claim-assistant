@@ -18,4 +18,15 @@ class GlobalLogService
     {
         GlobalLog::updateOrCreate($conditionObj, $updateObj);
     }
+
+    /**
+     * Creates a new log entry in the GlobalLog model.
+     *
+     * @param array $data
+     * @return void
+     */
+    public function createLog(array $data): void
+    {
+        GlobalLog::create($data);
+    }
 }

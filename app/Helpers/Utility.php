@@ -70,6 +70,7 @@ class Utility
      */
     public static $aliasLogTypes = [
         'lead_export' => 'lead_export',
+        'integration_trigger' => 'integration_trigger'
     ];
 
 }
