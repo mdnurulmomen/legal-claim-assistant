@@ -2,10 +2,12 @@
 
 namespace App\Services\Platform;
 
+use App\Helpers\Utility;
 use App\Models\Caps;
+use App\Models\GlobalLog;
 use App\Models\Integration;
 use App\Models\PlatformList;
-use Illuminate\Database\Eloquent\Collection;
+use App\Services\GlobalLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -370,5 +372,110 @@ class PlatformIntegrationService
         $key = key($columns);
         $value = $columns[$key];
         return "{$key}:{$value}";
+    }
+
+    /**
+     * Removes an integration and its associated CV trigger from a given platform.
+     *
+     * @param Request $request
+     * @param PlatformList $platform
+     * @param string $slug
+     */
+    public function removeIntegrationAndCvTrigger(Request $request, PlatformList $platform, $slug): void
+    {
+        $integrations = collect($platform->integrations);
+        $cvTriggers = collect($platform->cv_trigger);
+
+        $index = $integrations->search(function ($item) use ($slug) {
+                    return strtolower($item['name']) === strtolower($slug);
+                });
+
+        if($index === false) {
+            abort(400, 'Integration not found!');
+        }
+
+        $triggerIndex = $cvTriggers->search(function ($item) use ($slug) {
+                            return strtolower($item['name']) === strtolower($slug);
+                        });
+
+        $oldIntegration = $integrations->get($index);
+        $oldTrigger = $triggerIndex !== false ? $cvTriggers->get($triggerIndex) : null;
+
+        $integrations->forget($index);
+        $cvTriggers->forget($triggerIndex);
+
+        $platform->integrations = $integrations->values()->toArray();
+        $platform->cv_trigger = $cvTriggers->values()->toArray();
+        $platform->save();
+
+        $this->saveIntegrationTriggerData($platform->id, $oldIntegration, $oldTrigger);
+    }
+
+    /**
+     * Saves integration trigger data for a given platform ID.
+     *
+     * @param int $platformId The ID of the platform.
+     * @param array $integration The integration data.
+     * @param array $cvTrigger The CV trigger data.
+     */
+    public function saveIntegrationTriggerData(int $platformId, array $integration, array $cvTrigger): void
+    {
+        $data = [
+            'loggable_type' => Utility::$aliasLogTypes['integration_trigger'],
+            'loggable_id' => $platformId,
+            'data' => [
+                'name' => $integration['name'],
+                'integration' => $integration,
+                'cv_trigger' => $cvTrigger
+            ]
+        ];
+
+        (new GlobalLogService())->createLog($data);
+    }
+
+    /**
+     * Restores an integration and its associated CV trigger to a given platform.
+     *
+     * @param Request $request
+     * @param GlobalLog $log
+     * @param PlatformList $platform
+     *
+     * @throws \Illuminate\Http\Exceptions\HttpResponseException If the integration or CV trigger already exists.
+     *
+     * @return void
+     */
+    public function formatAndRestoreIntegration(Request $request, GlobalLog $log, PlatformList $platform): void
+    {
+        $integration = $log->data['integration'];
+        $cvTrigger = $log->data['cv_trigger'];
+        $name = $log->data['name'];
+
+        $integrations = $platform->integrations;
+        $cvTriggers = $platform->cv_trigger;
+
+        $index = collect($integrations)->search(function ($item) use ($name) {
+            return strtolower($item['name']) === strtolower($name);
+        });
+
+        $triggerIndex = collect($cvTriggers)->search(function ($item) use ($name) {
+            return strtolower($item['name']) === strtolower($name);
+        });
+
+        if($index > -1) {
+            abort(400, 'Integration already exists');
+        }
+
+        if($triggerIndex > -1) {
+            abort(400, 'CV Trigger already exists');
+        }
+
+        $integrations[] = $integration;
+        $cvTriggers[] = $cvTrigger;
+
+        $platform->integrations = $integrations;
+        $platform->cv_trigger = $cvTriggers;
+        $platform->save();
+
+        $log->delete();
     }
 }

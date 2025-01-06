@@ -30,6 +30,8 @@ Route::prefix('platform-integrations')->as('platform.integrations.')
         $route->post('save-full-integration/{platformId}', 'saveFullIntegration')->name('save-full-integration');
         $route->post('update-integration/{platformId}', 'updateIntegration')->name('update-integration');
         $route->post('store-integration/{platformId}', 'storeIntegration')->name('store-integration');
+        $route->delete('delete-integration/{platformId}/{slug}', 'deleteIntegration')->name('delete-integration');
+        $route->post('restore-integration/{id}', 'restoreIntegration')->name('restore-integration');
     });
 
 Route::prefix('platform-specs')->as('platform.specs.')
