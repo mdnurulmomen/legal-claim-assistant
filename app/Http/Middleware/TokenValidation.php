@@ -19,13 +19,13 @@ class TokenValidation
     {
         $token = $request->token;
         if (empty($token)) {
-            return withError('Token is required.', 400);
+            return withError('Token is required.');
         }
 
         $accessToken = PersonalAccessToken::findToken($token);
 
         if (empty($accessToken)) {
-            return withError('Invalid token.', 401);
+            return withError('Invalid token.');
         }
 
         if ($accessToken->expires_at && Carbon::parse($accessToken->expires_at)->isPast()) {

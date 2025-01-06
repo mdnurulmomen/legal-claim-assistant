@@ -5,10 +5,12 @@ namespace App\Services;
 use App\Helpers\Utility;
 use App\Http\Controllers\Api\Lead\Resources\ExcelLeadResource;
 use App\Http\Controllers\Api\Lead\Resources\LeadResource;
+use App\Http\Controllers\Api\Reporting\Resources\ReportingResource;
 use App\Library\Services\CountryFuzzyMatcher;
 use App\Models\PlatformData;
 use App\Traits\FormatterTrait;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -187,5 +189,53 @@ class ExcelService
         ->all();
 
         return $uniqueKeys;
+    }
+
+
+    /**
+     * Exports report data based on the given request parameters and query.
+     *
+     * @param Request $request
+     * @param QueryBuilder $reportQuery
+     * @return StreamedResponse
+     */
+    public function exportReportData(Request $request, QueryBuilder $reportQuery): StreamedResponse
+    {
+        $from = (int) $request->from;
+        $to = (int) $request->to;
+
+        $skip = $from - ($from === 1 ? 1 : 0);
+        $take = $to - $skip;
+
+        $columns = $request->columns ? json_decode($request->columns, true) : [];
+        if(empty($columns)) {
+            abort(400, 'Columns are required to export data.');
+        }
+
+        $reportQuery = $reportQuery->skip($skip)->take($take);
+
+        function reportGenerator($reportQuery) {
+            foreach ($reportQuery->cursor() as $lead) {
+                yield new ReportingResource($lead);
+            }
+        }
+
+        $fileName = 'Report Export - ' . $this->formatDateTime(now(), 'M j Y g:i:s a', timezone: config('app.timezone')) . '.csv';
+
+        $exportLead = (new FastExcel(reportGenerator($reportQuery)))
+                        ->configureCsv(',', '"', 'UTF-8', false)
+                        ->download($fileName);
+
+
+        (new GlobalLogService())
+            ->saveLogs(
+                [
+                    'loggable_type' => Utility::$aliasLogTypes['report_export'],
+                    'loggable_id' => $request->user ? $request->user->id : null,
+                ],
+                [ 'data' => $columns ]
+            );
+
+        return $exportLead;
     }
 }

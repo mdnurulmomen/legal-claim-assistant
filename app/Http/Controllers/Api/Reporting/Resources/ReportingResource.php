@@ -25,7 +25,7 @@ class ReportingResource extends JsonResource
             $avg_retain_time = number_format($this->avg_retain_time) . " " . $dayLabel;
         }
 
-        return [
+        $data = [
             'id' => $this->id,
             'platform_name' => $this->platform_name ?? '',
             'buyer_name' => $this->buyer_name ?? '',
@@ -48,5 +48,15 @@ class ReportingResource extends JsonResource
             'average_profit' => (float) $this->average_profit,
             'affiliate_average_payout' => (float) $this->affiliate_average_payout
         ];
+
+        $columns = json_decode($request->columns, true);
+
+        if(! empty($columns)) {
+            return collect($columns)
+                    ->mapWithKeys(fn($field) => [$field => $data[$field] ?? null])
+                    ->toArray();
+        }
+
+        return $data;
     }
 }
