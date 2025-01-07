@@ -41,7 +41,15 @@ class PlatformSettingService
 
         $options['gohighlevel']['active'] = (bool) $request->is_high_level;
         $options['lead_distribution'] = $request->lead_distribution;
-        $options['min_ping_price'] = (float) $request->min_ping_price;
+
+        if($request->min_ping_price !== null) {
+            $options['min_ping_price'] = (float) $request->min_ping_price;
+        }
+
+        if($request->min_ping_price === null && array_key_exists('min_ping_price', $options)) {
+            unset($options['min_ping_price']);
+        }
+
         $options['min_affiliate_ping_prices'] = $request->min_affiliate_ping_prices ?? [];
         $options['global_postback'] = $request->global_postback ?? [];
         $options['dynamic_margin'] = $request->dynamic_margin ?? [];
