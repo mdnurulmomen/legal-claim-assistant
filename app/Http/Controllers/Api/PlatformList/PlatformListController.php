@@ -27,7 +27,18 @@ class PlatformListController extends Controller
         $platformSourceIds = $request->input('platform_source_ids', []);
 
         $platforms = PlatformList::query()
-                        ->select('id', 'tag', 'name', 'total', 'campaign_name', 'options', 'source', 'status', 'updated_at', 'created_at')
+                        ->select(
+                            'id',
+                            'tag',
+                            'name',
+                            'total',
+                            'campaign_name',
+                            'options',
+                            'source',
+                            'status',
+                            'updated_at',
+                            'created_at'
+                        )
                         ->when(! empty($request->search_txt), function ($query) use ($request) {
                             return $query->whereAny([
                                 'name',
