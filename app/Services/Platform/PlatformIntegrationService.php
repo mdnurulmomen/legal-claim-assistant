@@ -27,13 +27,12 @@ class PlatformIntegrationService
      *
      * @param Request $request
      * @param PlatformList $platform
+     * @param string $name
      * @return array
      * @throws \Illuminate\Http\Exceptions\HttpResponseException If the integration is not found.
      */
-    public function formatSettingData(Request $request, PlatformList $platform): array
+    public function formatSettingData(Request $request, PlatformList $platform, string $name): array
     {
-        $name = str()->slug($request->name, '_');
-
         $integrations = $platform->integrations;
 
         $index = collect($integrations)->search(function ($item) use ($name) {
@@ -122,6 +121,36 @@ class PlatformIntegrationService
         return $integrations;
     }
 
+    /**
+     * Adds or updates an integration for the given platform ID and name.
+     *
+     * @param Request $request
+     * @param PlatformList $platform
+     * @param string $name
+     * @return void
+     */
+    public function addOrUpdateIntegration(Request $request, PlatformList $platform, string $name)
+    {
+        $integration = Integration::firstOrNew([
+                            'list_id' => $platform->id,
+                            'buyer_unique_id' => $name,
+                        ]);
+
+        $integration->list_id = $platform->id;
+        $integration->buyer_id = $request->buyer_profile;
+        $integration->name = $name;
+        $integration->buyer_unique_id = $name;
+        $integration->type = $request->buyer_type;
+        $integration->buyer_headers = $request->save_data;
+        $integration->save();
+    }
+
+    /**
+     * Converts null values in the given data array to empty strings.
+     *
+     * @param array $data The data array to convert.
+     * @return array The converted data array.
+     */
     public function convertNullToString($data) {
         return array_map(function ($value) {
             return $value === null || $value === 'null' ? '' : $value;
@@ -133,10 +162,11 @@ class PlatformIntegrationService
      *
      * @param Request $request
      * @param PlatformList $platform
+     * @param string $name
      * @return array
      * @throws \Illuminate\Http\Exceptions\HttpResponseException
      */
-    public function formatTriggersData(Request $request, PlatformList $platform): array
+    public function formatTriggersData(Request $request, PlatformList $platform, string $name): array
     {
         $name = str()->slug($request->name, '_');
         $cvTriggers = $platform->cv_trigger;
@@ -288,10 +318,10 @@ class PlatformIntegrationService
      *
      * @param Request $request
      * @param PlatformList $platform
+     * @param string $name
      */
-    public function insertOrDeleteCapsHistory(Request $request, PlatformList $platform): void
+    public function insertOrDeleteCapsHistory(Request $request, PlatformList $platform, string $name): void
     {
-        $name = str()->slug($request->name, '_');
         $listIntegration = collect($platform->integrations)->firstWhere('name', $name);
         $caps = $listIntegration['caps'] ?? [];
         $buyerId = (int) $listIntegration['buyer_profile'];

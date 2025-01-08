@@ -67,35 +67,6 @@ class PlatformIntegrationController extends Controller
     }
 
     /**
-     * Saves the integration settings for the given platform ID.
-     *
-     * @param IntegrationSettingRequest $request
-     * @param int $platformId
-     * @param PlatformIntegrationService $integrationService
-     * @return Response
-     */
-    public function saveIntegration(IntegrationSettingRequest $request, int $platformId, PlatformIntegrationService $integrationService): Response
-    {
-        if(! isset($request->index) || $request->index < 0) {
-            return withError('Invalid index');
-        }
-
-        $platform = PlatformList::select('id', 'integrations')->find($platformId);
-        if(empty($platform)) {
-            return withError('Platform not found');
-        }
-
-        try {
-            $integrations = $integrationService->formatSettingData($request, $platform);
-            $platform->integrations = $integrations;
-            $platform->save();
-            return withSuccess(message: 'Configuration saved successfully');
-        } catch (\Throwable $th) {
-            return withError($th->getMessage());
-        }
-    }
-
-    /**
      * Saves the full integration data for the given platform ID.
      *
      * @param IntegrationSettingRequest $request
@@ -113,14 +84,17 @@ class PlatformIntegrationController extends Controller
         try {
             DB::beginTransaction();
 
-            $integrations = $integrationService->formatSettingData($request, $platform);
-            $cvTriggers = $integrationService->formatTriggersData($request, $platform);
+            $name = str()->slug($request->name, '_');
+
+            $integrations = $integrationService->formatSettingData($request, $platform, $name);
+            $cvTriggers = $integrationService->formatTriggersData($request, $platform, $name);
 
             $platform->integrations = $integrations;
             $platform->cv_trigger = $cvTriggers;
             $platform->save();
 
-            $integrationService->insertOrDeleteCapsHistory($request, $platform);
+            $integrationService->insertOrDeleteCapsHistory($request, $platform, $name);
+            $integrationService->addOrUpdateIntegration($request, $platform, $name);
 
             DB::commit();
             return withSuccess(message: 'Integration saved successfully');
