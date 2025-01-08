@@ -101,12 +101,12 @@ class PlatformListController extends Controller
     public function integratedBuyers(Request $request): Response
     {
         $integrations = Integration::query()
-                        ->select('id as value', 'buyer_unique_id as label')
-                        ->when(! empty($request->search_txt), function ($query) use ($request) {
-                            return $query->where('buyer_unique_id', 'like', "%{$request->search_txt}%");
-                        })
-                        ->limit(100)
-                        ->get();
+                            ->select('id as value', 'buyer_unique_id as label')
+                            ->when(! empty($request->search_txt), function ($query) use ($request) {
+                                return $query->where('buyer_unique_id', 'like', "%{$request->search_txt}%");
+                            })
+                            ->limit(100)
+                            ->get();
 
         return withSuccess($integrations);
     }
