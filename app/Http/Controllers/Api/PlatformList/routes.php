@@ -8,12 +8,14 @@ use App\Http\Controllers\Api\PlatformList\PlatformSpecsController;
 use Illuminate\Support\Facades\Route;
 
 
-Route::prefix('platform')->as('platform.')
+Route::prefix('platform')
+    ->as('platform.')
     ->controller(PlatformListController::class)
     ->middleware('auth:sanctum')
     ->group(function ($route) {
         $route->get('list', 'platformList')->name('list');
         $route->get('get-source-list', 'getSourceList')->name('get-source-list');
+        $route->get('integrated-buyers', 'integratedBuyers')->name('integrated-buyers');
         $route->get('buyer-list/{platformId}', 'buyerList')->name('buyer-list');
         $route->get('show/{platformId}', 'showPlatform')->name('show');
     });
