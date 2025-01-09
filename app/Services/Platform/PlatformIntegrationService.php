@@ -33,7 +33,7 @@ class PlatformIntegrationService
      */
     public function formatSettingData(Request $request, PlatformList $platform, string $name): array
     {
-        $integrations = $platform->integrations;
+        $integrations = $platform->integrations ?? [];
 
         $index = collect($integrations)->search(function ($item) use ($name) {
                     return strtolower($item['name']) === strtolower($name);
