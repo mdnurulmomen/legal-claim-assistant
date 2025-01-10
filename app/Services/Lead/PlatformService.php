@@ -25,6 +25,9 @@ class PlatformService
      */
     public function getFilteredLeads(Request $request)
     {
+        set_time_limit(0);
+        ini_set('memory_limit', -1);
+
         $fillableKeys = (new PlatformData())->getFillable();
         $selectableKeys = $this->formatSelectableKeys($request, $fillableKeys);
         $conditions = $this->formatConditions($request, $fillableKeys);
@@ -181,7 +184,11 @@ class PlatformService
                             'buyer_integration_id',
                             'affiliate_specs_id',
                             'affm_source_id',
-                            'created_at'
+                            'created_at',
+                            'is_retainer',
+                            'lead_status',
+                            'retained_date',
+                            'sold_type'
                         ]);
                     })
                     ->get();
@@ -213,7 +220,7 @@ class PlatformService
         $leadGroup = $leadData->groupBy('id')->all();
         $leadIds = $leadData->pluck('id')->all();
 
-        $this->updateRelevantLeadReports($fields, $leadData, $leadIds);
+        $this->updateRelevantLeadReports($fields, $leadData, $leadIds, $request->upload_type);
         $this->updateRelevantLeadLog($fields, $leadGroup, $leadIds, $fillable);
     }
 
@@ -226,7 +233,7 @@ class PlatformService
      *
      * @return void
      */
-    public function updateRelevantLeadReports(Collection $fields, Collection $leadData, array $leadIds): void
+    public function updateRelevantLeadReports(Collection $fields, Collection $leadData, array $leadIds, string $uploadType): void
     {
         $updatableReportFields = $fields
                                     ->filter(fn($item) => in_array($item, ['affid', 'revenue', 'affiliate_payout']))
@@ -268,7 +275,8 @@ class PlatformService
                 $leadReports->toArray(),
                 $leadData->toArray(),
                 $leadRevenuePayouts,
-                $updatableReportFields->toArray()
+                $updatableReportFields->toArray(),
+                $uploadType
             ),
             false
         );
@@ -292,7 +300,7 @@ class PlatformService
                 LeadReport::insert($newReports);
             }
 
-            if($isRevenuePayoutField) {
+            if($isRevenuePayoutField && $uploadType === 'retainer_upload') {
                 GlobalPostBackTriggerJob::dispatch([
                     'type' => 'bulk_retainer',
                     'lead_reports' => $leadReportData->toArray()
@@ -301,10 +309,17 @@ class PlatformService
         }
 
         if(count($leadRevenuePayouts) > 0) {
+
+            $uploadableFields = ['payout', 'revenue'];
+
+            if($uploadType === 'retainer_upload') {
+                $uploadableFields = ['payout', 'revenue', 'is_retainer', 'lead_status', 'retained_date'];
+            }
+
             PlatformData::upsert(
                 $leadRevenuePayouts,
                 ['id'],
-                ['payout', 'revenue', 'is_retainer', 'lead_status', 'retained_date']
+                $uploadableFields
             );
         }
     }
@@ -393,9 +408,16 @@ class PlatformService
      * @param array $updatableReportFields
      * @param array $leadRevenuePayouts
      * @param array $oldRetainerIds
+     * @param string $uploadType
      * @return Generator
      */
-    private function generateLeadReportDataV2(array $leadReports, array $leadData, &$leadRevenuePayouts, array $updatableReportFields): Generator
+    private function generateLeadReportDataV2(
+        array $leadReports,
+        array $leadData,
+        &$leadRevenuePayouts,
+        array $updatableReportFields,
+        string $uploadType
+    ): Generator
     {
         $revenue = 0;
         $payout = 0;
@@ -411,13 +433,31 @@ class PlatformService
         foreach($leadData as $lead) {
 
             $reports = $leadReports[$lead['id']] ?? [];
+
             $oldRetainer = null;
+            $evenlyDistributedRevenue = 0;
+            $evenlyDistributedPayout = 0;
+            $reportsCount = count($reports);
+
+            if(! empty($revenuePayoutFields) && $uploadType === 'disposition_upload') {
+
+                $leadRevenue = (float) ($lead['revenue'] ?? 0);
+                $leadPayout = (float) ($lead['payout'] ?? 0);
+
+                $evenlyDistributedRevenue = $reportsCount ? $leadRevenue / $reportsCount : $leadRevenue;
+                $evenlyDistributedPayout = $reportsCount ? $leadPayout / $reportsCount : $leadPayout;
+            }
 
             foreach($reports as $report) {
 
-                if( ! empty($revenuePayoutFields)) {
+                if(! empty($revenuePayoutFields)) {
 
-                    if(! empty($report['is_retainer'])) {
+                    if($uploadType === 'disposition_upload') {
+                        $report['lead_revenue'] = $evenlyDistributedRevenue;
+                        $report['affiliate_payout'] = $evenlyDistributedPayout;
+                    }
+
+                    if(! empty($report['is_retainer']) && $uploadType === 'retainer_upload') {
                         $oldRetainer = $report;
                         continue;
                     }
@@ -432,11 +472,18 @@ class PlatformService
                 yield $report;
             }
 
-            if(! empty($revenuePayoutFields)) {
-                $newRetainer = $this->getFormData($lead, $oldRetainer);
+            $isRevenuePayoutFieldsNotEmpty = !empty($revenuePayoutFields);
+            $isRetainerUpload = $uploadType === 'retainer_upload';
+            $isDispositionUploadWithNoReports = $uploadType === 'disposition_upload' && $reportsCount < 1;
+            $newRetainer = null;
+
+            if($isRevenuePayoutFieldsNotEmpty && ($isRetainerUpload || $isDispositionUploadWithNoReports)) {
+
+                $newRetainer = $this->getFormData($lead, $oldRetainer, $uploadType, $evenlyDistributedRevenue, $evenlyDistributedPayout);
+
                 $this->sumRevenuePayout($revenue, $payout, $newRetainer);
 
-                $leadRevenuePayouts[] = $this->getRevenuePayout($lead, $revenue, $payout, $newRetainer);
+                $leadRevenuePayouts[] = $this->getRevenuePayout($lead, $revenue, $payout, $newRetainer, $uploadType);
                 $this->resetRevenuePayout($revenue, $payout);
 
                 yield $newRetainer;
@@ -474,20 +521,29 @@ class PlatformService
      * Returns an array containing the lead ID, revenue and payout.
      * The payout is calculated by subtracting the affiliate payout from the revenue.
      *
-     * @param int $leadId
+     * @param array $lead
      * @param float $revenue
      * @param float $affiliatePayout
      * @return array
      */
-    private function getRevenuePayout($lead, $revenue, $payout, $leadReport) {
-        return [
+    private function getRevenuePayout($lead, $revenue, $payout, $leadReport = null, string $uploadType = null): array
+    {
+        $data = [
             'id' => $lead['id'],
             'revenue' => $revenue,
             'payout' => $revenue - $payout,
             'is_retainer' => $lead['is_retainer'],
             'lead_status' => 'Retained',
-            'retained_date' => $leadReport['created_at']
+            'retained_date' => $leadReport['created_at'] ?? null
         ];
+
+        if($uploadType === 'disposition_upload') {
+            $data['is_retainer'] = $lead['is_retainer'];
+            $data['lead_status'] = $lead['lead_status'];
+            $data['retained_date'] = $lead['retained_date'];
+        }
+
+        return $data;
     }
 
     /**
@@ -497,13 +553,17 @@ class PlatformService
     * @param array $leadReportData
     * @return array
     */
-    public function getFormData(array $lead, ?array $oldRetainer = null): array
+    public function getFormData(array $lead, ?array $oldRetainer = null, string $uploadType = null, float $evenlyDistributedRevenue = 0, float $evenlyDistributedPayout = 0): array
     {
-        $createdAt = Carbon::parse($lead['created_at']) ?? null;
-        $newRetainedDate = Carbon::parse($lead['new_retained_date'])->midDay();
+        $newDate = now();
 
-        if($createdAt && ($createdAt->greaterThan($newRetainedDate))){
-            $newRetainedDate = $createdAt->addHour();
+        if($uploadType === 'retainer_upload') {
+            $newDate = Carbon::parse($lead['new_retained_date'])->midDay();
+            $createdAt = Carbon::parse($lead['created_at']) ?? null;
+
+            if($createdAt && ($createdAt->greaterThan($newDate))){
+                $newDate = $createdAt->addHour();
+            }
         }
 
         $formData = [
@@ -521,13 +581,19 @@ class PlatformService
             'lead_profit' => 0,
             'affiliate_margin' => 0,
             'profit_margin' => 0,
-            'sold_type' => 'Retained',
-            'created_at' => $newRetainedDate,
-            'updated_at' => $newRetainedDate
+            'sold_type' => $lead['sold_type'] ?? null,
+            'created_at' => $newDate,
+            'updated_at' => $newDate
         ];
 
-        if($oldRetainer) {
+        if($oldRetainer && $uploadType === 'retainer_upload') {
             $formData['id'] = $oldRetainer['id'];
+        }
+
+        if($uploadType === 'disposition_upload') {
+            $formData['is_retainer'] = (bool) ($lead['is_retainer'] ?? 0);
+            $formData['lead_revenue'] = $evenlyDistributedRevenue;
+            $formData['affiliate_payout'] = $evenlyDistributedPayout;
         }
 
         $reportData = $this->calculateRevenuePayout((float) $formData['lead_revenue'], (float) $formData['affiliate_payout']);
