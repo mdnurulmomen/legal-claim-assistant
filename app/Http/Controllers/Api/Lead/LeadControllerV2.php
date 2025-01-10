@@ -22,6 +22,9 @@ class LeadControllerV2 extends Controller
      */
     public function bulkUpdateLeads(BulkUpdateLeadRequest $request, PlatformService $platformService): Response
     {
+        set_time_limit(0);
+        ini_set('memory_limit', -1);
+
         try {
             DB::beginTransaction();
             $platformService->formatAndUpdateLeads($request);
