@@ -31,6 +31,8 @@ class User extends Authenticatable
         'role',
         'admin_role_id',
         'is_test',
+        'has_two_fa',
+        'country',
         'send_email',
         'email_verified_at',
         'password',
@@ -62,7 +64,8 @@ class User extends Authenticatable
             'data' => 'array',
             'status' => 'boolean',
             'send_email' => 'boolean',
-            'is_test' => 'boolean'
+            'is_test' => 'boolean',
+            'has_two_fa' => 'boolean'
         ];
     }
 
