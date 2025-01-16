@@ -36,6 +36,14 @@ class AuthController extends Controller
             return withError('The provided credentials are incorrect.', 400);
         }
 
+        if($user->status === 0){
+            return withError('Your account is inactive. Please contact to admin.', 400);
+        }
+
+        if($user->has_two_fa || $user->admin_role === 'super_admin') {
+            return withSuccess(new AuthResource($user), 'Two factor authentication is required.');
+        }
+
         auth()->login($user);
 
         $token = $user->createToken('auth_token', ['*'], now()->addWeeks(1))->plainTextToken;
