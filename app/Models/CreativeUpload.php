@@ -13,6 +13,7 @@ class CreativeUpload extends Model
     protected $fillable = [
         'tag',
         'user_id',
+        'type',
         'template_offer_id',
         'creative_template_id',
         'name',

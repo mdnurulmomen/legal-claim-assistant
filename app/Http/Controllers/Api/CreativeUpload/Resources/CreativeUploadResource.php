@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Api\CreativeTemplate\Resources\CreativeTemplateResource;
+use App\Http\Controllers\Api\CreativeTemplate\Resources\TemplateOfferResource;
 
 class CreativeUploadResource extends JsonResource
 {
@@ -20,10 +21,12 @@ class CreativeUploadResource extends JsonResource
         $data = [
             'id'                    => $this->id,
             'tag'                   => $this->tag,
+            'type'                   => $this->type,
             'name'                  => $this->name,
             'affiliate_name'        => $this->user->name,
             'template_offer_id'     => $this->template_offer_id,
             'creative_template_id'  => $this->creative_template_id,
+            'offer'                 => $this->offer ? new TemplateOfferResource($this->offer) : null,
             'template'              => $this->template ? new CreativeTemplateResource($this->template) : null,
             'description'           => $this->description,
             'attachments_paths'   => $this->attachments ?? [],
