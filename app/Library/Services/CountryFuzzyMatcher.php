@@ -97,4 +97,21 @@ class CountryFuzzyMatcher
             return $phoneNumber;
         }
     }
+
+    /**
+     * Format phone number to E164 format, returns array with the formated phone number and a boolean indicating if the format was successful
+     *
+     * @param string $phoneNumber
+     * @param string $countryCode
+     * @return array [$formatPhoneNumber, $success]
+     */
+    public function formatPhoneNumberV2(string $phoneNumber, string $countryCode): array
+    {
+        try {
+            $phone = new PhoneNumber($phoneNumber, $countryCode);
+            return [$phone->formatE164(), true];
+        } catch (\Exception $e) {
+            return [$phoneNumber, false];
+        }
+    }
 }

@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('user')->as('user.')
     ->controller(UserController::class)
-    // ->middleware('auth:sanctum')
+    ->middleware('auth:sanctum')
     ->group(function ($route) {
         $route->get('user-list', 'userList')->name('user.list');
         $route->post('create-user', 'createUser')->name('user.create');

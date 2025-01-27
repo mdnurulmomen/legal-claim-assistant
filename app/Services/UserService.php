@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Library\Services\CountryFuzzyMatcher;
 use App\Models\AdminRole;
 use App\Models\User;
 use App\Traits\FileHandlerTrait;
@@ -31,6 +32,15 @@ class UserService
         if(empty($data['password'])) {
             unset($data['password']);
         }
+
+        [$phone, $success] = (new CountryFuzzyMatcher())->formatPhoneNumberV2($data['phone'], $data['country']);
+
+        if(! $success) {
+            abort(400, 'Invalid phone number');
+        }
+
+        $data['phone'] = $phone;
+
         return $data;
     }
 
