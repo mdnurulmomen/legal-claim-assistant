@@ -40,9 +40,9 @@ class AuthController extends Controller
             return withError('Your account is inactive. Please contact to admin.', 400);
         }
 
-        if($user->has_two_fa || $user->admin_role === 'super_admin') {
-            return withSuccess(new AuthResource($user), 'Two factor authentication is required.');
-        }
+        // if($user->has_two_fa || $user->admin_role === 'super_admin') {
+        //     return withSuccess(new AuthResource($user), 'Two factor authentication is required.');
+        // }
 
         auth()->login($user);
 
