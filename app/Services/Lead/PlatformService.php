@@ -28,13 +28,21 @@ class PlatformService
         set_time_limit(0);
         ini_set('memory_limit', -1);
 
+        $leadIds = [];
         $fillableKeys = (new PlatformData())->getFillable();
         $selectableKeys = $this->formatSelectableKeys($request, $fillableKeys);
-        $conditions = $this->formatConditions($request, $fillableKeys);
+        $conditions = $this->formatConditions($request, $fillableKeys, $leadIds);
         $isAmountField = in_array('revenue', $request->mapped_headers) || in_array('affiliate_payout', $request->mapped_headers);
 
         $leads = PlatformData::query()
                     ->select($selectableKeys)
+                    ->when(! empty($leadIds), function ($query) use ($leadIds) {
+                        $query->selectRaw(
+                            "CASE " .
+                            collect($leadIds)->map(fn($value) => "WHEN datas LIKE '%\"$value\"%' THEN '$value'")->implode(' ') . "
+                            END as custom_lead_id"
+                        );
+                    })
                     ->when($isAmountField, function ($query) {
                         return $query->addSelect([
                             'revenue' => LeadReport::selectRaw('IFNULL(SUM(lead_revenue), 0)')
@@ -54,19 +62,39 @@ class PlatformService
                             $method = $this->getConditionMethod($index);
 
                             $query->$method(function ($query2) use ($condition) {
-                                foreach ($condition as $item) {
+                                foreach ($condition as $childIndex => $item) {
 
-                                    if(empty($item['isJson'])) {
-                                        $query2->where($item['key'], $item['value']);
-                                        continue;
+                                    if($item['type'] === 'primary') {
+                                        $query2->where($item['key'], $item['operator'], $item['value']);
                                     }
-                                    $query2->whereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.' . $item['key'] . '"))) = ?', [$item['value']]);
+
+                                    if($item['type'] === 'json') {
+                                        $query2->whereRaw(
+                                            sprintf(
+                                                'LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.%s"))) %s ?',
+                                                $item['key'],
+                                                $item['operator']
+                                            ),
+                                            [$item['value']]
+                                        );
+                                    }
+
+                                    if($item['type'] === 'custom') {
+                                        $query2->where(function($query3) use($item) {
+
+                                            $query3->where('buyer_id', $item['buyer_id'])
+                                               ->when(! empty($item['lead_id']), function($query4) use($item) {
+                                                    $leadId = '"' . $item['lead_id'] . '"';
+                                                    $query4->whereRaw('datas like ?', ["%{$leadId}%"]);
+                                               });
+                                        });
+                                    }
                                 }
                             });
 
                         };
                     })
-                    ->get();
+                    ->lazy(500);
 
         return $leads;
     }
@@ -85,7 +113,7 @@ class PlatformService
                     ->map(function ($header) use ($fillableKeys) {
                         return in_array($header, $fillableKeys) ? $header : "datas->{$header} as {$header}";
                     })
-                    ->push('id', 'lead_status')
+                    ->push('id', 'lead_status', 'buyer_id')
                     ->toArray();
 
         return $columns;
@@ -98,30 +126,59 @@ class PlatformService
      * @param array $fillableKeys
      * @return array
      */
-    public function formatConditions(Request $request, $fillableKeys): array
+    public function formatConditions(Request $request, $fillableKeys, &$leadIds): array
     {
         $formattedLeads = [];
+        $rules = $request->rules;
 
         foreach($request->conditions as $condition)
         {
             $childConditions = [];
+
             foreach($condition as $key => $value)
             {
+                if(empty($value)) continue;
+
+                if(is_array($value)) {
+                    foreach($value as $custom) {
+                        $leadId = $custom['lead_id'] ?? null;
+
+                        $childConditions[] = [
+                            'type' => 'custom',
+                            'buyer_id' => $custom['buyer_id'],
+                            'lead_id' => $leadId
+                        ];
+
+                        if($leadId) $leadIds[] = "$leadId";
+                    }
+                    continue;
+                }
+
+                $rule = $rules[$key] ?? 'equals';
+
                 if(in_array($key, $fillableKeys)){
-                    $childConditions[] = [
-                        'key' => $key,
+
+                    $formattedCondition = $this->convertConditionToSql([
+                        'column' => $key,
                         'value' => $value,
-                        'isJson' => false
-                    ];
+                        'rule' => $rule
+                    ]);
+
+                    $formattedCondition['type'] = 'primary';
+
+                    $childConditions[] = $formattedCondition;
 
                     continue;
                 }
 
-                $childConditions[] = [
-                    'key' => preg_replace('/[^a-zA-Z0-9_.]/', '', $key),
+                $formattedCondition = $this->convertConditionToSql([
+                    'column' => preg_replace('/[^a-zA-Z0-9_.]/', '', $key),
                     'value' => strtolower($value),
-                    'isJson' => true
-                ];
+                    'rule' => $rule
+                ]);
+
+                $formattedCondition['type'] = 'json';
+                $childConditions[] = $formattedCondition;
             }
 
             $formattedLeads[] = $childConditions;
@@ -131,14 +188,119 @@ class PlatformService
     }
 
     /**
+     * Converts a condition array to a SQL condition array.
+     *
+     * @param array $conditions The condition array to be converted. It should have the following keys:
+     *                         - 'rule': The rule of the condition.
+     *                         - 'column': The column of the condition.
+     *                         - 'value': The value of the condition.
+     * @return array
+     */
+    public function convertConditionToSql(array $conditions): array
+    {
+        $condition = match($conditions['rule']){
+            'contains' => $this->makeCondition($conditions['column'], 'like', '%' . $conditions['value'] . '%'),
+            'does_not_contain' => $this->makeCondition($conditions['column'], 'not like', '%' . $conditions['value'] . '%'),
+            'begins_with' => $this->makeCondition($conditions['column'], 'like', $conditions['value'] . '%'),
+            'does_not_begin_with' => $this->makeCondition($conditions['column'], 'not like', $conditions['value'] . '%'),
+            'greater_than' => $this->makeCondition($conditions['column'], '>', $conditions['value']),
+            'less_than' => $this->makeCondition($conditions['column'], '<', $conditions['value']),
+            'equals' => $this->makeCondition($conditions['column'], '=', $conditions['value']),
+            'not_equals' => $this->makeCondition($conditions['column'], '!=', $conditions['value']),
+            'equals_any' => $this->makeCondition($conditions['column'], '=', $conditions['value']),
+            'exists' => $this->makeCondition($conditions['column'], 'exists'),
+            'does_not_exist' => $this->makeCondition($conditions['column'], 'does_not_exist'),
+            default => []
+        };
+        return $condition;
+    }
+
+    /**
+     * Creates a condition array with the given column, operator, and optional value.
+     *
+     * @param string $column
+     * @param string $operator
+     * @param string|int|null $value
+     * @return array
+     */
+    public function makeCondition(string $column, string $operator, string | int | null | array $value = null)
+    {
+        return [
+            'key' => $column,
+            'operator' => $operator,
+            'value' => $value
+        ];
+    }
+
+    /**
+     * Generate a generator of lead data with updated fields
+     *
+     * @param Collection $filledData
+     * @param array $leads
+     * @param array $fillable
+     *
+     * @return Generator
+     */
+    private function generateLeadData(Collection $filledData, array $leads, array $fillable, array &$leadAdditionalData): Generator
+    {
+        $excludedFields = ['revenue', 'affiliate_payout', 'retained_date'];
+        $groupFilledData = $filledData->groupBy('id')->all();
+        $formattedFillable = collect($fillable)->reject(fn($item) => in_array($item, ['retained_date']))->all();
+
+        foreach ($leads as &$lead) {
+
+            $newLead = $groupFilledData[$lead['id']][0] ?? null;
+            if(empty($newLead)) continue;
+
+            $data = $lead['datas'] ?? [];
+
+            foreach($newLead as $key => $value) {
+
+                if(in_array($key, $formattedFillable)) {
+                    $lead[$key] = $value;
+                    continue;
+                }
+
+                if(in_array($key, $excludedFields)) continue;
+
+                if(is_array($data)) {
+                    $data[$key] = $value;
+                }
+            }
+
+            $lead['datas'] = json_encode($data);
+
+            yield $lead;
+
+            if($isRetainer = $newLead['is_show_portal'] ?? null) {
+                $lead['is_retainer'] = $isRetainer;
+            }
+
+            if($payout = $newLead['affiliate_payout'] ?? 0) {
+                $lead['payout'] = $payout;
+            }
+
+            if($retainedDate = $newLead['retained_date'] ?? null) {
+                $lead['new_retained_date'] = $retainedDate;
+            }
+
+            $leadAdditionalData[] = $lead;
+        }
+
+    }
+
+    /**
      * Returns the condition method based on the given index.
      *
      * @param int $index
      * @return string
      */
-    public function getConditionMethod(int $index): string
+    public function getConditionMethod(int $index, bool $isJson = false): string
     {
-       return $index == 0 ? 'where' : 'orWhere';
+        if($isJson) {
+            return $index == 0 ? 'whereRaw' : 'orWhereRaw';
+        }
+        return $index == 0 ? 'where' : 'orWhere';
     }
 
     /**
@@ -619,57 +781,5 @@ class PlatformService
             'affiliate_margin' => $affiliateMargin,
             'profit_margin' => $profitMargin
         ];
-    }
-
-    /**
-     * Generate a generator of lead data with updated fields
-     *
-     * @param Collection $filledData
-     * @param array $leads
-     * @param array $fillable
-     *
-     * @return Generator
-     */
-    private function generateLeadData(Collection $filledData, array $leads, array $fillable, array &$leadAdditionalData): Generator
-    {
-        $groupFilledData = $filledData->groupBy('id')->all();
-        $formattedFillable = collect($fillable)->reject(fn($item) => in_array($item, ['retained_date']))->all();
-
-        foreach ($leads as &$lead) {
-
-            $newLead = $groupFilledData[$lead['id']][0] ?? null;
-            if(empty($newLead)) continue;
-
-            $data = $lead['datas'];
-
-            foreach($newLead as $key => $value) {
-
-                if(in_array($key, $formattedFillable)) {
-                    $lead[$key] = $value;
-                }
-
-                if(array_key_exists($key, $data)) {
-                    $data[$key] = $value;
-                }
-            }
-
-            $lead['datas'] = json_encode($data);
-
-            yield $lead;
-
-            if($isRetainer = $newLead['is_show_portal'] ?? null) {
-                $lead['is_retainer'] = $isRetainer;
-            }
-
-            if($payout = $newLead['affiliate_payout'] ?? 0) {
-                $lead['payout'] = $payout;
-            }
-
-            if($retainedDate = $newLead['retained_date'] ?? null) {
-                $lead['new_retained_date'] = $retainedDate;
-            }
-
-            $leadAdditionalData[] = $lead;
-        }
     }
 }
