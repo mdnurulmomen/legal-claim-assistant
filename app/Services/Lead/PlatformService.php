@@ -6,6 +6,7 @@ use App\Jobs\GlobalPostBackTriggerJob;
 use App\Models\LeadLog;
 use App\Models\LeadReport;
 use App\Models\PlatformData;
+use App\Traits\FormatterTrait;
 use Generator;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 
 class PlatformService
 {
+    use FormatterTrait;
     /**
      * Retrieves a list of filtered leads from the platform data table.
      *
@@ -90,7 +92,10 @@ class PlatformService
 
                                                     $leadId = $item['lead_id'];
                                                     $escapedValue = str_replace("'", "''", $leadId);
-                                                    $searchValue = is_numeric($leadId) ? ':[[:space:]]*' . $escapedValue . '[,}]' : ':[[:space:]]*"' . $escapedValue . '"[,}]';
+
+                                                    $searchValue = ! is_string($leadId) && is_numeric($leadId)
+                                                                        ? ':[[:space:]]*' . $escapedValue . '[,}]'
+                                                                        : ':[[:space:]]*"' . $escapedValue . '"[,}]';
 
                                                     $query4->whereRaw('datas REGEXP ?', [$searchValue]);
                                                });
@@ -106,6 +111,12 @@ class PlatformService
         return $leads;
     }
 
+    /**
+     * Generate a SQL case statement for generating a custom_lead_id based on values in the $leadIds array.
+     *
+     * @param array $leadIds
+     * @return array
+     */
     public function generateLeadIdCaseStatement(array $leadIds): array
     {
         $sql = sprintf(
@@ -113,7 +124,7 @@ class PlatformService
             collect($leadIds)
                 ->map(function ($value) {
                     $escapedValue = str_replace("'", "''", $value);
-                    $returnValue = is_numeric($value) ? $escapedValue : "'" . $escapedValue . "'";
+                    $returnValue = ! is_string($value) && is_numeric($value) ? $escapedValue : "'" . $escapedValue . "'";
 
                     return sprintf(
                         "WHEN datas REGEXP ? THEN %s",
@@ -126,7 +137,7 @@ class PlatformService
         $bindings = collect($leadIds)
             ->map(function ($value) {
                 $escapedValue = str_replace("'", "''", $value);
-                return is_numeric($value)
+                return ! is_string($value) && is_numeric($value)
                     ? ':[[:space:]]*' . $escapedValue . '[,}]'
                     : ':[[:space:]]*"' . $escapedValue . '"[,}]';
             })
@@ -188,7 +199,7 @@ class PlatformService
                             'lead_id' => $leadId
                         ];
 
-                        if($leadId) $leadIds[] = "$leadId";
+                        if($leadId) $leadIds[] = $leadId;
                     }
                     continue;
                 }
