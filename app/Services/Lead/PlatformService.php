@@ -34,13 +34,16 @@ class PlatformService
         $conditions = $this->formatConditions($request, $fillableKeys, $leadIds);
         $isAmountField = in_array('revenue', $request->mapped_headers) || in_array('affiliate_payout', $request->mapped_headers);
 
+
         $leads = PlatformData::query()
                     ->select($selectableKeys)
                     ->when(! empty($leadIds), function ($query) use ($leadIds) {
-                        $query->selectRaw(
-                            "CASE " .
-                            collect($leadIds)->map(fn($value) => "WHEN datas LIKE '%\"$value\"%' THEN '$value'")->implode(' ') . "
-                            END as custom_lead_id"
+
+                        $caseStatement = $this->generateLeadIdCaseStatement($leadIds);
+
+                        return $query->selectRaw(
+                            $caseStatement['sql'],
+                            $caseStatement['bindings']
                         );
                     })
                     ->when($isAmountField, function ($query) {
@@ -84,8 +87,12 @@ class PlatformService
 
                                             $query3->where('buyer_id', $item['buyer_id'])
                                                ->when(! empty($item['lead_id']), function($query4) use($item) {
-                                                    $leadId = '"' . $item['lead_id'] . '"';
-                                                    $query4->whereRaw('datas like ?', ["%{$leadId}%"]);
+
+                                                    $leadId = $item['lead_id'];
+                                                    $escapedValue = str_replace("'", "''", $leadId);
+                                                    $searchValue = is_numeric($leadId) ? ':[[:space:]]*' . $escapedValue . '[,}]' : ':[[:space:]]*"' . $escapedValue . '"[,}]';
+
+                                                    $query4->whereRaw('datas REGEXP ?', [$searchValue]);
                                                });
                                         });
                                     }
@@ -97,6 +104,38 @@ class PlatformService
                     ->lazy(500);
 
         return $leads;
+    }
+
+    public function generateLeadIdCaseStatement(array $leadIds): array
+    {
+        $sql = sprintf(
+            "CASE %s END as custom_lead_id",
+            collect($leadIds)
+                ->map(function ($value) {
+                    $escapedValue = str_replace("'", "''", $value);
+                    $returnValue = is_numeric($value) ? $escapedValue : "'" . $escapedValue . "'";
+
+                    return sprintf(
+                        "WHEN datas REGEXP ? THEN %s",
+                        $returnValue
+                    );
+                })
+                ->implode(' ')
+        );
+
+        $bindings = collect($leadIds)
+            ->map(function ($value) {
+                $escapedValue = str_replace("'", "''", $value);
+                return is_numeric($value)
+                    ? ':[[:space:]]*' . $escapedValue . '[,}]'
+                    : ':[[:space:]]*"' . $escapedValue . '"[,}]';
+            })
+            ->all();
+
+        return [
+            'sql' => $sql,
+            'bindings' => $bindings
+        ];
     }
 
     /**
@@ -243,7 +282,7 @@ class PlatformService
      */
     private function generateLeadData(Collection $filledData, array $leads, array $fillable, array &$leadAdditionalData): Generator
     {
-        $excludedFields = ['revenue', 'affiliate_payout', 'retained_date'];
+        $excludedFields = ['id', 'revenue', 'affiliate_payout', 'retained_date'];
         $groupFilledData = $filledData->groupBy('id')->all();
         $formattedFillable = collect($fillable)->reject(fn($item) => in_array($item, ['retained_date']))->all();
 
