@@ -390,8 +390,7 @@ class LeadController extends Controller
 
         } catch (\Throwable $th) {
             DB::rollBack();
-            info($th->getMessage());
-            return withError('Lead Report Creation Failed');
+            return withError(message: 'Lead Report Creation Failed');
         }
 
         if($report->is_retainer){
