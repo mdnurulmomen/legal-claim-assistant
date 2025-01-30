@@ -15,6 +15,7 @@ use App\Services\Lead\LeadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Validator;
 
 class AffiliateController extends Controller
 {
@@ -131,10 +132,13 @@ class AffiliateController extends Controller
         $userData = $user->data;
 
         //unset the old affids
-        unset($userData['affids']);
+        unset($userData['affids'], $userData['reportColumnsPPL']);
 
         //set the new affids
         $userData['affids'] = $request->affids;
+        if(! empty($request->report_columns)){
+            $userData['reportColumnsPPL'] = $request->report_columns;
+        }
 
         //manipulate the request data and assign the new data
         $validatedData = array_merge($validatedData, ['data' => $userData]);
@@ -220,16 +224,16 @@ class AffiliateController extends Controller
             return withError('Affiliate IDs are already assigned to another affiliate');
         }
 
-        //get the validated data
         $validatedData = $request->validated();
 
-        //manipulate the request data and assign the new data
-        $validatedData = array_merge($validatedData, ['data' => [
-            'affids' => $validatedData['affids']
-        ]]);
+        $data = ['affids' => $validatedData['affids']];
+        if(! empty($request->report_columns)){
+            $data['reportColumnsPPL'] = $request->report_columns;
+        }
 
-        //unset the affids from the validated data
-        unset($validatedData['affids']);
+        $validatedData['data'] = $data;
+
+        unset($validatedData['report_columns'], $validatedData['affids']);
 
         $affiliate = User::create($validatedData);
         $affiliate->affiliate()->create($request->only(
@@ -277,10 +281,52 @@ class AffiliateController extends Controller
         return withSuccess(new AffiliateResource($affiliate));
     }
 
+    /**
+     * Retrieves a list of affiliates based on the request parameters.
+     *
+     * @param Request $request
+     * @param LeadService $leadService
+     * @return Response
+     */
     public function affiliateList(Request $request, LeadService $leadService): Response
     {
         $affiliates = $leadService->getAffiliates($request);
         return withSuccess($affiliates,  'Affiliates retrieved successfully');
+    }
+
+    /**
+     * Save the report columns for the affiliate based on the provided ID.
+     *
+     * @param Request $request
+     * @param int $userId
+     * @return Response
+     */
+    public function saveReportColumns(Request $request, int $userId): Response
+    {
+        $validator = Validator::make($request->all(), [
+            'report_columns' => 'nullable|array'
+        ]);
+
+        if ($validator->fails()) {
+            return withError($validator->errors()->first());
+        }
+
+        $user = User::find($userId);
+        if(empty($user)){
+            return withError('Affiliate not found!');
+        }
+
+        $data = $user->data ?? [];
+        $data['reportColumnsPPL'] = $request->report_columns;
+
+        if(empty($data['reportColumnsPPL'])){
+            unset($data['reportColumnsPPL']);
+        }
+
+        $user->data = $data;
+        $user->save();
+
+        return withSuccess(message: 'Report columns saved successfully');
     }
 
     /**

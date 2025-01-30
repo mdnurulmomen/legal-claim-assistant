@@ -8,12 +8,14 @@ use App\Http\Controllers\Controller;
 use App\Models\LeadReport;
 use App\Models\PlatformList;
 use App\Models\User;
+use App\Services\ExcelService;
 use App\Services\ReportingService;
 use App\Traits\CommonTrait;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportingController extends Controller
 {
@@ -24,9 +26,9 @@ class ReportingController extends Controller
      *
      * @param Request $request
      * @param ReportingService $reportingService
-     * @return Response
+     * @return Response | string | StreamedResponse
      */
-    public function reportingList(Request $request, ReportingService $reportingService): Response
+    public function reportingList(Request $request, ReportingService $reportingService, ExcelService $excelService): Response | string | StreamedResponse
     {
         $limit = $request->get('limit', 10);
         [$orderBy, $orderIn] = $reportingService->formatOrderByIn($request);
@@ -107,6 +109,10 @@ class ReportingController extends Controller
         if(! empty($request->is_total)) {
             $leads = $reportingService->getReportTotals($baseQuery, $request);
             return withSuccess($leads);
+        }
+
+        if(! empty($request->is_export)){
+            return $excelService->exportReportData($request, $baseQuery);
         }
 
         $leads = $baseQuery->paginate($limit);

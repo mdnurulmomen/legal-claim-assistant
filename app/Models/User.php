@@ -10,6 +10,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
@@ -30,6 +31,8 @@ class User extends Authenticatable
         'role',
         'admin_role_id',
         'is_test',
+        'has_two_fa',
+        'country',
         'send_email',
         'email_verified_at',
         'password',
@@ -61,7 +64,8 @@ class User extends Authenticatable
             'data' => 'array',
             'status' => 'boolean',
             'send_email' => 'boolean',
-            'is_test' => 'boolean'
+            'is_test' => 'boolean',
+            'has_two_fa' => 'boolean'
         ];
     }
 
@@ -99,5 +103,18 @@ class User extends Authenticatable
     public function childUsers()
     {
         return $this->hasMany(User::class, 'master_user_id', 'id');
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($user) {
+            do {
+                $token = Str::random(60);
+            } while (User::where('api_token', $token)->exists());
+
+            $user->api_token = $token;
+        });
     }
 }

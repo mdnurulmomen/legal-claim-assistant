@@ -77,7 +77,7 @@ class LeadService extends ReportingService
         ->map(function ($header) use ($serialization) {
             return [
                 'field' => $header,
-                'headerName' => ucwords(str_replace('_', ' ', $header)),
+                'headerName' => $header,
                 'minWidth' => 200,
                 'hide' => ! in_array($header, $serialization),
                 'editable' => true,
@@ -86,6 +86,32 @@ class LeadService extends ReportingService
         })
         ->values()
         ->all();
+    }
+
+    /**
+     * Formats an array of headers into a sorted and formatted array for the
+     * columns only.
+     *
+     * @param Collection $headers
+     * @return array
+     */
+    public function formatHeadersOnly(Collection $headers): array
+    {
+        $serialization = $this->getSortFields();
+
+        return collect($headers)
+                    ->sortBy(function ($item) use ($serialization) {
+                        $index = array_search($item, $serialization);
+                        return $index === false ? PHP_INT_MAX : $index;
+                    })
+                    ->map(function (string $header) {
+                        return [
+                            'value' => $header,
+                            'label' => $header
+                        ];
+                    })
+                    ->values()
+                    ->all();
     }
 
     /**
@@ -143,8 +169,15 @@ class LeadService extends ReportingService
                 return $query->where($searchCol, $searchText);
             }
 
-            return $query->where('platform_datas.affm_lead_id', $searchText)
-                    ->orWhereRaw('LOWER(datas) like ?', ["%{$searchText}%"]);
+            if (strlen($searchText) === 10 && PlatformData::where('platform_datas.affm_lead_id', $searchText)->exists()) {
+                return $query->where('platform_datas.affm_lead_id', $searchText);
+            }
+
+            if(PlatformData::where('platform_datas.affid', $searchText)->exists()) {
+                return $query->where('platform_datas.affid', $searchText);
+            }
+
+            return $query->whereRaw('LOWER(datas) like ?', ["%{$searchText}%"]);
 
                 // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.first_name"))) LIKE ?', ["%{$searchText}%"])
                 // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.last_name"))) LIKE ?', ["%{$searchText}%"]);
@@ -1340,5 +1373,29 @@ class LeadService extends ReportingService
         $reportData = $this->calculateRevenuePayout((float) $formData['lead_revenue'], (float) $formData['affiliate_payout']);
 
         return array_merge($formData, $reportData);
+    }
+
+    /**
+     * Formats the given integrations by grouping them by buyer unique ID and plucking the buyer headers.
+     *
+     * @param Request $request
+     * @param Collection $integrations
+     * @return array
+     */
+    public function formatIntegrations(Request $request, Collection $integrations): array
+    {
+        return $integrations
+                ->groupBy('buyer_unique_id')
+                ->map(fn ($group, $buyerUniqueId) => [
+                    'buyer_unique_id' => $buyerUniqueId,
+                    'buyer_headers' => $group
+                        ->pluck('buyer_headers')
+                        ->flatten(1)
+                        ->unique()
+                        ->values()
+                        ->toArray(),
+                ])
+                ->values()
+                ->toArray();
     }
 }

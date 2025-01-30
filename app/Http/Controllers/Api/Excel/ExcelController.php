@@ -21,6 +21,9 @@ class ExcelController extends Controller
      */
     public function uploadLeadCsv(Request $request, ExcelService $excelService): Response
     {
+        set_time_limit(0);
+        ini_set('memory_limit', -1);
+
         $validator = Validator::make($request->all(), [
             'file' => 'required|file'
         ]);

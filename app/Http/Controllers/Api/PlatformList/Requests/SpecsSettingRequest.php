@@ -32,10 +32,10 @@ class SpecsSettingRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => [
                 'required', 'string', 'email', 'max:255',
-                Rule::unique('users', 'email')
-                    ->when(! empty($this->specsId), function($query) {
-                        return $query->ignore($this->affiliate_id);
-                    })
+                // Rule::unique('users', 'email')
+                //     ->when(! empty($this->specsId), function($query) {
+                //         return $query->ignore($this->affiliate_id);
+                //     })
             ],
             'posting_type' => ['required', 'string', 'max:255'],
             'ping_required_fields' => ['nullable', 'array'],

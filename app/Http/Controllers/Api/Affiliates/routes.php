@@ -13,6 +13,6 @@ Route::prefix('affiliates')->as('affiliate.')
         $route->post('create', 'create')->name('store');
         $route->put('affiliate-status/{id}', 'toggleStatus')->name('toggle-status');
         $route->get('affiliate-list',  'affiliateList')->name('affiliate-list');
-
+        $route->post('save-report-columns/{userId}', 'saveReportColumns')->name('save-report-columns');
         $route->post('impersonate/{id}', 'impersonate')->name('impersonate');
     });

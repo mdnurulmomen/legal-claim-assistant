@@ -115,9 +115,9 @@ class PostBackTriggerService {
                                 $parameter = ($data['payload']['revenue'] ?? 0) - ($data['payload']['payout'] ?? 0);
                             }
 
-                        } elseif (isset($new_saved_data['datas'][$parameter])) {
+                        } elseif (isset($data['payload']['datas'][$parameter]) || isset($data['payload'][$parameter])) {
 
-                            $parameter = $data['payload']['datas'][$parameter];
+                            $parameter = $data['payload']['datas'][$parameter] ?? $data['payload'][$parameter] ?? null;
 
                             //if logic contains a "%", then calculate the percentage
                             if ($logic && strpos($logic, '%') !== false) {

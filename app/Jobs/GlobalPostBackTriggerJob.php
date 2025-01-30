@@ -43,28 +43,11 @@ class GlobalPostBackTriggerJob implements ShouldQueue
 
     public function triggerBulkRetainer(array $leadReports) {
 
-        $reportGroups = collect($leadReports)->groupBy('lead_id');
-        $newReportConditions = [];
+        $reportGroups = collect($leadReports)->pluck('lead_id')->unique()->all();
 
-        foreach($reportGroups as $leadId => $leadReport) {
-            $newReportConditions[] = [
-                'lead_id' => $leadId,
-                'report_ids' => collect($leadReport)->pluck('id')->filter()->values()
-            ];
-        }
-
-        LeadReport::query()
+        $leadReports = LeadReport::query()
             ->where('is_retainer', '=', 1)
-            ->where(function($query) use ($newReportConditions) {
-                foreach($newReportConditions as $key => $newReportCondition) {
-                    $method = $this->getConditionMethod($key);
-
-                    $query->$method(function($query) use ($newReportCondition) {
-                        $query->where('lead_id', $newReportCondition['lead_id'])
-                        ->whereNotIn('id', $newReportCondition['report_ids']);
-                    });
-                }
-            })
+            ->whereIn('lead_id', $reportGroups)
             ->select('id', 'lead_id')
             ->lazy(1000)
             ->each(function($leadReport) {

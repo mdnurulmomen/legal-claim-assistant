@@ -42,6 +42,8 @@ class UserController extends Controller
                         'users.phone',
                         'users.workspace',
                         'users.status',
+                        'users.country',
+                        'users.has_two_fa',
                         'ar.admin_role',
                         'ar.name as admin_role_name',
                         'ar.is_show_affiliate',
@@ -109,12 +111,16 @@ class UserController extends Controller
             return withError('User not found', 404);
         }
 
-        $validatedData = $request->validated();
-        $formattedData = $userService->formatRequestData($validatedData);
+        try {
+            $validatedData = $request->validated();
+            $formattedData = $userService->formatRequestData($validatedData);
 
-        $user->update($formattedData);
+            $user->update($formattedData);
 
-        return withSuccess(new UserResource($user->refresh()), 'User updated successfully');
+            return withSuccess(new UserResource($user->refresh()), 'User updated successfully');
+        } catch (\Throwable $th) {
+            return withError($th->getMessage());
+        }
     }
 
     /**

@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api\Lead;
 
 use App\Http\Controllers\Api\Lead\Requests\BulkUpdateLeadRequest;
 use App\Http\Controllers\Controller;
+use App\Models\Buyer;
 use App\Services\Lead\PlatformService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
 class LeadControllerV2 extends Controller
@@ -19,17 +21,41 @@ class LeadControllerV2 extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function bulkUpdateLeads(BulkUpdateLeadRequest $request, PlatformService $platformService)
+    public function bulkUpdateLeads(BulkUpdateLeadRequest $request, PlatformService $platformService): Response
     {
+        set_time_limit(0);
+        ini_set('memory_limit', -1);
+
         try {
             DB::beginTransaction();
             $platformService->formatAndUpdateLeads($request);
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
-            return withError('Lead Filled Fields Update Failed.');
+            return withError('Lead Filled Fields Update Failed.' . $th->getMessage());
         }
 
         return withSuccess(message: 'Lead Filled Fields Updated Successfully!');
+    }
+
+    /**
+     * Retrieve a list of all buyers.
+     *
+     * @param \Illuminate\Http\Request $request
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function buyerList(Request $request)
+    {
+        $buyers = Buyer::query()
+                        ->select('id as value', 'name as actual_name')
+                        ->when(! empty($request->is_custom), function ($query) {
+                            return $query->selectRaw("CONCAT(name , ': Lead ID') as label");
+                        }, function ($query) {
+                            return $query->select('name as label');
+                        })
+                        ->get();
+
+        return withSuccess($buyers);
     }
 }
