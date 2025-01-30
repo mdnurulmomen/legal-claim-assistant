@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\User;
 
+use App\Helpers\Utility;
 use App\Http\Controllers\Api\Auth\Resources\AuthResource;
 use App\Http\Controllers\Api\User\Requests\CreateOrUpdateUserRequest;
 use App\Http\Controllers\Api\User\Requests\UpdateBasicInfoRequest;
@@ -17,6 +18,8 @@ use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -137,6 +140,35 @@ class UserController extends Controller
         }
         $user->delete();
         return withSuccess(message: 'User deleted successfully');
+    }
+
+    /**
+     * Updates the status of a user with the given user ID.
+     *
+     * @param Request $request
+     * @param int $userId
+     * @return Response
+     */
+    public function updateStatus(Request $request, int $userId): Response
+    {
+
+        $validator = Validator::make($request->all(), [
+            'status' => ['required', Rule::in(array_keys(Utility::$userStatus))]
+        ]);
+
+        if ($validator->fails()) {
+            return withError($validator->errors()->first());
+        }
+
+        $user = User::find($userId);
+        if(empty($user)){
+            return withError('User not found', 404);
+        }
+
+        $user->status = $request->status;
+        $user->save();
+
+        return withSuccess(message: 'User status updated successfully !');
     }
 
     /**

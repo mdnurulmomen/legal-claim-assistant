@@ -31,6 +31,7 @@ class ExcelService
     {
         $from = (int) $request->from;
         $to = (int) $request->to;
+        $fileType = in_array($request->file_type, ['csv', 'xlsx']) ? $request->file_type : 'csv';
 
         $skip = $from - ($from === 1 ? 1 : 0);
         $take = $to - $skip;
@@ -68,7 +69,7 @@ class ExcelService
             }
         }
 
-        $fileName = 'Lead Export - ' . $this->formatDateTime(now(), 'M j Y g:i:s a', timezone: config('app.timezone')) . '.csv';
+        $fileName = 'Lead Export - ' . $this->formatDateTime(now(), 'M j Y g:i:s a', timezone: config('app.timezone')) . ".$fileType";
 
         $exportLead = (new FastExcel(leadGenerators($leadQuery)))
                         ->configureCsv(',', '"', 'UTF-8', false)
