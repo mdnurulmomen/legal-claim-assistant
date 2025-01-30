@@ -34,7 +34,7 @@ class PlatformService
         $fillableKeys = (new PlatformData())->getFillable();
         $selectableKeys = $this->formatSelectableKeys($request, $fillableKeys);
         $conditions = $this->formatConditions($request, $fillableKeys, $leadIds);
-        info('test', $conditions);
+
         $isAmountField = in_array('revenue', $request->mapped_headers) || in_array('affiliate_payout', $request->mapped_headers);
 
 
