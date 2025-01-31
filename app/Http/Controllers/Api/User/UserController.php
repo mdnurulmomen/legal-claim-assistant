@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -151,7 +152,6 @@ class UserController extends Controller
      */
     public function updateStatus(Request $request, int $userId): Response
     {
-
         $validator = Validator::make($request->all(), [
             'status' => ['required', Rule::in(array_keys(Utility::$userStatus))]
         ]);
@@ -165,8 +165,20 @@ class UserController extends Controller
             return withError('User not found', 404);
         }
 
-        $user->status = $request->status;
-        $user->save();
+        try {
+            DB::beginTransaction();
+
+            $user->status = $request->status;
+            $user->save();
+
+            $user->tokens()->delete();
+
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+
+            return withError('User status update failed !');
+        }
 
         return withSuccess(message: 'User status updated successfully !');
     }
