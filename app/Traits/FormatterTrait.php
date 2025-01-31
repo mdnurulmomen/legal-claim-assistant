@@ -46,4 +46,22 @@ trait FormatterTrait {
 
         return $formattedDate;
     }
+
+    /**
+     * Convert a given string to a number, if possible.
+     *
+     * If the given string is a numeric value, this function will convert it to a number.
+     * If the given string is not a numeric value, this function will simply return the string.
+     *
+     * @param string $value
+     * @return int|float|string
+     */
+    public function formatString(string $value): int|float|string
+    {
+        if (is_numeric($value)) {
+            return strpos($value, '.') !== false ? (float)$value : (int)$value;
+        }
+
+        return $value;
+    }
 }
