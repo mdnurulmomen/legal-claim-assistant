@@ -37,7 +37,6 @@ class PlatformService
 
         $isAmountField = in_array('revenue', $request->mapped_headers) || in_array('affiliate_payout', $request->mapped_headers);
 
-
         $leads = PlatformData::query()
                     ->select($selectableKeys)
                     ->when(! empty($leadIds), function ($query) use ($leadIds) {

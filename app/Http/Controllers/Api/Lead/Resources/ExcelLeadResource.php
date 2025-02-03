@@ -25,7 +25,6 @@ class ExcelLeadResource extends JsonResource
 
         $data = collect($columns)
                     ->mapWithKeys(fn($field) => [$field => $this->{$field}])
-                    ->filter(fn($value) => ! empty($value))
                     ->toArray();
 
         if(in_array('timestamp', $columns) && $this->created_at) {
