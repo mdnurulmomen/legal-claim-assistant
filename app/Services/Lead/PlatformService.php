@@ -41,13 +41,17 @@ class PlatformService
         $leads = PlatformData::query()
                     ->select($selectableKeys)
                     ->when(! empty($leadIds), function ($query) use ($leadIds) {
+                        return $query->leftJoin('platform_data_items as pdi', 'platform_datas.id', '=', 'pdi.platform_data_id')
+                                    ->selectRaw("
+                                        pdi.value as custom_lead_id
+                                    ");
 
-                        $caseStatement = $this->generateLeadIdCaseStatement($leadIds);
+                        // $caseStatement = $this->generateLeadIdCaseStatement($leadIds);
 
-                        return $query->selectRaw(
-                            $caseStatement['sql'],
-                            $caseStatement['bindings']
-                        );
+                        // return $query->selectRaw(
+                        //     $caseStatement['sql'],
+                        //     $caseStatement['bindings']
+                        // );
                     })
                     ->when($isAmountField, function ($query) {
                         return $query->addSelect([
@@ -92,13 +96,16 @@ class PlatformService
                                                ->when(! empty($item['lead_id']), function($query4) use($item) {
 
                                                     $leadId = $item['lead_id'];
-                                                    $escapedValue = str_replace("'", "''", $leadId);
 
-                                                    $searchValue = ! is_string($leadId) && is_numeric($leadId)
-                                                                        ? ':[[:space:]]*' . $escapedValue . '[,}]'
-                                                                        : ':[[:space:]]*"' . $escapedValue . '"[,}]';
+                                                    $query4->where('pdi.value', $leadId);
 
-                                                    $query4->whereRaw('datas REGEXP ?', [$searchValue]);
+                                                    // $escapedValue = str_replace("'", "''", $leadId);
+
+                                                    // $searchValue = ! is_string($leadId) && is_numeric($leadId)
+                                                    //                     ? ':[[:space:]]*' . $escapedValue . '[,}]'
+                                                    //                     : ':[[:space:]]*"' . $escapedValue . '"[,}]';
+
+                                                    // $query4->whereRaw('datas REGEXP ?', [$searchValue]);
                                                });
                                         });
                                     }
@@ -159,12 +166,16 @@ class PlatformService
      */
     public function formatSelectableKeys(Request $request, array $fillableKeys): array
     {
+        $excludedHeaders = ['revenue', 'affiliate_payout'];
+
         $columns = collect($request->mapped_headers)
-                    ->filter(fn($header) => !in_array($header, ['revenue', 'affiliate_payout']))
-                    ->map(function ($header) use ($fillableKeys) {
-                        return in_array($header, $fillableKeys) ? $header : "datas->{$header} as {$header}";
-                    })
-                    ->push('id', 'lead_status', 'buyer_id')
+                    ->reject(fn($header) => in_array($header, $excludedHeaders, true)) // More readable & efficient
+                    ->map(fn($header) => in_array($header, $fillableKeys, true) ? "platform_datas.$header" : "platform_datas.datas->{$header} as {$header}")
+                    ->merge([
+                        'platform_datas.id',
+                        'platform_datas.lead_status',
+                        'platform_datas.buyer_id',
+                    ])
                     ->toArray();
 
         return $columns;
