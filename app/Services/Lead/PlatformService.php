@@ -171,11 +171,7 @@ class PlatformService
         $columns = collect($request->mapped_headers)
                     ->reject(fn($header) => in_array($header, $excludedHeaders, true)) // More readable & efficient
                     ->map(fn($header) => in_array($header, $fillableKeys, true) ? "platform_datas.$header" : "platform_datas.datas->{$header} as {$header}")
-                    ->merge([
-                        'platform_datas.id',
-                        'platform_datas.lead_status',
-                        'platform_datas.buyer_id',
-                    ])
+                    ->push('platform_datas.id', 'platform_datas.lead_status', 'platform_datas.buyer_id')
                     ->toArray();
 
         return $columns;
