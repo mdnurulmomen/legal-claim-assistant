@@ -16,6 +16,7 @@ class Integration extends Model
         'list_id',
         'buyer_headers',
         'type',
+        'lead_id_key',
         'note',
     ];
 

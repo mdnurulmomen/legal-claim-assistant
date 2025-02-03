@@ -159,9 +159,10 @@ class ExcelService
 
                 if(in_array($slugKey, ['phone', 'mobile', 'phone_number', 'mobile_number', 'mobile_no', 'phone_no', 'number'])) {
                     $newValue = (new CountryFuzzyMatcher())->formatPhoneNumber($value, $country);
-                } else {
-                    $newValue = $this->formatString($value);
                 }
+                //  else {
+                //     $newValue = $this->formatString($value);
+                // }
 
                 return [$slugKey => $newValue];
             })->all();
