@@ -115,8 +115,6 @@ class TestController extends Controller
                     ->get()
                     ->chunk($chunkSize);
 
-                    $allLeads = [];
-
                     foreach ($chunks as $key => $chunk) {
 
                         $leads = $chunk->values()
@@ -133,12 +131,11 @@ class TestController extends Controller
                                 })
                                 ->values()
                                 ->all();
+
                         if(empty($leads)) continue;
 
-                        $allLeads = array_merge($allLeads, $leads);
+                        PlatformDataItem::insert($leads);
                     }
-
-        PlatformDataItem::insert($allLeads);
 
         return withSuccess(message: 'Data items updated successfully');
     }
