@@ -99,6 +99,7 @@ class TestController extends Controller
                     ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
                     ->select([
                         'platform_datas.id',
+                        'integrations.lead_id_key',
                         DB::raw("JSON_UNQUOTE(
                             JSON_EXTRACT(
                                 platform_datas.datas,
@@ -114,25 +115,30 @@ class TestController extends Controller
                     ->get()
                     ->chunk($chunkSize);
 
+                    $allLeads = [];
+
                     foreach ($chunks as $key => $chunk) {
+
                         $leads = $chunk->values()
                                 ->reject(fn ($item) => in_array($item->lead_id, [null, "null", "", "0", 0, false, " "], true))
                                 ->map(function($item) use ($now) {
                                     return [
                                         'platform_data_id' => $item->id,
-                                        'field' => 'lead_id',
+                                        'field' => $item->lead_id_key,
                                         'value' => $item->lead_id,
+                                        'key_type' => 'lead_id',
                                         'created_at' => $now,
                                         'updated_at' => $now
                                     ];
                                 })
                                 ->values()
                                 ->all();
-
                         if(empty($leads)) continue;
 
-                        PlatformDataItem::insert($leads);
+                        $allLeads = array_merge($allLeads, $leads);
                     }
+
+        PlatformDataItem::insert($allLeads);
 
         return withSuccess(message: 'Data items updated successfully');
     }
