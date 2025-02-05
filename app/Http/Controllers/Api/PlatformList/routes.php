@@ -18,6 +18,7 @@ Route::prefix('platform')
         $route->get('integrated-buyers', 'integratedBuyers')->name('integrated-buyers');
         $route->get('buyer-list/{platformId}', 'buyerList')->name('buyer-list');
         $route->get('show/{platformId}', 'showPlatform')->name('show');
+        $route->get('/integration-by-list/{platformListId}/{buyer_unique_id}', 'getIntegrationByList')->name('integration-by-list');
     });
 
 Route::prefix('platform-integrations')->as('platform.integrations.')
