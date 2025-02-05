@@ -142,6 +142,7 @@ class PlatformIntegrationService
         $integration->buyer_unique_id = $name;
         $integration->type = $request->buyer_type;
         $integration->buyer_headers = $request->save_data;
+        $integration->lead_id_key = $request->lead_id_key;
         $integration->save();
     }
 
