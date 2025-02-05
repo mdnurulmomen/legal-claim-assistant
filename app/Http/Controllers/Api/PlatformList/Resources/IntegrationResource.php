@@ -15,7 +15,14 @@ class IntegrationResource extends JsonResource
     public function toArray($request): array
     {
         return [
-            'label' => $this->label
+            'name' => $this->name,
+            'buyer_unique_id' => $this->buyer_unique_id,
+            'buyer_id' => $this->buyer_id,
+            'list_id' => $this->list_id,
+            'buyer_headers' => $this->buyer_headers,
+            'type' => $this->type,
+            'lead_id_key' => $this->lead_id_key,
+            'note' => $this->note
         ];
     }
 }

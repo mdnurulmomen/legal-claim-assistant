@@ -37,7 +37,6 @@ class PlatformService
 
         $isAmountField = in_array('revenue', $request->mapped_headers) || in_array('affiliate_payout', $request->mapped_headers);
 
-
         $leads = PlatformData::query()
                     ->select($selectableKeys)
                     ->when(! empty($leadIds), function ($query) use ($leadIds) {
@@ -45,13 +44,6 @@ class PlatformService
                                     ->selectRaw("
                                         pdi.value as custom_lead_id
                                     ");
-
-                        // $caseStatement = $this->generateLeadIdCaseStatement($leadIds);
-
-                        // return $query->selectRaw(
-                        //     $caseStatement['sql'],
-                        //     $caseStatement['bindings']
-                        // );
                     })
                     ->when($isAmountField, function ($query) {
                         return $query->addSelect([
@@ -68,6 +60,8 @@ class PlatformService
                     })
                     ->when(! empty($conditions), function ($query) use ($conditions) {
                         foreach ($conditions as $index => $condition) {
+
+                            if(empty($condition)) continue;
 
                             $method = $this->getConditionMethod($index);
 
@@ -171,11 +165,7 @@ class PlatformService
         $columns = collect($request->mapped_headers)
                     ->reject(fn($header) => in_array($header, $excludedHeaders, true)) // More readable & efficient
                     ->map(fn($header) => in_array($header, $fillableKeys, true) ? "platform_datas.$header" : "platform_datas.datas->{$header} as {$header}")
-                    ->merge([
-                        'platform_datas.id',
-                        'platform_datas.lead_status',
-                        'platform_datas.buyer_id',
-                    ])
+                    ->push('platform_datas.id', 'platform_datas.lead_status', 'platform_datas.buyer_id')
                     ->toArray();
 
         return $columns;
@@ -203,7 +193,9 @@ class PlatformService
 
                 if(is_array($value)) {
                     foreach($value as $custom) {
+
                         $leadId = $custom['lead_id'] ?? null;
+                        if(empty($leadId)) continue;
 
                         $childConditions[] = [
                             'type' => 'custom',

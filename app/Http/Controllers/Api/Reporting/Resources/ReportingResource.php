@@ -54,7 +54,6 @@ class ReportingResource extends JsonResource
         if(! empty($columns)) {
             return collect($columns)
                     ->mapWithKeys(fn($field) => [$field => $data[$field] ?? null])
-                    ->filter(fn($value) => ! empty($value))
                     ->toArray();
         }
 

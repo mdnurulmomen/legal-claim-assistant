@@ -13,6 +13,7 @@ class PlatformDataItem extends Model
         'platform_data_id',
         'field',
         'value',
+        'key_type',
         'additional_info'
     ];
 }

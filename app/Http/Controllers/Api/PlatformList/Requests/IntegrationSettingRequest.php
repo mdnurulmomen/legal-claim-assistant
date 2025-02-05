@@ -34,6 +34,7 @@ class IntegrationSettingRequest extends FormRequest
             'curl.method' => ['required', 'string'],
             'auth' => ['nullable'],
             'phone_format' => ['required', 'string'],
+            'lead_id_key' => ['nullable', 'string', 'max:255'],
             'save_data' => ['required', 'array'],
             'custom_params' => ['nullable', 'array'],
             'ping' => ['nullable', 'array'],

@@ -9,6 +9,6 @@ Route::prefix('test')
     ->controller(TestController::class)
     ->middleware('auth:sanctum')
     ->group(function ($route) {
-        $route->post('update-integration', 'updateIntegration')->name('update-integration');
-        $route->post('update-data-items', 'updateDataItem')->name('update-data-item');
+        // $route->post('update-integration', 'updateIntegration')->name('update-integration');
+        // $route->post('update-data-items', 'updateDataItem')->name('update-data-item');
     });

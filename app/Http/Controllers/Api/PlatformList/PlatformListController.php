@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\PlatformList;
 
+use App\Http\Controllers\Api\PlatformList\Resources\IntegrationResource;
 use App\Http\Controllers\Api\PlatformList\Resources\PlatformListResource;
 use App\Http\Controllers\Controller;
 use App\Models\Buyer;
@@ -153,6 +154,30 @@ class PlatformListController extends Controller
         }
 
         return withSuccess(new PlatformListResource($platform));
+    }
+
+    /**
+     * Retrieves an integration by the given platform list ID and buyer unique ID.
+     *
+     * @param Request $request
+     * @param int $platformListId
+     * @param string $buyerUniqueId
+     * @return Response
+     */
+    public function getIntegrationByList(Request $request, int $platformListId, string $buyerUniqueId): Response
+    {
+        $integration = Integration::query()
+                        ->where([
+                            'list_id' => $platformListId,
+                            'buyer_unique_id' => $buyerUniqueId
+                        ])
+                        ->first();
+
+        if(empty($integration)) {
+            return withError('Integration not found');
+        }
+
+        return withSuccess(new IntegrationResource($integration));
     }
 
 }
