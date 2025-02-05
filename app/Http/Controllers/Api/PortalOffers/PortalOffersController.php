@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\PortalOffers\Resources\PortalOffersResource;
 use App\Http\Controllers\Api\PortalOffers\Requests\CreateOrUpdatePortalOffersRequest;
 use App\Models\PlatformList;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PortalOffersController extends Controller
 {
@@ -42,6 +43,8 @@ class PortalOffersController extends Controller
             $data['img'] = Storage::disk('s3')->putFileAs('upload/portal-offers', $file, $fileName);
         }
 
+        // generate new twag uppercase 16
+        $data['tag'] = strtoupper(Str::random(16));
         $offer = PortalOffers::create($data);
         return withSuccess(new PortalOffersResource($offer), 'Portal Offer Created Successfully');
     }

@@ -23,6 +23,11 @@ class PortalOffers extends Model
         'tag'
     ];
 
+    // criteria is a json column
+    protected $casts = [
+        'criteria' => 'array',
+    ];
+
     // table name
     protected $table = 'portal_offers';
 }
