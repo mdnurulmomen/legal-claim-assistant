@@ -41,10 +41,13 @@ class PortalOffersController extends Controller
             $file = $request->file('img');
             $fileName = time() . '_' . $file->getClientOriginalName();
             $data['img'] = Storage::disk('s3')->putFileAs('upload/portal-offers', $file, $fileName);
+            // image path amazon s3            
+            $data['image_path'] = Storage::disk('s3')->url($data['img']);
         }
 
         // generate new twag uppercase 16
-        $data['tag'] = strtoupper(Str::random(16));
+        $data['list_tag'] = $data['tag'];
+        $data['tag'] = strtoupper(Str::random(16));        
         $offer = PortalOffers::create($data);
         return withSuccess(new PortalOffersResource($offer), 'Portal Offer Created Successfully');
     }

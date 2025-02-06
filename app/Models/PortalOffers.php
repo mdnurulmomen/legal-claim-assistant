@@ -20,7 +20,9 @@ class PortalOffers extends Model
         'payout_range_cpa_max',
         'preview_link',
         'criteria',
-        'tag'
+        'tag',
+        'list_tag',
+        'image_path'
     ];
 
     // criteria is a json column

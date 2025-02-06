@@ -16,6 +16,7 @@ class CreateOrUpdatePortalOffersRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'tag' => ['required', 'string', 'max:255'],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'active' => ['required', 'string'],
