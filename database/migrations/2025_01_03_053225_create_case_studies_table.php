@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('tag', 100)->unique();
             $table->foreignId('user_id');
             $table->string('title');
+            $table->string('auth_name');
             $table->longText('description')->nullable();
             $table->mediumText('attachment')->nullable();
             $table->string('status')->default('pending');

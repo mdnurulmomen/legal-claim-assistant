@@ -12,6 +12,7 @@ class CaseStudyCategory extends Model
 
     protected $fillable = [
         'tag',
+        'parent_id',
         'name',
     ];
 
@@ -27,5 +28,13 @@ class CaseStudyCategory extends Model
         static::creating(function ($model) {
             $model->tag = strtoupper(Str::random(15));
         });
+    }
+
+    /**
+     * Get the parent category.
+     */
+    public function parent()
+    {
+        return $this->belongsTo(CaseStudyCategory::class, 'parent_id');
     }
 }

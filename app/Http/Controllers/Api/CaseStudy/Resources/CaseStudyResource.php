@@ -15,12 +15,28 @@ class CaseStudyResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return [
+        $data =  [
             'id' => $this->id,
             'tag' => $this->tag,
             'title' => $this->title,
+            'auth_name' => $this->auth_name,
+            'status' => $this->status,
+            'categories' => $this->categories,
+            'tags' => $this->tags,
             'description' => $this->description,
-            'attachment' => !empty($this->attachment) ? Storage::disk('s3')->url($this->attachment) : '',
+            'attachment' => $this->attachment,
+            'created_at' => $this->created_at,
         ];
+
+        if( !empty($this->attachment) ){
+            $data['attachment_urls'] = [
+                'thumb' => Storage::disk('s3')->url($this->attachment['thumb']),
+                'original' => Storage::disk('s3')->url($this->attachment['original'])
+            ];
+        } else {
+            $data['attachment_urls'] = [];
+        }
+
+        return $data;
     }
 }

@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('case_study_categories', function (Blueprint $table) {
             $table->id();
             $table->string('tag', 100)->unique();
-            $table->bigInteger('parent_id')->default(0);
+            $table->bigInteger('parent_id')->nullable();
             $table->string('name');
             $table->timestamps();
         });

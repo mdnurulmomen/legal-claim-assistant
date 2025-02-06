@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Laravel\Facades\Image;
+use Illuminate\Http\File;
 
 class CaseStudyController extends Controller
 {
@@ -24,15 +26,15 @@ class CaseStudyController extends Controller
     {
         $limit = $request->input('limit', 10);
 
-        $conferences = CaseStudy::orderBy('created_at', 'desc');
-        $conferences = $conferences->when( !empty($request->search_txt), function ($query) use ($request) {
+        $posts = CaseStudy::orderBy('created_at', 'desc');
+        $posts = $posts->when( !empty($request->search_txt), function ($query) use ($request) {
             return $query->where('title', 'like', '%' . $request->search_txt . '%');
         });
 
         //paginate
-        $conferences = $conferences->paginate(10, ['*'], 'page', $request->page ?? 1);
+        $posts = $posts->paginate(10);
 
-        return withSuccessResourceList(CaseStudyResource::collection($conferences));
+        return withSuccessResourceList(CaseStudyResource::collection($posts));
     }
 
     /**
@@ -44,20 +46,40 @@ class CaseStudyController extends Controller
     public function create(CreateOrUpdateCaseStudyRequest $request)
     {
         $data = $request->only([
-            'id',
             'title',
+            'auth_name',
             'description',
         ]);
 
-        if($request->hasFile('thumb')){
-            $thumbPath = Storage::disk('s3')->put('upload/newest-campaign', $request->thumb);
-            $data['thumb'] = $thumbPath;
+        if($request->hasFile('attachments')){
+            $upload = $request->file('attachments');
+
+            $extension = $upload->getClientOriginalExtension();
+            $filename = md5(time()).'_thumb_'.$upload->getClientOriginalName();
+
+            $normal = Image::read($upload)->scale(width: 300)->encode();
+
+            $thumbPath = Storage::disk('s3')->put('upload/case-study/'.$filename, $normal->__toString() );
+            $originalPath = Storage::disk('s3')->put('upload/case-study', $upload );
+
+            $data['attachment'] = [
+                'thumb'     => 'upload/case-study/'.$filename,
+                'original'  => $originalPath
+            ];
         }
 
-        $conference = CaseStudy::create($data);
+        $post = CaseStudy::create($data);
+
+        if( is_array($request->categories) && !empty($request->categories)){
+            $post->categories()->attach($request->categories);
+        }
+
+        if( is_array($request->tags) && !empty($request->tags)){
+            $post->tags()->attach($request->tags);
+        }
 
         // return with success response
-        return withSuccess(new CaseStudyResource($conference), 'Case Study created successfully');
+        return withSuccess(new CaseStudyResource($post), 'Case Study created successfully');
     }
 
     /**
@@ -69,13 +91,13 @@ class CaseStudyController extends Controller
      */
     public function show(Request $request, String $tag)
     {
-        $conference = CaseStudy::where('tag', $tag)->firstOrFail();
+        $post = CaseStudy::where('tag', $tag)->first();
 
-        if (!$conference) {
+        if (!$post) {
             return withError('Invalid Case Study Tag');
         }
 
-        return withSuccess(new CaseStudyResource($conference));
+        return withSuccess(new CaseStudyResource($post));
     }
 
     /**
@@ -87,26 +109,50 @@ class CaseStudyController extends Controller
      */
     public function update(CreateOrUpdateCaseStudyRequest $request, String $tag)
     {
-        $conference = CaseStudy::where('tag', $tag)->firstOrFail();
+        $post = CaseStudy::where('tag', $tag)->firstOrFail();
 
-        if (!$conference) {
+        if (!$post) {
             return withError('Invalid Case Study Tag');
         }
         $data = $request->only([
             'title',
+            'auth_name',
             'description',
         ]);
 
-        if($request->hasFile('thumb')){
-            $thumbPath = Storage::disk('s3')->put('upload/newest-campaign', $request->thumb);
-            $thumb = $thumbPath;
-            $data['thumb'] = $thumb;
+        if($request->hasFile('attachments')){
+            $upload = $request->file('attachments');
+
+            $extension = $upload->getClientOriginalExtension();
+            $filename = md5(time()).'_thumb_'.$upload->getClientOriginalName();
+
+            $normal = Image::read($upload)->scale(width: 300)->encode();
+
+            $thumbPath = Storage::disk('s3')->put('upload/case-study/'.$filename, $normal->__toString() );
+            $originalPath = Storage::disk('s3')->put('upload/case-study', $upload );
+
+            $data['attachment'] = [
+                'thumb'     => 'upload/case-study/'.$filename,
+                'original'  => $originalPath
+            ];
+
+            foreach( $post->attachment as $key=>$oldFile ){
+                Storage::disk('s3')->delete($oldFile);
+            }
         }
 
-        $conference->update($data);
+        $post->update($data);
+
+        if( is_array($request->categories) && !empty($request->categories)){
+            $post->categories()->sync($request->categories);
+        }
+
+        if( is_array($request->tags) && !empty($request->tags)){
+            $post->tags()->sync($request->tags);
+        }
 
 
-        return withSuccess(new CaseStudyResource($conference), 'Case Study updated successfully');
+        return withSuccess(new CaseStudyResource($post), 'Case Study updated successfully');
     }
 
     /**
@@ -118,12 +164,16 @@ class CaseStudyController extends Controller
      */
     public function delete(Request $request, $tag)
     {
-        $conference = CaseStudy::where('tag', $tag)->firstOrFail();
+        $post = CaseStudy::where('tag', $tag)->first();
 
-        if (!$conference) {
+        if (!$post) {
             return withError('Invalid Case Study Tag');
         }
-        $conference->delete();
+
+        $post->categories()->detach();
+        $post->tags()->detach();
+
+        $post->delete();
 
         return withSuccess(message: 'Case Study deleted successfully');
     }
