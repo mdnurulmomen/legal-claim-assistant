@@ -1,0 +1,40 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
+
+class CaseStudyCategory extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'tag',
+        'parent_id',
+        'name',
+    ];
+
+
+    public function setTagAttribute()
+    {
+        $this->attributes['tag'] = strtoupper(Str::random(15));
+    }
+
+    public static function boot()
+    {
+        parent::boot();
+        static::creating(function ($model) {
+            $model->tag = strtoupper(Str::random(15));
+        });
+    }
+
+    /**
+     * Get the parent category.
+     */
+    public function parent()
+    {
+        return $this->belongsTo(CaseStudyCategory::class, 'parent_id');
+    }
+}
