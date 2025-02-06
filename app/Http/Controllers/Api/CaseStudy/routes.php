@@ -16,7 +16,7 @@ Route::prefix('case-study')->as('caseStudy.')
         $route->delete('delete/{tag}', 'delete')->name('delete');
     });
 
-Route::prefix('case-study')->as('caseStudy.')
+Route::prefix('case-study')->as('caseStudyCat.')
     ->controller(CaseStudyCategoryController::class)
     ->middleware('auth:sanctum')
     ->group(function ($route) {
@@ -28,7 +28,7 @@ Route::prefix('case-study')->as('caseStudy.')
         $route->delete('category/delete/{tag}', 'delete')->name('delete');
     });
 
-Route::prefix('case-study')->as('caseStudy.')
+Route::prefix('case-study')->as('caseStudyTag.')
     ->controller(CaseStudyTagController::class)
     ->middleware('auth:sanctum')
     ->group(function ($route) {
