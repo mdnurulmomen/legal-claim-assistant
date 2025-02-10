@@ -13,6 +13,7 @@ class PortalOffersResource extends JsonResource
         return [
             'id' => $this->id,
             'tag' => $this->tag,
+            'list_tag' => $this->list_tag,
             'name' => $this->name,
             'description' => $this->description,
             'active' => $this->active,
