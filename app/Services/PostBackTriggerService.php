@@ -273,9 +273,6 @@ class PostBackTriggerService {
                 'type' => $type,
             ];
 
-
-            info('Response: ', $logData);
-
             if ($lead_id) {
                 $logData['lead_id'] = $lead_id;
             }
@@ -287,7 +284,7 @@ class PostBackTriggerService {
         } catch (\Exception $e) {
             //send the error to the sentry
             \Sentry\captureException($e);
-            info($e->getMessage());
+
             // Handle any exceptions and log the error
             $logData = [
                 'data' => [

@@ -26,16 +26,17 @@ class BulkUpdateLeadRequest extends FormRequest
     {
         $rules = [
             'upload_type' => ['required', 'string', 'max:255'],
-            'leads' => ['required', 'array'],
-            'leads.*.id' => ['required', 'integer']
+            'filled_headers' => ['required', 'array']
+            // 'leads' => ['required', 'array'],
+            // 'leads.*.id' => ['required', 'integer']
         ];
 
-        if($this->upload_type == 'retainer_upload') {
-            $rules['leads.*.retained_date'] = ['required', 'date_format:Y-m-d'];
-            $rules['leads.*.revenue'] = ['nullable', 'numeric'];
-            $rules['leads.*.affiliate_payout'] = ['nullable', 'numeric'];
-            $rules['leads.*.is_show_portal'] = ['nullable', 'in:0,1,2'];
-        }
+        // if($this->upload_type == 'retainer_upload') {
+        //     $rules['leads.*.retained_date'] = ['required', 'date_format:Y-m-d'];
+        //     $rules['leads.*.revenue'] = ['nullable', 'numeric'];
+        //     $rules['leads.*.affiliate_payout'] = ['nullable', 'numeric'];
+        //     $rules['leads.*.is_show_portal'] = ['nullable', 'in:0,1,2'];
+        // }
 
         return $rules;
     }

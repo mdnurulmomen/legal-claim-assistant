@@ -33,4 +33,6 @@ Route::prefix('leads-v2')->as('leads-v2.')
     ->group(function ($route) {
         $route->put('bulk-update-leads', 'bulkUpdateLeads')->name('bulk-update-leads');
         $route->get('buyer-list', 'buyerList')->name('buyer.list');
+        $route->post('lead-logs', 'leadLogs')->name('lead-logs');
+        $route->get('log-statistics', 'logStatistics')->name('log-statistics');
     });
