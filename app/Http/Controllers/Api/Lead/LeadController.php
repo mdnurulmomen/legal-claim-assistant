@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Lead\Requests\StoreLeadReportRequest;
 use App\Http\Controllers\Api\Lead\Requests\UpdateFilledRequest;
 use App\Http\Controllers\Api\Lead\Requests\UpdateLeadsRequest;
 use App\Http\Controllers\Api\Lead\Resources\LeadInfoResource;
+use App\Http\Controllers\Api\Lead\Resources\LeadLogResource;
 use App\Http\Controllers\Api\Lead\Resources\LeadReportResource;
 use App\Http\Controllers\Api\Lead\Resources\LeadResource;
 use App\Http\Controllers\Controller;
@@ -619,6 +620,11 @@ class LeadController extends Controller
     public function filteredLeads(Request $request, PlatformService $platformService): Response
     {
         $data = $platformService->getFilteredLeads($request);
-        return withSuccess($data);
+
+        if(empty($data)) {
+            return withError('No leads found.');
+        }
+
+        return withSuccessResourceList(LeadLogResource::collection($data));
     }
 }

@@ -2,7 +2,10 @@
 
 namespace App\Services\Lead;
 
+use App\Http\Controllers\Api\Lead\Resources\LeadLogResource;
 use App\Jobs\GlobalPostBackTriggerJob;
+use App\Models\DispositionConfig;
+use App\Models\DispositionLog;
 use App\Models\LeadLog;
 use App\Models\LeadReport;
 use App\Models\PlatformData;
@@ -23,7 +26,6 @@ class PlatformService
      * The request should contain the following parameters:
      *
      * @param Request $request
-     * @return Builder[]|\Illuminate\Database\Eloquent\Collection
      */
     public function getFilteredLeads(Request $request)
     {
@@ -36,8 +38,75 @@ class PlatformService
         $conditions = $this->formatConditions($request, $fillableKeys, $leadIds);
 
         $isAmountField = in_array('revenue', $request->mapped_headers) || in_array('affiliate_payout', $request->mapped_headers);
+        $userId = auth()->id();
 
-        $leads = PlatformData::query()
+        $csvData = $request->csv_data ?? [];
+        $actualHeaders = $request->actual_headers ?? [];
+
+        $leadKeys = [];
+        $requestedConditions = $request->input('conditions', []);
+        $firstCondition = $requestedConditions[0];
+        $custom = $firstCondition['custom'] ?? [];
+        unset($firstCondition['custom']);
+
+        $conditionKeys = array_keys($firstCondition);
+
+        foreach($custom as $item) {
+            $conditionKeys[] = $item['lead_key'];
+            $leadKeys[$item['lead_key']] = 'custom_lead_id';
+        }
+
+        $mappedHeads = collect($request->mapped_headers ?? [])
+                        ->reject(function($item) use ($conditionKeys) {
+                            return in_array($item, $conditionKeys);
+                        })
+                        ->values()
+                        ->all();
+
+        $actualHeadersObj = collect($actualHeaders)->pluck('value', 'model_value')->toArray();
+
+        $grouped = collect($csvData)->groupBy(function ($item) use ($conditionKeys, $actualHeadersObj) {
+                    $groupedKey = "";
+                    foreach($conditionKeys as $index => $key) {
+                        $actualKey = $actualHeadersObj[$key] ?? null;
+                        if(empty($actualKey)) continue;
+                        $groupedKey .= ((($index > 0) ? "_" : "") .  $item[$actualKey]);
+                    }
+                    return strtolower($groupedKey);
+                });
+
+        $csvLeads = [];
+
+        foreach($grouped as $groupKey => $leads) {
+            $updatableLeads = [];
+
+            $leadData = $leads[0] ?? null;
+            if(empty($leadData)) continue;
+
+            foreach($mappedHeads as $mappedKey) {
+                $actualKey = $actualHeadersObj[$mappedKey] ?? null;
+                if(empty($actualKey)) continue;
+
+                $updatableLeads[$mappedKey] = $leadData[$actualKey] ?? '';
+            }
+
+            $csvLeads[$groupKey] = $updatableLeads;
+        }
+
+        $lastGroupKeys = [];
+
+        try {
+
+            DB::beginTransaction();
+
+            DispositionConfig::where('user_id', $userId)->delete();
+
+            $config = DispositionConfig::create([
+                'user_id' => $userId,
+                'uid' => str()->uuid()
+            ]);
+
+            $leads = PlatformData::query()
                     ->select($selectableKeys)
                     ->when(! empty($leadIds), function ($query) use ($leadIds) {
                         return $query->leftJoin('platform_data_items as pdi', 'platform_datas.id', '=', 'pdi.platform_data_id')
@@ -75,7 +144,7 @@ class PlatformService
                                     if($item['type'] === 'json') {
                                         $query2->whereRaw(
                                             sprintf(
-                                                'LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.%s"))) %s ?',
+                                                'LOWER(JSON_UNQUOTE(JSON_EXTRACT(platform_datas.datas, "$.%s"))) %s ?',
                                                 $item['key'],
                                                 $item['operator']
                                             ),
@@ -86,20 +155,12 @@ class PlatformService
                                     if($item['type'] === 'custom') {
                                         $query2->where(function($query3) use($item) {
 
-                                            $query3->where('buyer_id', $item['buyer_id'])
+                                            $query3->where('platform_datas.buyer_id', $item['buyer_id'])
                                                ->when(! empty($item['lead_id']), function($query4) use($item) {
 
                                                     $leadId = $item['lead_id'];
 
                                                     $query4->where('pdi.value', $leadId);
-
-                                                    // $escapedValue = str_replace("'", "''", $leadId);
-
-                                                    // $searchValue = ! is_string($leadId) && is_numeric($leadId)
-                                                    //                     ? ':[[:space:]]*' . $escapedValue . '[,}]'
-                                                    //                     : ':[[:space:]]*"' . $escapedValue . '"[,}]';
-
-                                                    // $query4->whereRaw('datas REGEXP ?', [$searchValue]);
                                                });
                                         });
                                     }
@@ -108,9 +169,101 @@ class PlatformService
 
                         };
                     })
-                    ->lazy(2000);
+                    ->orderBy('platform_datas.id')
+                    ->chunk(1000, function($leads) use ($config, $conditionKeys, $csvLeads, $leadKeys, &$lastGroupKeys) {
 
-        return $leads;
+                        $firstLead  = $leads->first();
+
+                        if(! empty($firstLead)) {
+                            $firstGroupedKey = strtolower(collect($conditionKeys)
+                                                ->map(fn($key) => $firstLead[$leadKeys[$key] ?? $key] ?? '')
+                                                ->implode('_'));
+
+                            if(! in_array($firstGroupedKey, $lastGroupKeys)) {
+                                $lastGroupKeys[] = $firstGroupedKey;
+                            }
+                        }
+
+                        $formattedLeads = array_map(function ($lead) use ($conditionKeys, $leadKeys, $csvLeads, &$lastGroupKeys) {
+
+                                                $groupedKey = strtolower(collect($conditionKeys)
+                                                                ->map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '')
+                                                                ->implode('_'));
+
+                                                $isDuplicate = 0;
+
+                                                if(in_array($groupedKey, $lastGroupKeys)) {
+                                                    $isDuplicate = 1;
+                                                } else {
+                                                    $lastGroupKeys[] = $groupedKey;
+                                                }
+
+                                                return [
+                                                    'platform_data_id' => $lead['id'],
+                                                    'lead_status' => $lead['lead_status'],
+                                                    'data' => $lead,
+                                                    'is_duplicate' => $isDuplicate,
+                                                    'updatable_data' => $csvLeads[$groupedKey] ?? []
+                                                ];
+
+                                            }, $leads->toArray());
+
+                        $config->logs()->createMany($formattedLeads);
+                    });
+
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            throw $th;
+        }
+
+        return $this->getDispositionLog(new Request());
+    }
+
+    /**
+     * Retrieves a paginated list of disposition logs for the authenticated user.
+     *
+     * @param Request $request
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     * @throws \Symfony\Component\HttpKernel\Exception\HttpException
+     */
+    public function getDispositionLog(Request $request)
+    {
+        $config = DispositionConfig::where('user_id', auth()->id())->select('id')->first();
+        if(empty($config)) {
+            abort(400, 'Disposition config not found !');
+        }
+
+        $limit = $request->input('limit', 20);
+        $searchText = strtolower($request->input('search_txt'));
+        $leadStatus = $request->input('lead_status');
+        $leadIds = ! empty($request->lead_ids) ? json_decode($request->lead_ids, true) : [];
+        $exceptedIds = ! empty($request->excepted_ids) ? json_decode($request->excepted_ids, true) : [];
+
+        return DispositionLog::query()
+                ->where('disposition_config_id', $config->id)
+                ->when(! empty($searchText) && empty($request->is_updatable_only), function ($query) use ($searchText) {
+                    return $query->whereRaw('LOWER(data) like ?', ["%{$searchText}%"]);
+                })
+                ->when(! empty($searchText) && ! empty($request->is_updatable_only), function ($query) use ($searchText) {
+                    return $query->whereRaw('LOWER(updatable_data) like ?', ["%{$searchText}%"]);
+                })
+                ->when(! empty($leadStatus), function ($query) use ($leadStatus) {
+                    return $query->where('lead_status', $leadStatus);
+                })
+                ->when(! empty($leadIds), function($query) use ($leadIds) {
+                    return $query->whereIn('platform_data_id', $leadIds);
+                })
+                ->when(! empty($exceptedIds), function($query) use ($exceptedIds) {
+                    return $query->whereNotIn('platform_data_id', $exceptedIds);
+                })
+                ->when(! empty($request->show_type === 'duplicate'), function($query) {
+                    return $query->where('is_duplicate', 1);
+                })
+                ->when(! empty($request->show_type === 'unique'), function($query) {
+                    return $query->where('is_duplicate', 0);
+                })
+                ->paginate($limit);
     }
 
     /**
