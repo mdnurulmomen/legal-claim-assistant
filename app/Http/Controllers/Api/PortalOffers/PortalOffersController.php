@@ -129,8 +129,8 @@ class PortalOffersController extends Controller
                 // Skip if payout_mode is specified and doesn't match the buyer_type
                 if ($payout_mode !== null) {
                     $buyerType = $integration['buyer_type'] ?? null;
-                    if (($payout_mode === 'cpl' && $buyerType !== 'cpl') ||
-                        ($payout_mode === 'cpa' && $buyerType !== 'cpa')
+                    if (($payout_mode === 'CPL' && $buyerType !== 'CPL') ||
+                        ($payout_mode === 'CPA' && $buyerType !== 'CPA')
                     ) {
                         continue;
                     }
