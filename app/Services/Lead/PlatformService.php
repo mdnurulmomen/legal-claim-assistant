@@ -172,16 +172,16 @@ class PlatformService
                     ->orderBy('platform_datas.id')
                     ->chunk(1000, function($leads) use ($config, $conditionKeys, $csvLeads, $leadKeys, &$lastGroupKeys) {
 
-                        $firstLead  = $leads->first();
+                        foreach($leads as $lead) {
+                            $groupedKey = strtolower(collect($conditionKeys)
+                                        ->map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '')
+                                        ->implode('_'));
 
-                        if(! empty($firstLead)) {
-                            $firstGroupedKey = strtolower(collect($conditionKeys)
-                                                ->map(fn($key) => $firstLead[$leadKeys[$key] ?? $key] ?? '')
-                                                ->implode('_'));
-
-                            if(! in_array($firstGroupedKey, $lastGroupKeys)) {
-                                $lastGroupKeys[] = $firstGroupedKey;
+                            if (!isset($lastGroupKeys[$groupedKey])) {
+                                $lastGroupKeys[$groupedKey] = 0;
                             }
+
+                            $lastGroupKeys[$groupedKey]++;
                         }
 
                         $formattedLeads = array_map(function ($lead) use ($conditionKeys, $leadKeys, $csvLeads, &$lastGroupKeys) {
@@ -190,19 +190,11 @@ class PlatformService
                                                                 ->map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '')
                                                                 ->implode('_'));
 
-                                                $isDuplicate = 0;
-
-                                                if(in_array($groupedKey, $lastGroupKeys)) {
-                                                    $isDuplicate = 1;
-                                                } else {
-                                                    $lastGroupKeys[] = $groupedKey;
-                                                }
-
                                                 return [
                                                     'platform_data_id' => $lead['id'],
                                                     'lead_status' => $lead['lead_status'],
                                                     'data' => $lead,
-                                                    'is_duplicate' => $isDuplicate,
+                                                    'is_duplicate' => $lastGroupKeys[$groupedKey] > 1 ? 1 : 0,
                                                     'updatable_data' => $csvLeads[$groupedKey] ?? []
                                                 ];
 
