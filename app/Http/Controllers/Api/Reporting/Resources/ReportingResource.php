@@ -32,6 +32,7 @@ class ReportingResource extends JsonResource
             'integration_name' => $this->integration_name ?? '',
             'affiliate_name' => hasAffiliateAccess() ? $this->affiliate_name : $this->formatAffIds($this->affids),
             'affid' => $this->affid ?? '',
+            'retained_date' => $this->retained_date ?? '',
             'posted' => (float) $this->posted,
             'accepted' => (float) $this->accepted,
             'rejected' => (float) $this->rejected,
