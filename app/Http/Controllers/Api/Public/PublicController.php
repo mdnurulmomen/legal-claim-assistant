@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Public;
 
 use App\Http\Controllers\Api\Public\Requests\LeadDetailsRequest;
 use App\Http\Controllers\Controller;
+use App\Jobs\GlobalPostBackTriggerJob;
 use App\Models\PlatformData;
 use App\Services\Public\PublicService;
 use Illuminate\Http\Request;
@@ -44,6 +45,28 @@ class PublicController extends Controller
 
         $formattedLead = $publicService->formatLead($lead->toArray());
         return withSuccess($formattedLead);
+    }
+
+    /**
+     * Triggers a retainer event for a given affiliate lead ID.
+     *
+     * @param Request $request
+     * @param mixed $affLeadId The affiliate lead ID.
+     * @return Response
+     */
+    public function retainerEvent(Request $request, $affLeadId)
+    {
+        $platformData = PlatformData::where('affm_lead_id', $affLeadId)->first();
+        if(empty($platformData)) {
+            return withError('Invalid Lead Id Provided !');
+        }
+
+        GlobalPostBackTriggerJob::dispatch([
+            'type' => 'single_retainer',
+            'lead_id' => $platformData->id
+        ]);
+
+        return withSuccess(message: 'Retainer Event Triggered Successfully!');
     }
 
 }

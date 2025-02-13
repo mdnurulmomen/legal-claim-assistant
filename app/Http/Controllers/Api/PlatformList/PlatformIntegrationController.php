@@ -169,7 +169,7 @@ class PlatformIntegrationController extends Controller
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
-            return withError('Failed to delete integration!');
+            return withError('Failed to delete integration! ' . $th->getMessage());
         }
 
         return withSuccess(message: 'Integration deleted successfully!');

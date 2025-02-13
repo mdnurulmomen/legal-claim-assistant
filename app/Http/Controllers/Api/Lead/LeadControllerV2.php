@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Api\Lead;
 
 use App\Http\Controllers\Api\Lead\Requests\BulkUpdateLeadRequest;
+use App\Http\Controllers\Api\Lead\Resources\LeadLogResource;
 use App\Http\Controllers\Controller;
 use App\Models\Buyer;
+use App\Models\DispositionConfig;
+use App\Models\DispositionLog;
 use App\Services\Lead\PlatformService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -21,14 +24,86 @@ class LeadControllerV2 extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function bulkUpdateLeads(BulkUpdateLeadRequest $request, PlatformService $platformService): Response
+    public function bulkUpdateLeads(BulkUpdateLeadRequest $request, PlatformService $platformService)
     {
         set_time_limit(0);
         ini_set('memory_limit', -1);
 
+        $userId = auth()->id();
+
+        $log = DispositionLog::query()
+                ->leftJoin('disposition_configs as dc', 'dc.id', '=', 'disposition_logs.disposition_config_id')
+                ->where('dc.user_id', $userId)
+                ->whereNotNull('disposition_logs.updatable_data')
+                ->select('disposition_logs.id', 'dc.id as config_id', 'disposition_logs.updatable_data')
+                ->first();
+
+        if(empty($log)) {
+            return withError('No log found');
+        }
+
+        $keys = array_keys($log->updatable_data);
+
+        if(! empty(array_diff($request->filled_headers, $keys))) {
+            return withError('Invalid headers');
+        }
+
+        $headers = collect($request->filled_headers)
+                    ->map(fn($item) => "updatable_data->{$item} as {$item}")
+                    ->push('platform_data_id as id')
+                    ->values()
+                    ->all();
+
+        $leadIds = isset($request->selection_type['lead_ids']) ? json_decode($request->selection_type['lead_ids'], true) : [];
+        $exceptedLeadIds = isset($request->selection_type['excepted_ids']) ? json_decode($request->selection_type['excepted_ids'], true) : [];
+
+        $portalLeadIds = isset($request->portal_selection['checked_ids']) ? json_decode($request->portal_selection['checked_ids'], true) : [];
+        $portalExceptedLeadIds = isset($request->portal_selection['excepted_ids']) ? json_decode($request->portal_selection['excepted_ids'], true) : [];
+        $isAllShowPortal = isset($request->portal_selection['is_checked_all']) ? (bool) $request->portal_selection['is_checked_all'] : false;
+
         try {
             DB::beginTransaction();
-            $platformService->formatAndUpdateLeads($request);
+
+            DispositionLog::query()
+                ->where('disposition_config_id', $log->config_id)
+                ->select($headers)
+                ->when(! empty($leadIds), function ($query) use ($leadIds) {
+                    return $query->whereIn('platform_data_id', $leadIds);
+                })
+                ->when(! empty($exceptedLeadIds), function ($query) use ($exceptedLeadIds) {
+                    return $query->whereNotIn('platform_data_id', $exceptedLeadIds);
+                })
+                ->when(! empty($request->show_type === 'duplicate'), function($query) {
+                    return $query->where('is_duplicate', 1);
+                })
+                ->when(! empty($request->show_type === 'unique'), function($query) {
+                    return $query->where('is_duplicate', 0);
+                })
+                ->chunk(1000, function ($leads) use ($request, $platformService, $portalLeadIds, $portalExceptedLeadIds, $isAllShowPortal) {
+
+                    $formattedLeads = $leads->map(function($item) use($request, $portalLeadIds, $portalExceptedLeadIds, $isAllShowPortal) {
+                                            if($request->upload_type === 'disposition_upload') return $item;
+
+                                            $item['is_show_portal'] = $isAllShowPortal;
+
+                                            if(! empty($portalLeadIds)) {
+                                                $item['is_show_portal'] = in_array($item['id'], $portalLeadIds);
+                                            }
+
+                                            if(! empty($portalExceptedLeadIds)) {
+                                                $item['is_show_portal'] = ! in_array($item['id'], $portalExceptedLeadIds);
+                                            }
+
+                                            return $item;
+                                        })
+                                        ->all();
+
+                    $request->merge(['leads' => $formattedLeads]);
+                    $platformService->formatAndUpdateLeads($request);
+                });
+
+            DispositionConfig::where('user_id', $userId)->delete();
+
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -57,5 +132,34 @@ class LeadControllerV2 extends Controller
                         ->get();
 
         return withSuccess($buyers);
+    }
+
+    public function leadLogs(Request $request, PlatformService $platformService): Response
+    {
+        set_time_limit(0);
+        ini_set('memory_limit', -1);
+
+        try {
+            $logs = $platformService->getDispositionLog($request);
+            return withSuccessResourceList(LeadLogResource::collection($logs));
+        } catch (\Throwable $th) {
+            return withError($th->getMessage());
+        }
+    }
+
+    public function logStatistics(Request $request)
+    {
+        $config = DispositionConfig::where('user_id', auth()->id())->select('id')->first();
+        if(empty($config)) {
+            return withError('No configuration found');
+        }
+
+        $duplicate = DispositionLog::where('disposition_config_id', $config->id)->where('is_duplicate', 1)->count();
+        $unique = DispositionLog::where('disposition_config_id', $config->id)->where('is_duplicate', 0)->count();
+
+        return withSuccess([
+            'duplicate' => $duplicate,
+            'unique' => $unique,
+        ]);
     }
 }

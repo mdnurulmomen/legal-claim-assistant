@@ -33,7 +33,7 @@ class PlatformIntegrationService
      */
     public function formatSettingData(Request $request, PlatformList $platform, string $name): array
     {
-        $integrations = $platform->integrations;
+        $integrations = $platform->integrations ?? [];
 
         $index = collect($integrations)->search(function ($item) use ($name) {
                     return strtolower($item['name']) === strtolower($name);
@@ -142,6 +142,7 @@ class PlatformIntegrationService
         $integration->buyer_unique_id = $name;
         $integration->type = $request->buyer_type;
         $integration->buyer_headers = $request->save_data;
+        $integration->lead_id_key = $request->lead_id_key;
         $integration->save();
     }
 
@@ -414,7 +415,7 @@ class PlatformIntegrationService
     public function removeIntegrationAndCvTrigger(Request $request, PlatformList $platform, $slug): void
     {
         $integrations = collect($platform->integrations);
-        $cvTriggers = collect($platform->cv_trigger);
+        $cvTriggers = collect($platform->cv_trigger ?? []);
 
         $index = $integrations->search(function ($item) use ($slug) {
                     return strtolower($item['name']) === strtolower($slug);

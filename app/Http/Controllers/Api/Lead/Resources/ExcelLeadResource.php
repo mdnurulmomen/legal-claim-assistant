@@ -27,8 +27,8 @@ class ExcelLeadResource extends JsonResource
                     ->mapWithKeys(fn($field) => [$field => $this->{$field}])
                     ->toArray();
 
-        if(in_array('timestamp', $columns)) {
-            $data['timestamp'] = $this->created_at ? $this->created_at->format('Y-m-d H:i') : '';
+        if(in_array('timestamp', $columns) && $this->created_at) {
+            $data['timestamp'] = $this->created_at->format('Y-m-d H:i');
         }
 
         return $data;
