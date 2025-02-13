@@ -125,10 +125,31 @@ class PostBackTriggerService {
                                 $parameter = $parameter * (intval($logic) / 100);
                             }
 
-                        } else {
+                        }
+                        elseif ($parameter == "buyer_name" && ($data['payload']['buyer_name'] ?? null)) {
+                            $parameter = $data['payload']['buyer_name'];
+                        }
+                        elseif ($parameter == "list_name" && ($data['payload']['list_name'] ?? null)) {
+                            $parameter = $data['payload']['list_name'];
+                        }
+                        elseif ($parameter == "created_at" && ($data['payload']['created_at'] ?? null)) {
+                            $parameter = $data['payload']['created_at'];
+                        }
+                        elseif ($parameter == "updated_at" && ($data['payload']['updated_at'] ?? null)) {
+                            $parameter = $data['payload']['updated_at'];
+                        }
+                        elseif ($parameter == "retained_date" && ($data['payload']['retained_date'] ?? null)) {
+                            $parameter = $data['payload']['retained_date'];
+                        }
+                        elseif ($parameter == "affm_lead_id" && ($data['payload']['affm_lead_id'] ?? null)) {
+                            $parameter = $data['payload']['affm_lead_id'];
+                        }
+                        else {
 
                                 $parameter = null;
                         }
+
+                        info($parameter);
 
                         return $parameter;
 
