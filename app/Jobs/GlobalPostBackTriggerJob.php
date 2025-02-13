@@ -62,7 +62,12 @@ class GlobalPostBackTriggerJob implements ShouldQueue
      */
     public function triggerSingleRetainer(int $leadId)
     {
-        $lead = PlatformData::find($leadId);
+        $lead = PlatformData::query()
+                    ->leftJoin('buyers', 'buyers.id', 'platform_datas.buyer_id')
+                    ->leftJoin('platform_lists as pl', 'pl.id', 'platform_datas.list_id')
+                    ->select('platform_datas.*', 'buyers.name as buyer_name', 'pl.name as list_name')
+                    ->find($leadId);
+
         if(empty($lead)) {
             \Sentry\captureMessage('Lead not found: ' . $leadId);
             return;
