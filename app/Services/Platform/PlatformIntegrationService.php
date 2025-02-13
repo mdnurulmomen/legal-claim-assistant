@@ -415,7 +415,7 @@ class PlatformIntegrationService
     public function removeIntegrationAndCvTrigger(Request $request, PlatformList $platform, $slug): void
     {
         $integrations = collect($platform->integrations);
-        $cvTriggers = collect($platform->cv_trigger);
+        $cvTriggers = collect($platform->cv_trigger ?? []);
 
         $index = $integrations->search(function ($item) use ($slug) {
                     return strtolower($item['name']) === strtolower($slug);
