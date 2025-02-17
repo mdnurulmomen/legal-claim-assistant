@@ -11,13 +11,13 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\CreativeApprovedRecectedEmail;
 use App\Mail\CreativeRejectionMail;
+use App\Services\CreativeService;
 
 class CreativeUploadController extends Controller
 {
     /**
-     * Retrieves a list of Conference Event based on the request parameters.
+     * Retrieves a list of creative upload based on the request parameters.
      *
      * @param Request $request
      * @return Response
@@ -36,7 +36,7 @@ class CreativeUploadController extends Controller
     }
 
     /**
-     * Retrieves a single Conference Event based on the provided ID.
+     * Retrieves a single creative upload based on the provided tag.
      *
      * @param Request $request
      * @param int $id
@@ -49,80 +49,73 @@ class CreativeUploadController extends Controller
     }
 
     /**
-     * Updates the Conference Event based on the provided ID.
+     * Updates the creative upload based on the provided tag.
      *
      * @param Request $request
-     * @param int $id
+     * @param string $tag
      * @return Response
      */
-    public function approved(Request $request, $tag)
+    public function update(Request $request, $tag, CreativeService $creativeService)
+    {
+        $creative = CreativeUpload::where('tag', $tag)->first();
+
+        $creative->update(['status' => $request->status]);
+
+        if( in_array($request->status, ['under review', 'changes required'])){
+            foreach($request->attachments as $id => $status){
+                $creative->creative_attachments()->where('id', $id)->update(['status' => $status]);
+            }
+
+            $creativeService->sendCreativeChangeRequiredMail($request, $creative);
+        }
+
+        if( $request->status == 'approved'){
+            $creative->creative_attachments()->update(['status' => 'accepted']);
+            $creativeService->sendCreativeApprovedMail($request, $creative);
+        }
+
+        if( $request->status == 'rejected'){
+            $creative->creative_attachments()->update(['status' => 'rejected']);
+            $creativeService->sendCreativeRejectedMail($request, $creative);
+        }
+
+        return withSuccess(new CreativeUploadResource($creative), message: 'Creative Updated Successfully');
+    }
+
+    /**
+     * approved the creative upload based on the provided tag.
+     *
+     * @param Request $request
+     * @param string $tag
+     * @return Response
+     */
+    public function approved(Request $request, $tag, CreativeService $creativeService)
     {
         $creative = CreativeUpload::where('tag', $tag)->first();
 
         $creative->update(['status' => 'approved']);
+        $creative->creative_attachments()->update(['status' => 'accepted']);
 
-        $creativeUser = $creative->user;
-        $toEmail = $creativeUser->email;
+        $creativeService->sendCreativeApprovedMail($request, $creative);
 
-        $emailData = [
-            'company_name' => 'Legal Claim Assistant',
-            'company_logo' => asset('/assets/images/logo.png'),
-            'username' => $creativeUser->name,
-            'creative_name' => $creative->name,
-            'submitted_date' => $creative->created_at->format('d M Y')
-        ];
-
-        Mail::to($toEmail)
-                ->send(new CreativeApprovedRecectedEmail(
-                    [
-                        'status'    => $creative->status,
-                        'template' => 'mails.creative_approved',
-                        'subject' => 'Your Creative ' . $creative->name . ' is approved',
-                        'message' => [
-                            'emailData' => $emailData
-                        ],
-                    ]
-                ));
         return withSuccess(message: 'Creative approved successfully');
     }
 
     /**
-     * Updates the Conference Event based on the provided ID.
+     * rejected the creative upload based on the provided tag.
      *
      * @param Request $request
-     * @param int $id
+     * @param string $tag
      * @return Response
      */
-    public function rejected(Request $request, $tag)
+    public function rejected(Request $request, $tag, CreativeService $creativeService)
     {
         $creative = CreativeUpload::where('tag', $tag)->first();
 
         $creative->update(['status' => 'rejected']);
+        $creative->creative_attachments()->update(['status' => 'rejected']);
 
-
-
-        $creativeUser = $creative->user;
-        $toEmail = $creativeUser->email;
-
-        $emailData = [
-            'company_name' => 'Legal Claim Assistant',
-            'company_logo' => asset('/assets/images/logo.png'),
-            'username' => $creativeUser->name,
-            'creative_name' => $creative->name,
-            'submitted_date' => $creative->created_at->format('d M Y')
-        ];
-
-        Mail::to($toEmail)
-                ->send(new CreativeApprovedRecectedEmail(
-                    [
-                        'status'    => $creative->status,
-                        'template' => 'mails.creative_rejected',
-                        'subject' => 'Your Creative ' . $creative->name . ' is rejected',
-                        'message' => [
-                            'emailData' => $emailData
-                        ],
-                    ]
-                ));
+        $creativeService->sendCreativeRejectedMail($request, $creative);
 
         // Mail::to($toEmail)
         //     ->send(new CreativeRejectionMail($emailData));

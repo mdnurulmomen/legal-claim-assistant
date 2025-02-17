@@ -45,6 +45,7 @@ class ReportingController extends Controller
                         affiliate.name as affiliate_name,
                         JSON_EXTRACT(affiliate.data, '$.affids') AS affids,
                         lead_reports.affid,
+                        pd.retained_date,
                         COUNT(CASE WHEN lead_reports.is_posted = 1 THEN 1 END) as posted,
                         COUNT(CASE WHEN lead_reports.buyer_id IS NOT NULL AND lead_reports.is_posted = 1 THEN 1 END) as accepted,
                         COUNT(CASE WHEN lead_reports.buyer_id IS NULL AND lead_reports.is_posted = 1 THEN 1 END) as rejected,
