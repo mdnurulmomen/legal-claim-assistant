@@ -7,7 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-class CreativeApprovedRecectedEmail extends Mailable
+class CreativeApprovedRejectedEmail extends Mailable
 {
     use Queueable, SerializesModels;
 

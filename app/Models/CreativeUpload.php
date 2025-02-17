@@ -67,4 +67,12 @@ class CreativeUpload extends Model
     {
         return $this->belongsTo(CreativeTemplate::class, 'creative_template_id', 'id');
     }
+
+    /**
+     * Get the Creative Media of creative
+     */
+    public function creative_attachments()
+    {
+        return $this->hasMany(CreativeMedia::class, 'creative_upload_id', 'id');
+    }
 }
