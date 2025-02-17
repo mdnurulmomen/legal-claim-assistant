@@ -36,6 +36,7 @@ class LeadControllerV2 extends Controller
                 ->where('dc.user_id', $userId)
                 ->whereNotNull('disposition_logs.updatable_data')
                 ->select('disposition_logs.id', 'dc.id as config_id', 'disposition_logs.updatable_data')
+                ->latest('dc.id')
                 ->first();
 
         if(empty($log)) {
