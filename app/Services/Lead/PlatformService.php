@@ -4,6 +4,7 @@ namespace App\Services\Lead;
 
 use App\Http\Controllers\Api\Lead\Resources\LeadLogResource;
 use App\Jobs\GlobalPostBackTriggerJob;
+use App\Jobs\RemoveConfigLogs;
 use App\Models\DispositionConfig;
 use App\Models\DispositionLog;
 use App\Models\LeadLog;
@@ -95,11 +96,14 @@ class PlatformService
 
         $lastGroupKeys = [];
 
+        $oldConfig = DispositionConfig::where('user_id', $userId)->latest('id')->select('id')->first();
+        if(! empty($oldConfig)) {
+            RemoveConfigLogs::dispatch($oldConfig->id);
+        }
+
         try {
 
             DB::beginTransaction();
-
-            DispositionConfig::where('user_id', $userId)->delete();
 
             $config = DispositionConfig::create([
                 'user_id' => $userId,
@@ -221,7 +225,11 @@ class PlatformService
      */
     public function getDispositionLog(Request $request)
     {
-        $config = DispositionConfig::where('user_id', auth()->id())->select('id')->first();
+        $config = DispositionConfig::where('user_id', auth()->id())
+                        ->latest('id')
+                        ->select('id')
+                        ->first();
+
         if(empty($config)) {
             abort(400, 'Disposition config not found !');
         }
