@@ -21,26 +21,7 @@ class CreativeService
     }
 
     /**
-     * Formats email data for an invoice rejection notice.
-     *
-     * @param Invoice $invoice
-     * @return array
-     */
-    // public function formatEmailData(CreativeUpload $creative): array
-    // {
-    //     return [
-    //         'username' => $invoice->user->name,
-    //         'invoice_no' => $invoice->tag,
-    //         'invoice_amount' => ($invoice->currency ? $invoice->currency . ' ' : '') . number_format($invoice->amount, 2), //$invoice->amount,
-    //         'submitted_date' => $this->formatDateTime($invoice->created_at),
-    //         'rejection_reason' => $invoice->comment,
-    //         'company_name' => 'Legal Claim Assistant',
-    //         'company_logo' => asset('/assets/images/logo.png')
-    //     ];
-    // }
-
-    /**
-     * Sends an creative Approved email to the user who submitted.
+     * Sends an creative changes required email to the user who submitted.
      *
      * @param Request $request
      * @param CreativeUpload $creative

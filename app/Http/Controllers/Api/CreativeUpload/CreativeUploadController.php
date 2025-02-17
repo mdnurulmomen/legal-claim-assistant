@@ -11,14 +11,13 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\CreativeApprovedRecectedEmail;
 use App\Mail\CreativeRejectionMail;
 use App\Services\CreativeService;
 
 class CreativeUploadController extends Controller
 {
     /**
-     * Retrieves a list of Conference Event based on the request parameters.
+     * Retrieves a list of creative upload based on the request parameters.
      *
      * @param Request $request
      * @return Response
@@ -37,7 +36,7 @@ class CreativeUploadController extends Controller
     }
 
     /**
-     * Retrieves a single Conference Event based on the provided ID.
+     * Retrieves a single creative upload based on the provided tag.
      *
      * @param Request $request
      * @param int $id
@@ -50,10 +49,10 @@ class CreativeUploadController extends Controller
     }
 
     /**
-     * Updates the Conference Event based on the provided ID.
+     * Updates the creative upload based on the provided tag.
      *
      * @param Request $request
-     * @param int $id
+     * @param string $tag
      * @return Response
      */
     public function update(Request $request, $tag, CreativeService $creativeService)
@@ -84,10 +83,10 @@ class CreativeUploadController extends Controller
     }
 
     /**
-     * Updates the Conference Event based on the provided ID.
+     * approved the creative upload based on the provided tag.
      *
      * @param Request $request
-     * @param int $id
+     * @param string $tag
      * @return Response
      */
     public function approved(Request $request, $tag, CreativeService $creativeService)
@@ -103,10 +102,10 @@ class CreativeUploadController extends Controller
     }
 
     /**
-     * Updates the Conference Event based on the provided ID.
+     * rejected the creative upload based on the provided tag.
      *
      * @param Request $request
-     * @param int $id
+     * @param string $tag
      * @return Response
      */
     public function rejected(Request $request, $tag, CreativeService $creativeService)
