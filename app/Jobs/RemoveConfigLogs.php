@@ -26,7 +26,6 @@ class RemoveConfigLogs implements ShouldQueue
      */
     public function handle(): void
     {
-        info("User id {$this->configId}");
         DispositionConfig::where('id', $this->configId)->delete();
     }
 }
