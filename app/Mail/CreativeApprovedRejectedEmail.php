@@ -6,8 +6,11 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Mail\Mailables\Content;
+use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Mail\Mailables\Address;
 
-class CreativeApprovedRejectedEmail extends Mailable
+class CreativeApprovedRejectedEmail extends Mailable  implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
@@ -21,6 +24,40 @@ class CreativeApprovedRejectedEmail extends Mailable
     public function __construct($mail_data)
     {
         $this->mail_data = $mail_data;
+    }
+
+    /**
+     * Get the message envelope.
+     */
+    public function envelope(): Envelope
+    {
+        return new Envelope(
+            subject: $this->mail_data['subject'] . ' - ' . env('APP_NAME'),
+            from: new Address('info@legalclaimassistant.com', 'Legal Claim Assistant'),
+            replyTo: [
+                new Address('info@legalclaimassistant.com', 'Legal Claim Assistant')
+            ]
+        );
+    }
+
+    /**
+     * Get the message content definition.
+     */
+    public function content(): Content
+    {
+        return new Content(
+            view: $this->mail_data['template'],
+        );
+    }
+
+    /**
+     * Get the attachments for the message.
+     *
+     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
+     */
+    public function attachments(): array
+    {
+        return [];
     }
 
     /**
