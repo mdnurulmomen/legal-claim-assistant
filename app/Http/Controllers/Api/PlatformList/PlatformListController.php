@@ -57,9 +57,16 @@ class PlatformListController extends Controller
                             return $query->whereIn('id', $platformSourceIds);
                         })
                         ->when(! empty($integrationIds) && is_array($integrationIds), function ($query) use ($integrationIds) {
-                            $query->whereIn('id', function ($subQuery) use ($integrationIds) {
-                                return $subQuery->select('list_id')->from('integrations')->whereIn('id', $integrationIds);
-                            });
+
+                            $searchValues = array_merge($integrationIds, array_map('strval', $integrationIds));
+
+                            return $query->whereRaw(
+                                'JSON_OVERLAPS(
+                                    JSON_EXTRACT(integrations, "$[*].buyer_profile"),
+                                    CAST(? AS JSON)
+                                )',
+                                [json_encode($searchValues)]
+                            );
                         })
                         ->when(! empty($leadDistributions), function($query) use ($leadDistributions) {
                             return $query->whereIn('options->lead_distribution', $leadDistributions);
