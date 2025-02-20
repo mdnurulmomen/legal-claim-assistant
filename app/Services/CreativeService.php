@@ -42,7 +42,7 @@ class CreativeService
         ];
 
         Mail::to($toEmail)
-                ->send(new CreativeApprovedRejectedEmail(
+                ->queue(new CreativeApprovedRejectedEmail(
                     [
                         'status'    => $creative->status,
                         'template' => 'mails.creative_changes_required',
@@ -77,7 +77,7 @@ class CreativeService
         ];
 
         Mail::to($toEmail)
-                ->send(new CreativeApprovedRejectedEmail(
+                ->queue(new CreativeApprovedRejectedEmail(
                     [
                         'status'    => $creative->status,
                         'template' => 'mails.creative_approved',
@@ -113,7 +113,7 @@ class CreativeService
         ];
 
         Mail::to($toEmail)
-                ->send(new CreativeApprovedRejectedEmail(
+                ->queue(new CreativeApprovedRejectedEmail(
                     [
                         'status'    => $creative->status,
                         'template' => 'mails.creative_rejected',
