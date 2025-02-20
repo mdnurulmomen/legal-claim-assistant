@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Lead;
 use App\Http\Controllers\Api\Lead\Requests\BulkUpdateLeadRequest;
 use App\Http\Controllers\Api\Lead\Resources\LeadLogResource;
 use App\Http\Controllers\Controller;
+use App\Jobs\RemoveConfigLogs;
 use App\Models\Buyer;
 use App\Models\DispositionConfig;
 use App\Models\DispositionLog;
@@ -63,7 +64,7 @@ class LeadControllerV2 extends Controller
         $isAllShowPortal = isset($request->portal_selection['is_checked_all']) ? (bool) $request->portal_selection['is_checked_all'] : false;
 
         try {
-            DB::beginTransaction();
+            // DB::beginTransaction();
 
             DispositionLog::query()
                 ->where('disposition_config_id', $log->config_id)
@@ -82,32 +83,20 @@ class LeadControllerV2 extends Controller
                 })
                 ->chunk(1000, function ($leads) use ($request, $platformService, $portalLeadIds, $portalExceptedLeadIds, $isAllShowPortal) {
 
-                    $formattedLeads = $leads->map(function($item) use($request, $portalLeadIds, $portalExceptedLeadIds, $isAllShowPortal) {
-                                            if($request->upload_type === 'disposition_upload') return $item;
-
-                                            $item['is_show_portal'] = $isAllShowPortal;
-
-                                            if(! empty($portalLeadIds)) {
-                                                $item['is_show_portal'] = in_array($item['id'], $portalLeadIds);
-                                            }
-
-                                            if(! empty($portalExceptedLeadIds)) {
-                                                $item['is_show_portal'] = ! in_array($item['id'], $portalExceptedLeadIds);
-                                            }
-
-                                            return $item;
-                                        })
-                                        ->all();
+                    $formattedLeads = iterator_to_array($platformService->processLeads($leads, $request, $portalLeadIds, $portalExceptedLeadIds, $isAllShowPortal));
 
                     $request->merge(['leads' => $formattedLeads]);
                     $platformService->formatAndUpdateLeads($request);
                 });
 
-            DispositionConfig::where('user_id', $userId)->delete();
+            $oldConfig = DispositionConfig::where('user_id', $userId)->latest('id')->select('id')->first();
+            if(! empty($oldConfig)) {
+                RemoveConfigLogs::dispatch($oldConfig->id);
+            }
 
-            DB::commit();
+            // DB::commit();
         } catch (\Throwable $th) {
-            DB::rollBack();
+            // DB::rollBack();
             return withError('Lead Filled Fields Update Failed.' . $th->getMessage());
         }
 
@@ -150,17 +139,19 @@ class LeadControllerV2 extends Controller
 
     public function logStatistics(Request $request)
     {
-        $config = DispositionConfig::where('user_id', auth()->id())->select('id')->first();
+        $config = DispositionConfig::where('user_id', auth()->id())->latest('id')->select('id')->first();
         if(empty($config)) {
             return withError('No configuration found');
         }
 
-        $duplicate = DispositionLog::where('disposition_config_id', $config->id)->where('is_duplicate', 1)->count();
-        $unique = DispositionLog::where('disposition_config_id', $config->id)->where('is_duplicate', 0)->count();
+        $statistics = DispositionLog::where('disposition_config_id', $config->id)
+                        ->selectRaw('is_duplicate, COUNT(*) as count')
+                        ->groupBy('is_duplicate')
+                        ->pluck('count', 'is_duplicate');
 
         return withSuccess([
-            'duplicate' => $duplicate,
-            'unique' => $unique,
+            'duplicate' => $statistics[1] ?? 0,
+            'unique' => $statistics[0] ?? 0,
         ]);
     }
 }
