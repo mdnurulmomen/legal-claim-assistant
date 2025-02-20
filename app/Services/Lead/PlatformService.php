@@ -96,7 +96,7 @@ class PlatformService
 
         $csvLeads = iterator_to_array($this->groupCsvData($csvData, $conditionKeys, $actualHeadersObj, $mappedHeads));
 
-        $lastGroupKeys = [];
+        $groupedKeyCounts = [];
         $now = now();
 
         $oldConfig = DispositionConfig::where('user_id', $userId)->latest('id')->select('id')->first();
@@ -106,7 +106,7 @@ class PlatformService
 
         try {
 
-            DB::beginTransaction();
+            // DB::beginTransaction();
 
             $config = DispositionConfig::create([
                 'user_id' => $userId,
@@ -177,29 +177,25 @@ class PlatformService
                         };
                     })
                     ->orderBy('platform_datas.id')
-                    ->chunk(1000, function($leads) use ($config, $conditionKeys, $csvLeads, $leadKeys, &$lastGroupKeys, $now) {
 
-                        $chunkGenerator = function() use ($leads, $config, $conditionKeys, $csvLeads, $leadKeys, &$lastGroupKeys, $now) {
+                    ->chunk(1000, function($leads) use ($config, $conditionKeys, $csvLeads, $leadKeys, &$groupedKeyCounts, $now) {
 
+                        foreach ($leads as $lead) {
+                            $groupedKey = strtolower(implode('_', array_map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '', $conditionKeys)));
+
+                            $groupedKeyCounts[$groupedKey] = ($groupedKeyCounts[$groupedKey] ?? 0) + 1;
+                        }
+
+                        $processLeads = function () use ($leads, $config, $csvLeads, $leadKeys, $conditionKeys, $groupedKeyCounts, $now) {
                             foreach ($leads as $lead) {
-                                // Calculate groupedKey
-                                $groupedKey = strtolower(collect($conditionKeys)
-                                    ->map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '')
-                                    ->implode('_'));
+                                $groupedKey = strtolower(implode('_', array_map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '', $conditionKeys)));
 
-                                // Count occurrences for duplicate detection
-                                if (!isset($lastGroupKeys[$groupedKey])) {
-                                    $lastGroupKeys[$groupedKey] = 0;
-                                }
-                                $lastGroupKeys[$groupedKey]++;
-
-                                // Format the lead for insertion
                                 yield [
                                     'disposition_config_id' => $config->id,
                                     'platform_data_id' => $lead['id'],
                                     'lead_status' => $lead['lead_status'],
                                     'data' => json_encode($lead),
-                                    'is_duplicate' => $lastGroupKeys[$groupedKey] > 1 ? 1 : 0,
+                                    'is_duplicate' => $groupedKeyCounts[$groupedKey] > 1 ? 1 : 0, // Correctly detects duplicates
                                     'updatable_data' => json_encode($csvLeads[$groupedKey] ?? []),
                                     'created_at' => $now,
                                     'updated_at' => $now
@@ -207,50 +203,46 @@ class PlatformService
                             }
                         };
 
-                        $allLeads = iterator_to_array($chunkGenerator());
+                        // Insert leads in bulk
+                        DispositionLog::insert(iterator_to_array($processLeads()));
 
-                        DispositionLog::insert($allLeads);
+                        // foreach($leads as $lead) {
+                        //     $groupedKey = strtolower(collect($conditionKeys)
+                        //                 ->map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '')
+                        //                 ->implode('_'));
+
+                        //     if (!isset($lastGroupKeys[$groupedKey])) {
+                        //         $lastGroupKeys[$groupedKey] = 0;
+                        //     }
+
+                        //     $lastGroupKeys[$groupedKey]++;
+                        // }
+
+                        // $formattedLeads = array_map(function ($lead) use ($conditionKeys, $leadKeys, $csvLeads, &$lastGroupKeys, $config, $now) {
+
+                        //                         $groupedKey = strtolower(collect($conditionKeys)
+                        //                                         ->map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '')
+                        //                                         ->implode('_'));
+
+                        //                         return [
+                        //                             'disposition_config_id' => $config->id,
+                        //                             'platform_data_id' => $lead['id'],
+                        //                             'lead_status' => $lead['lead_status'],
+                        //                             'data' => json_encode($lead),
+                        //                             'is_duplicate' => $lastGroupKeys[$groupedKey] > 1 ? 1 : 0,
+                        //                             'updatable_data' => json_encode($csvLeads[$groupedKey] ?? []),
+                        //                             'created_at' => $now,
+                        //                             'updated_at' => $now
+                        //                         ];
+
+                        //                     }, $leads->toArray());
+
+                        // DispositionLog::insert($formattedLeads);
                     });
 
-                    // ->chunk(1000, function($leads) use ($config, $conditionKeys, $csvLeads, $leadKeys, &$lastGroupKeys, $now) {
-
-                    //     foreach($leads as $lead) {
-                    //         $groupedKey = strtolower(collect($conditionKeys)
-                    //                     ->map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '')
-                    //                     ->implode('_'));
-
-                    //         if (!isset($lastGroupKeys[$groupedKey])) {
-                    //             $lastGroupKeys[$groupedKey] = 0;
-                    //         }
-
-                    //         $lastGroupKeys[$groupedKey]++;
-                    //     }
-
-                    //     $formattedLeads = array_map(function ($lead) use ($conditionKeys, $leadKeys, $csvLeads, &$lastGroupKeys, $config, $now) {
-
-                    //                             $groupedKey = strtolower(collect($conditionKeys)
-                    //                                             ->map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '')
-                    //                                             ->implode('_'));
-
-                    //                             return [
-                    //                                 'disposition_config_id' => $config->id,
-                    //                                 'platform_data_id' => $lead['id'],
-                    //                                 'lead_status' => $lead['lead_status'],
-                    //                                 'data' => json_encode($lead),
-                    //                                 'is_duplicate' => $lastGroupKeys[$groupedKey] > 1 ? 1 : 0,
-                    //                                 'updatable_data' => json_encode($csvLeads[$groupedKey] ?? []),
-                    //                                 'created_at' => $now,
-                    //                                 'updated_at' => $now
-                    //                             ];
-
-                    //                         }, $leads->toArray());
-
-                    //     DispositionLog::insert($formattedLeads);
-                    // });
-
-            DB::commit();
+            // DB::commit();
         } catch (\Throwable $th) {
-            DB::rollBack();
+            // DB::rollBack();
             throw $th;
         }
 
@@ -524,7 +516,8 @@ class PlatformService
     private function generateLeadData(Collection $filledData, array $leads, array $fillable, array &$leadAdditionalData): Generator
     {
         $excludedFields = ['id', 'revenue', 'affiliate_payout', 'retained_date'];
-        $groupFilledData = $filledData->groupBy('id')->all();
+
+        $groupFilledData = $filledData->groupBy('id')->toArray();
         $formattedFillable = collect($fillable)->reject(fn($item) => in_array($item, ['retained_date']))->all();
 
         foreach ($leads as &$lead) {
@@ -1061,5 +1054,30 @@ class PlatformService
             'affiliate_margin' => $affiliateMargin,
             'profit_margin' => $profitMargin
         ];
+    }
+
+    public function processLeads(iterable $leads, Request $request, array $portalLeadIds, array $portalExceptedLeadIds, bool $isAllShowPortal): iterable
+    {
+        foreach ($leads as $item) {
+
+            $item['id'] = (string) $item['id'];
+
+            if ($request->upload_type === 'disposition_upload') {
+                yield $item;
+                continue;
+            }
+
+            $item['is_show_portal'] = $isAllShowPortal;
+
+            if (!empty($portalLeadIds)) {
+                $item['is_show_portal'] = in_array($item['id'], $portalLeadIds);
+            }
+
+            if (!empty($portalExceptedLeadIds)) {
+                $item['is_show_portal'] = !in_array($item['id'], $portalExceptedLeadIds);
+            }
+
+            yield $item;
+        }
     }
 }
