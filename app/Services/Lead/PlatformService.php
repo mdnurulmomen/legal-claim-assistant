@@ -118,67 +118,68 @@ class PlatformService
 
             $leads = PlatformData::query()
                     ->select($selectableKeys)
-                    ->when(! empty($leadIds), function ($query) use ($leadIds) {
-                        return $query->leftJoin('platform_data_items as pdi', 'platform_datas.id', '=', 'pdi.platform_data_id')
-                                    ->selectRaw("
-                                        pdi.value as custom_lead_id
-                                    ");
-                    })
-                    ->when($isAmountField, function ($query) {
-                        return $query->addSelect([
-                            'revenue' => LeadReport::selectRaw('IFNULL(SUM(lead_revenue), 0)')
-                                            ->whereColumn('lead_id', 'platform_datas.id')
-                                            ->where('is_retainer', 0)
-                                            ->limit(1),
+                    ->whereIn('lead_status', ['Pending', 'Returned', 'Disqualified', 'Sent Agreement', 'Agreement Signed', 'Retained'])
+                    // ->when(! empty($leadIds), function ($query) use ($leadIds) {
+                    //     return $query->leftJoin('platform_data_items as pdi', 'platform_datas.id', '=', 'pdi.platform_data_id')
+                    //                 ->selectRaw("
+                    //                     pdi.value as custom_lead_id
+                    //                 ");
+                    // })
+                    // ->when($isAmountField, function ($query) {
+                    //     return $query->addSelect([
+                    //         'revenue' => LeadReport::selectRaw('IFNULL(SUM(lead_revenue), 0)')
+                    //                         ->whereColumn('lead_id', 'platform_datas.id')
+                    //                         ->where('is_retainer', 0)
+                    //                         ->limit(1),
 
-                            'affiliate_payout' => LeadReport::selectRaw('IFNULL(SUM(lead_revenue) - SUM(affiliate_payout), 0)')
-                                                    ->whereColumn('lead_id', 'platform_datas.id')
-                                                    ->where('is_retainer', 0)
-                                                    ->limit(1)
-                        ]);
-                    })
-                    ->when(! empty($conditions), function ($query) use ($conditions) {
-                        foreach ($conditions as $index => $condition) {
+                    //         'affiliate_payout' => LeadReport::selectRaw('IFNULL(SUM(lead_revenue) - SUM(affiliate_payout), 0)')
+                    //                                 ->whereColumn('lead_id', 'platform_datas.id')
+                    //                                 ->where('is_retainer', 0)
+                    //                                 ->limit(1)
+                    //     ]);
+                    // })
+                    // ->when(! empty($conditions), function ($query) use ($conditions) {
+                    //     foreach ($conditions as $index => $condition) {
 
-                            if(empty($condition)) continue;
+                    //         if(empty($condition)) continue;
 
-                            $method = $this->getConditionMethod($index);
+                    //         $method = $this->getConditionMethod($index);
 
-                            $query->$method(function ($query2) use ($condition) {
-                                foreach ($condition as $childIndex => $item) {
+                    //         $query->$method(function ($query2) use ($condition) {
+                    //             foreach ($condition as $childIndex => $item) {
 
-                                    if($item['type'] === 'primary') {
-                                        $query2->where($item['key'], $item['operator'], $item['value']);
-                                    }
+                    //                 if($item['type'] === 'primary') {
+                    //                     $query2->where($item['key'], $item['operator'], $item['value']);
+                    //                 }
 
-                                    if($item['type'] === 'json') {
-                                        $query2->whereRaw(
-                                            sprintf(
-                                                'LOWER(JSON_UNQUOTE(JSON_EXTRACT(platform_datas.datas, "$.%s"))) %s ?',
-                                                $item['key'],
-                                                $item['operator']
-                                            ),
-                                            [$item['value']]
-                                        );
-                                    }
+                    //                 if($item['type'] === 'json') {
+                    //                     $query2->whereRaw(
+                    //                         sprintf(
+                    //                             'LOWER(JSON_UNQUOTE(JSON_EXTRACT(platform_datas.datas, "$.%s"))) %s ?',
+                    //                             $item['key'],
+                    //                             $item['operator']
+                    //                         ),
+                    //                         [$item['value']]
+                    //                     );
+                    //                 }
 
-                                    if($item['type'] === 'custom') {
-                                        $query2->where(function($query3) use($item) {
+                    //                 if($item['type'] === 'custom') {
+                    //                     $query2->where(function($query3) use($item) {
 
-                                            $query3->where('platform_datas.buyer_id', $item['buyer_id'])
-                                               ->when(! empty($item['lead_id']), function($query4) use($item) {
+                    //                         $query3->where('platform_datas.buyer_id', $item['buyer_id'])
+                    //                            ->when(! empty($item['lead_id']), function($query4) use($item) {
 
-                                                    $leadId = $item['lead_id'];
+                    //                                 $leadId = $item['lead_id'];
 
-                                                    $query4->where('pdi.value', $leadId);
-                                               });
-                                        });
-                                    }
-                                }
-                            });
+                    //                                 $query4->where('pdi.value', $leadId);
+                    //                            });
+                    //                     });
+                    //                 }
+                    //             }
+                    //         });
 
-                        };
-                    })
+                    //     };
+                    // })
                     ->orderBy('platform_datas.id')
 
                     ->chunk(1000, function($leads) use ($config, $conditionKeys, $csvLeads, $leadKeys, &$groupedKeyCounts, $now, &$total) {
