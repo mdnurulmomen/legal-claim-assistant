@@ -117,8 +117,11 @@ class PlatformService
             $total = 0;
 
             $leads = PlatformData::query()
-                    ->select($selectableKeys)
-                    ->whereIn('lead_status', ['Pending', 'Returned', 'Disqualified', 'Sent Agreement', 'Agreement Signed', 'Retained'])
+                        ->select($selectableKeys)
+                        ->whereIn('lead_status', ['Pending', 'Returned', 'Disqualified', 'Sent Agreement', 'Agreement Signed', 'Retained'])
+                        ->lazyById(1000);
+
+                    info('info', ['total' => $leads->count()]);
                     // ->when(! empty($leadIds), function ($query) use ($leadIds) {
                     //     return $query->leftJoin('platform_data_items as pdi', 'platform_datas.id', '=', 'pdi.platform_data_id')
                     //                 ->selectRaw("
@@ -180,10 +183,10 @@ class PlatformService
 
                     //     };
                     // })
-                    ->orderBy('platform_datas.id')
+                    // ->orderBy('platform_datas.id')
 
-                    ->chunk(1000, function($leads) use ($config, $conditionKeys, $csvLeads, $leadKeys, &$groupedKeyCounts, $now, &$total) {
-                        $total += $leads->count();
+                    // ->chunk(1000, function($leads) use ($config, $conditionKeys, $csvLeads, $leadKeys, &$groupedKeyCounts, $now, &$total) {
+                    //     $total += $leads->count();
                         // foreach ($leads as $lead) {
                         //     $groupedKey = strtolower(implode('_', array_map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '', $conditionKeys)));
 
@@ -241,9 +244,9 @@ class PlatformService
                         //                     }, $leads->toArray());
 
                         // DispositionLog::insert($formattedLeads);
-                    });
+                    // });
 
-                    info('total', ['total' => $total]);
+                    // info('total', ['total' => $total]);
 
             // DB::commit();
         } catch (\Throwable $th) {
