@@ -99,19 +99,22 @@ class PlatformService
         $groupedKeyCounts = [];
         $now = now();
 
-        $oldConfig = DispositionConfig::where('user_id', $userId)->latest('id')->select('id')->first();
-        if(! empty($oldConfig)) {
-            RemoveConfigLogs::dispatch($oldConfig->id);
-        }
+        // $oldConfig = DispositionConfig::where('user_id', $userId)->latest('id')->select('id')->first();
+        // if(! empty($oldConfig)) {
+        //     RemoveConfigLogs::dispatch($oldConfig->id);
+        // }
 
         try {
 
             // DB::beginTransaction();
 
-            $config = DispositionConfig::create([
-                'user_id' => $userId,
-                'uid' => str()->uuid()
-            ]);
+            // $config = DispositionConfig::create([
+            //     'user_id' => $userId,
+            //     'uid' => str()->uuid()
+            // ]);
+
+            $config = collect([]);
+            $total = 0;
 
             $leads = PlatformData::query()
                     ->select($selectableKeys)
@@ -178,33 +181,32 @@ class PlatformService
                     })
                     ->orderBy('platform_datas.id')
 
-                    ->chunk(1000, function($leads) use ($config, $conditionKeys, $csvLeads, $leadKeys, &$groupedKeyCounts, $now) {
+                    ->chunk(1000, function($leads) use ($config, $conditionKeys, $csvLeads, $leadKeys, &$groupedKeyCounts, $now, &$total) {
+                        $total += $leads->count();
+                        // foreach ($leads as $lead) {
+                        //     $groupedKey = strtolower(implode('_', array_map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '', $conditionKeys)));
 
-                        foreach ($leads as $lead) {
-                            $groupedKey = strtolower(implode('_', array_map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '', $conditionKeys)));
+                        //     $groupedKeyCounts[$groupedKey] = ($groupedKeyCounts[$groupedKey] ?? 0) + 1;
+                        // }
 
-                            $groupedKeyCounts[$groupedKey] = ($groupedKeyCounts[$groupedKey] ?? 0) + 1;
-                        }
+                        // $processLeads = function () use ($leads, $config, $csvLeads, $leadKeys, $conditionKeys, $groupedKeyCounts, $now) {
+                        //     foreach ($leads as $lead) {
+                        //         $groupedKey = strtolower(implode('_', array_map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '', $conditionKeys)));
 
-                        $processLeads = function () use ($leads, $config, $csvLeads, $leadKeys, $conditionKeys, $groupedKeyCounts, $now) {
-                            foreach ($leads as $lead) {
-                                $groupedKey = strtolower(implode('_', array_map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '', $conditionKeys)));
+                        //         yield [
+                        //             'disposition_config_id' => $config->id,
+                        //             'platform_data_id' => $lead['id'],
+                        //             'lead_status' => $lead['lead_status'],
+                        //             'data' => json_encode($lead),
+                        //             'is_duplicate' => $groupedKeyCounts[$groupedKey] > 1 ? 1 : 0, // Correctly detects duplicates
+                        //             'updatable_data' => json_encode($csvLeads[$groupedKey] ?? []),
+                        //             'created_at' => $now,
+                        //             'updated_at' => $now
+                        //         ];
+                        //     }
+                        // };
 
-                                yield [
-                                    'disposition_config_id' => $config->id,
-                                    'platform_data_id' => $lead['id'],
-                                    'lead_status' => $lead['lead_status'],
-                                    'data' => json_encode($lead),
-                                    'is_duplicate' => $groupedKeyCounts[$groupedKey] > 1 ? 1 : 0, // Correctly detects duplicates
-                                    'updatable_data' => json_encode($csvLeads[$groupedKey] ?? []),
-                                    'created_at' => $now,
-                                    'updated_at' => $now
-                                ];
-                            }
-                        };
-
-                        // Insert leads in bulk
-                        DispositionLog::insert(iterator_to_array($processLeads()));
+                        // DispositionLog::insert(iterator_to_array($processLeads()));
 
                         // foreach($leads as $lead) {
                         //     $groupedKey = strtolower(collect($conditionKeys)
@@ -239,6 +241,8 @@ class PlatformService
 
                         // DispositionLog::insert($formattedLeads);
                     });
+
+                    info('total', ['total' => $total]);
 
             // DB::commit();
         } catch (\Throwable $th) {
