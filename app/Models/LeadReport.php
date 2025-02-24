@@ -19,6 +19,7 @@ class LeadReport extends Model
         'affiliate_specs_id',
         'sold_type',
         'is_retainer',
+        'is_returned',
         'is_paid',
         'is_internal',
         'lead_revenue',

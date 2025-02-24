@@ -693,16 +693,23 @@ class LeadService extends ReportingService
     {
         $leadData = [
             'retained_date' => null,
-            'is_retainer' => $formattedData['is_retainer']
+            'returned_date' => null,
+            'is_retainer' => $formattedData['is_retainer'],
+            'is_returned' => $formattedData['is_returned']
         ];
 
-        $isReportUpdatable = (bool) $formattedData['is_retainer'];
+        $isReportUpdatable = (bool) $formattedData['is_retainer'] || (bool) $formattedData['is_returned'];
 
         $date = empty($request->created_at) ? now() : Carbon::parse($request->created_at)->startOfDay();
 
         if(! empty($request->is_retainer) && ! empty($request->created_at)){
             $date = Carbon::parse($request->created_at)->midDay();
             $leadData['retained_date'] = $date;
+        }
+
+        if(! empty($request->is_returned) && ! empty($request->created_at)){
+            $date = Carbon::parse($request->created_at)->midDay();
+            $leadData['returned_date'] = $date;
         }
 
         if($platformData->created_at && ($platformData->created_at->greaterThan(Carbon::parse($request->created_at)))){
@@ -713,14 +720,24 @@ class LeadService extends ReportingService
             $leadData['retained_date'] = null;
         }
 
+        if(empty($request->is_returned)){
+            $leadData['returned_date'] = null;
+        }
+
         DB::table('lead_reports')
             ->where('id', $report->id)
             ->where('created_at', '!=', $date)
             ->update(['created_at' => $date]);
 
-        if($isReportUpdatable || $request->is_retainer){
+        if($isReportUpdatable || ($request->is_retainer || $request->is_returned)){
             $this->updatePlatformData($request->lead_id, $leadData);
         }
+
+        // if(! empty($request->is_returned)) {
+        //     $leadData['returned_date'] = $date;
+        //     $leadData['is_returned'] = 1;
+        //     $this->updatePlatformData($request->lead_id, $leadData);
+        // }
     }
 
     /**
@@ -731,19 +748,26 @@ class LeadService extends ReportingService
      * @param bool $isRetainer
      * @return void
      */
-    public function updateLeadStatus(int $leadId, int $reportId, bool $isRetainer, ?string $leadStatus = null): void
+    public function updateLeadStatus(int $leadId, int $reportId, bool $isRetainer, ?string $leadStatus = null, int $isReturned = 0): void
     {
-        if($isRetainer){
-            $this->updatePlatformData($leadId, ['lead_status' => 'Retained']);
+        if($isRetainer || $isReturned){
+            $this->updatePlatformData($leadId, [
+                'lead_status' => $isRetainer ? 'Retained' : 'Returned'
+            ]);
             return;
         }
 
-        $isRetained = $this->hasAnyRetainedLead($leadId, $reportId);
-        if($isRetained) return;
+        // $hasReturned = $this->hasAnyReturnedLead($leadId, $reportId);
+
+        $isRetainedOrReturned = $this->hasAnyRetainedLead($leadId, $reportId);
+        if($isRetainedOrReturned) return;
 
         $this->updatePlatformData($leadId, [
             'lead_status' => $leadStatus ?: 'Pending',
-            'retained_date' => null
+            'retained_date' => null,
+            'returned_date' => null,
+            'is_retainer' => 0,
+            'is_returned' => 0
         ]);
     }
 
@@ -763,7 +787,30 @@ class LeadService extends ReportingService
                     return $query->where('id', '!=', $reportId);
                 })
                 ->where('lead_id', $leadId)
-                ->where('is_retainer', '>', 0)
+                ->where(function($query) {
+                    $query->where('is_retainer', '>', 0)
+                        ->orWhere('is_returned', '>', 0);
+                })
+                ->exists();
+    }
+
+    /**
+     * Checks if there is any returned lead report for given lead ID,
+     * excluding the given report ID if it is not empty.
+     *
+     * @param int $leadId
+     * @param int $reportId
+     *
+     * @return bool
+     */
+    public function hasAnyReturnedLead(int $leadId, int | null $reportId = null): bool
+    {
+        return LeadReport::query()
+                ->when(! empty($reportId), function($query) use ($reportId) {
+                    return $query->where('id', '!=', $reportId);
+                })
+                ->where('lead_id', $leadId)
+                ->where('is_returned', '>', 0)
                 ->exists();
     }
 
@@ -786,9 +833,10 @@ class LeadService extends ReportingService
      * Formats the report request data.
      *
      * @param array $requestData
+     * @param Request $request
      * @return array
      */
-    public function formatReportRequest(array $requestData): array
+    public function formatReportRequest(array $requestData, Request $request): array
     {
         if(! empty($requestData['show_in_portal'])){
             $requestData['is_retainer'] = 2;

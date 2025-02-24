@@ -33,6 +33,7 @@ class PlatformData extends Model
         'is_sold',
         'is_internal',
         'retained_date',
+        'returned_date',
         'page_source',
     ];
 
