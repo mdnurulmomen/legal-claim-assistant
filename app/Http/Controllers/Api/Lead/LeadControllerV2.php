@@ -112,14 +112,23 @@ class LeadControllerV2 extends Controller
      */
     public function buyerList(Request $request)
     {
+        $limit = $request->per_page ?? 50;
+
         $buyers = Buyer::query()
                         ->select('id as value', 'name as actual_name')
                         ->when(! empty($request->is_custom), function ($query) {
                             return $query->selectRaw("CONCAT(name , ': Lead ID') as label");
                         }, function ($query) {
-                            return $query->select('name as label');
+                            return $query->selectRaw('name as label');
                         })
-                        ->get();
+                        ->when(! empty($request->search), function ($query) use ($request) {
+                            return $query->where('name', 'like', "%{$request->search}%");
+                        })
+                        ->when(! empty($request->is_paginated), function($query) use ($limit) {
+                            return $query->paginate($limit);
+                        }, function ($query) {
+                            return $query->get();
+                        });
 
         return withSuccess($buyers);
     }
