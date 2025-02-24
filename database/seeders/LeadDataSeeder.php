@@ -36,20 +36,16 @@ class LeadDataSeeder extends Seeder
         $totalRecords = 1000000;
         $batchSize = 1000;  // Number of records per batch
 
-        // Iterate through the desired number of records in batches
-        for ($i = 0; $i < $totalRecords; $i += $batchSize) {
-            $leads = [];
+        // for ($i = 0; $i < $totalRecords; $i += $batchSize) {
+        //     $leads = [];
 
-            // Generate a batch of $batchSize leads
-            for ($j = 0; $j < $batchSize; $j++) {
-                $lead = $this->getLeadData($listIds, $affiliateIds, array_keys($integrations), $integrations, $leadStatuses, $now, $faker);
-                $leads[] = $lead;
-            }
+        //     for ($j = 0; $j < $batchSize; $j++) {
+        //         $lead = $this->getLeadData($listIds, $affiliateIds, array_keys($integrations), $integrations, $leadStatuses, $now, $faker);
+        //         $leads[] = $lead;
+        //     }
 
-            info(count($leads));
-            // Insert the batch of leads
-            PlatformData::insert($leads);
-        }
+        //     PlatformData::insert($leads);
+        // }
     }
 
     /**
