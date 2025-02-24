@@ -45,12 +45,23 @@ class PlatformService
         $actualHeaders = $request->actual_headers ?? [];
 
         $leadKeys = [];
-        $requestedConditions = $request->input('conditions', []);
+        $requestedConditions = collect($request->input('conditions', []));
         $firstCondition = $requestedConditions[0];
         $custom = $firstCondition['custom'] ?? [];
         unset($firstCondition['custom']);
 
         $conditionKeys = array_keys($firstCondition);
+
+        $newKeyValueConditions = [];
+
+        foreach($conditionKeys as $conditionKey) {
+            if(! in_array($conditionKey, $fillableKeys)) continue;
+
+            $newKeyValueConditions[$conditionKey] = $requestedConditions->pluck($conditionKey)
+                                                        ->unique()->values()->all();
+        }
+
+        info('new key Conditions', $newKeyValueConditions);
 
         foreach($custom as $item) {
             $conditionKeys[] = $item['lead_key'];
@@ -66,43 +77,18 @@ class PlatformService
 
         $actualHeadersObj = collect($actualHeaders)->pluck('value', 'model_value')->toArray();
 
-        // $grouped = collect($csvData)->groupBy(function ($item) use ($conditionKeys, $actualHeadersObj) {
-        //             $groupedKey = "";
-        //             foreach($conditionKeys as $index => $key) {
-        //                 $actualKey = $actualHeadersObj[$key] ?? null;
-        //                 if(empty($actualKey)) continue;
-        //                 $groupedKey .= ((($index > 0) ? "_" : "") .  $item[$actualKey]);
-        //             }
-        //             return strtolower($groupedKey);
-        //         });
-
-        // $csvLeads = [];
-
-        // foreach($grouped as $groupKey => $leads) {
-        //     $updatableLeads = [];
-
-        //     $leadData = $leads[0] ?? null;
-        //     if(empty($leadData)) continue;
-
-        //     foreach($mappedHeads as $mappedKey) {
-        //         $actualKey = $actualHeadersObj[$mappedKey] ?? null;
-        //         if(empty($actualKey)) continue;
-
-        //         $updatableLeads[$mappedKey] = $leadData[$actualKey] ?? '';
-        //     }
-
-        //     $csvLeads[$groupKey] = $updatableLeads;
-        // }
 
         $csvLeads = iterator_to_array($this->groupCsvData($csvData, $conditionKeys, $actualHeadersObj, $mappedHeads));
 
         $groupedKeyCounts = [];
         $now = now();
 
-        $oldConfig = DispositionConfig::where('user_id', $userId)->latest('id')->select('id')->first();
-        if(! empty($oldConfig)) {
-            RemoveConfigLogs::dispatch($oldConfig->id);
-        }
+        // $oldConfig = DispositionConfig::where('user_id', $userId)->latest('id')->select('id')->first();
+        // if(! empty($oldConfig)) {
+        //     RemoveConfigLogs::dispatch($oldConfig->id);
+        // }
+
+        // abort(400, 'Disposition config not found !');
 
         try {
 
@@ -115,6 +101,7 @@ class PlatformService
 
             $leads = PlatformData::query()
                     ->select($selectableKeys)
+                    // ->whereIn('lead_status', ['Pending', 'Returned', 'Disqualified', 'Sent Agreement', 'Agreement Signed', 'Retained'])
                     ->when(! empty($leadIds), function ($query) use ($leadIds) {
                         return $query->leftJoin('platform_data_items as pdi', 'platform_datas.id', '=', 'pdi.platform_data_id')
                                     ->selectRaw("
@@ -134,111 +121,90 @@ class PlatformService
                                                     ->limit(1)
                         ]);
                     })
-                    ->when(! empty($conditions), function ($query) use ($conditions) {
-                        foreach ($conditions as $index => $condition) {
-
-                            if(empty($condition)) continue;
-
-                            $method = $this->getConditionMethod($index);
-
-                            $query->$method(function ($query2) use ($condition) {
-                                foreach ($condition as $childIndex => $item) {
-
-                                    if($item['type'] === 'primary') {
-                                        $query2->where($item['key'], $item['operator'], $item['value']);
-                                    }
-
-                                    if($item['type'] === 'json') {
-                                        $query2->whereRaw(
-                                            sprintf(
-                                                'LOWER(JSON_UNQUOTE(JSON_EXTRACT(platform_datas.datas, "$.%s"))) %s ?',
-                                                $item['key'],
-                                                $item['operator']
-                                            ),
-                                            [$item['value']]
-                                        );
-                                    }
-
-                                    if($item['type'] === 'custom') {
-                                        $query2->where(function($query3) use($item) {
-
-                                            $query3->where('platform_datas.buyer_id', $item['buyer_id'])
-                                               ->when(! empty($item['lead_id']), function($query4) use($item) {
-
-                                                    $leadId = $item['lead_id'];
-
-                                                    $query4->where('pdi.value', $leadId);
-                                               });
-                                        });
-                                    }
-                                }
-                            });
-
-                        };
-                    })
-                    ->orderBy('platform_datas.id')
-
-                    ->chunk(1000, function($leads) use ($config, $conditionKeys, $csvLeads, $leadKeys, &$groupedKeyCounts, $now) {
-
-                        foreach ($leads as $lead) {
-                            $groupedKey = strtolower(implode('_', array_map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '', $conditionKeys)));
-
-                            $groupedKeyCounts[$groupedKey] = ($groupedKeyCounts[$groupedKey] ?? 0) + 1;
+                    ->when(! empty($newKeyValueConditions), function($query) use ($newKeyValueConditions) {
+                        foreach($newKeyValueConditions as $key => $values) {
+                            $query->whereIn($key, $values);
                         }
+                    })
+                    // ->when(! empty($conditions), function ($query) use ($conditions) {
+                    //     foreach ($conditions as $index => $condition) {
 
-                        $processLeads = function () use ($leads, $config, $csvLeads, $leadKeys, $conditionKeys, $groupedKeyCounts, $now) {
-                            foreach ($leads as $lead) {
-                                $groupedKey = strtolower(implode('_', array_map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '', $conditionKeys)));
+                    //         if(empty($condition)) continue;
 
-                                yield [
-                                    'disposition_config_id' => $config->id,
-                                    'platform_data_id' => $lead['id'],
-                                    'lead_status' => $lead['lead_status'],
-                                    'data' => json_encode($lead),
-                                    'is_duplicate' => $groupedKeyCounts[$groupedKey] > 1 ? 1 : 0, // Correctly detects duplicates
-                                    'updatable_data' => json_encode($csvLeads[$groupedKey] ?? []),
-                                    'created_at' => $now,
-                                    'updated_at' => $now
-                                ];
-                            }
-                        };
+                    //         $method = $this->getConditionMethod($index);
 
-                        // Insert leads in bulk
-                        DispositionLog::insert(iterator_to_array($processLeads()));
+                    //         $query->$method(function ($query2) use ($condition) {
+                    //             foreach ($condition as $childIndex => $item) {
 
-                        // foreach($leads as $lead) {
-                        //     $groupedKey = strtolower(collect($conditionKeys)
-                        //                 ->map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '')
-                        //                 ->implode('_'));
+                    //                 if($item['type'] === 'primary') {
+                    //                     $query2->where($item['key'], $item['operator'], $item['value']);
+                    //                 }
 
-                        //     if (!isset($lastGroupKeys[$groupedKey])) {
-                        //         $lastGroupKeys[$groupedKey] = 0;
-                        //     }
+                    //                 if($item['type'] === 'json') {
+                    //                     $query2->whereRaw(
+                    //                         sprintf(
+                    //                             'LOWER(JSON_UNQUOTE(JSON_EXTRACT(platform_datas.datas, "$.%s"))) %s ?',
+                    //                             $item['key'],
+                    //                             $item['operator']
+                    //                         ),
+                    //                         [$item['value']]
+                    //                     );
+                    //                 }
 
-                        //     $lastGroupKeys[$groupedKey]++;
+                    //                 if($item['type'] === 'custom') {
+                    //                     $query2->where(function($query3) use($item) {
+
+                    //                         $query3->where('platform_datas.buyer_id', $item['buyer_id'])
+                    //                            ->when(! empty($item['lead_id']), function($query4) use($item) {
+
+                    //                                 $leadId = $item['lead_id'];
+
+                    //                                 $query4->where('pdi.value', $leadId);
+                    //                            });
+                    //                     });
+                    //                 }
+                    //             }
+                    //         });
+
+                    //     };
+                    // })
+                    ->orderBy('platform_datas.id')
+                    ->lazyById(2000);
+
+                    info($leads->count());
+
+                    // ->chunk(1000, function($leads) use ($config, $conditionKeys, $csvLeads, $leadKeys, &$groupedKeyCounts, $now) {
+
+                        // foreach ($leads as $lead) {
+                        //     $groupedKey = strtolower(implode('_', array_map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '', $conditionKeys)));
+
+                        //     $groupedKeyCounts[$groupedKey] = ($groupedKeyCounts[$groupedKey] ?? 0) + 1;
                         // }
 
-                        // $formattedLeads = array_map(function ($lead) use ($conditionKeys, $leadKeys, $csvLeads, &$lastGroupKeys, $config, $now) {
+                        // $processLeads = function () use ($leads, $config, $csvLeads, $leadKeys, $conditionKeys, $groupedKeyCounts, $now) {
+                        //     foreach ($leads as $lead) {
+                        //         $groupedKey = strtolower(implode('_', array_map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '', $conditionKeys)));
 
-                        //                         $groupedKey = strtolower(collect($conditionKeys)
-                        //                                         ->map(fn($key) => $lead[$leadKeys[$key] ?? $key] ?? '')
-                        //                                         ->implode('_'));
+                        //         yield [
+                        //             'disposition_config_id' => $config->id,
+                        //             'platform_data_id' => $lead['id'],
+                        //             'lead_status' => $lead['lead_status'],
+                        //             'data' => json_encode($lead),
+                        //             'is_duplicate' => $groupedKeyCounts[$groupedKey] > 1 ? 1 : 0, // Correctly detects duplicates
+                        //             'updatable_data' => json_encode($csvLeads[$groupedKey] ?? []),
+                        //             'created_at' => $now,
+                        //             'updated_at' => $now
+                        //         ];
+                        //     }
+                        // };
 
-                        //                         return [
-                        //                             'disposition_config_id' => $config->id,
-                        //                             'platform_data_id' => $lead['id'],
-                        //                             'lead_status' => $lead['lead_status'],
-                        //                             'data' => json_encode($lead),
-                        //                             'is_duplicate' => $lastGroupKeys[$groupedKey] > 1 ? 1 : 0,
-                        //                             'updatable_data' => json_encode($csvLeads[$groupedKey] ?? []),
-                        //                             'created_at' => $now,
-                        //                             'updated_at' => $now
-                        //                         ];
+                        // $processLeads = iterator_to_array($processLeads());
 
-                        //                     }, $leads->toArray());
+                        // info('count ' . count($processLeads));
 
-                        // DispositionLog::insert($formattedLeads);
-                    });
+                    //     DispositionLog::insert(iterator_to_array($processLeads()));
+
+                    // });
 
             // DB::commit();
         } catch (\Throwable $th) {
