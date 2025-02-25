@@ -43,38 +43,50 @@ class ExcelService
 
         [$tableColumns, $amountColumns] = $this->formatExportColumns($columns);
 
-        $leadReport = function ($column) {
-            return "(
-                SELECT SUM(lead_reports.{$column})
-                FROM lead_reports
-                WHERE lead_reports.lead_id = platform_datas.id
-                LIMIT 1
-            )";
-        };
-
         $leadQuery = $leadQuery
                         ->select($tableColumns)
-                        ->when(! empty($amountColumns), function ($query) use ($amountColumns, $leadReport) {
+                        ->when(!empty($amountColumns), function ($query) use ($amountColumns) {
+                            $query->leftJoin('lead_reports', 'lead_reports.lead_id', '=', 'platform_datas.id');
+
                             foreach ($amountColumns as $column) {
-                                $query->addSelect(DB::raw($leadReport($this->convertKeyToColumn($column)) . " AS {$column}"));
+                                $query->addSelect(DB::raw("SUM(lead_reports.{$this->convertKeyToColumn($column)}) AS {$column}"));
                             }
                         })
                         ->selectRaw("platform_datas.created_at")
+                        ->groupBy('platform_datas.id')
+                        ->orderBy('platform_datas.id')
                         ->skip($skip)
                         ->take($take);
 
-        function leadGenerators($leadQuery) {
+        $columnObj = [];
+
+        function leadGenerators($leadQuery, &$columnObj) {
             foreach ($leadQuery->cursor() as $lead) {
-                yield new ExcelLeadResource($lead);
+                foreach(array_keys($lead->toArray()) as $key) {
+                    $columnObj[$key] = ($columnObj[$key] ?? 0) + (! empty($lead->{$key}) ? 1 : 0);
+                }
+
+                if(! empty($lead->created_at)) {
+                    $lead->created_at = $lead->created_at->format('Y-m-d H:i');
+                }
+                yield $lead;
             }
         }
 
         $fileName = 'Lead Export - ' . $this->formatDateTime(now(), 'M j Y g:i:s a', timezone: config('app.timezone')) . ".$fileType";
 
-        $exportLead = (new FastExcel(leadGenerators($leadQuery)))
+        $exportLead = (new FastExcel(collect(leadGenerators($leadQuery, $columnObj))
+                        ->map(function ($lead) use ($columnObj) {
+                            $newLead = [];
+
+                            foreach($columnObj as $key => $value) {
+                                if(empty($value)) continue;
+                                $newLead[$key] = $lead->{$key};
+                            }
+                            return $newLead;
+                        })))
                         ->configureCsv(',', '"', 'UTF-8', false)
                         ->download($fileName);
-
 
         (new GlobalLogService())
             ->saveLogs(
@@ -160,9 +172,6 @@ class ExcelService
                 if(in_array($slugKey, ['phone', 'mobile', 'phone_number', 'mobile_number', 'mobile_no', 'phone_no', 'number'])) {
                     $newValue = (new CountryFuzzyMatcher())->formatPhoneNumber($value, $country);
                 }
-                //  else {
-                //     $newValue = $this->formatString($value);
-                // }
 
                 return [$slugKey => $newValue];
             })->all();
