@@ -50,14 +50,6 @@ class ReportingResource extends JsonResource
             'affiliate_average_payout' => (float) $this->affiliate_average_payout
         ];
 
-        $columns = json_decode($request->columns, true);
-
-        if(! empty($columns)) {
-            return collect($columns)
-                    ->mapWithKeys(fn($field) => [$field => $data[$field] ?? null])
-                    ->toArray();
-        }
-
         return $data;
     }
 }

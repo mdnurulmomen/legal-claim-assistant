@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Lead\Resources\LeadResource;
 use App\Http\Controllers\Api\Reporting\Resources\ReportingResource;
 use App\Library\Services\CountryFuzzyMatcher;
 use App\Models\PlatformData;
+use App\Traits\AffiliateTrait;
 use App\Traits\FormatterTrait;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -19,7 +20,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExcelService
 {
-    use FormatterTrait;
+    use FormatterTrait, AffiliateTrait;
 
     /**
      * Formats the lead export data and returns it as a CSV file or a string.
@@ -227,18 +228,24 @@ class ExcelService
 
         $reportQuery = $reportQuery->skip($skip)->take($take);
 
-        function reportGenerator($reportQuery) {
-            foreach ($reportQuery->cursor() as $lead) {
-                yield new ReportingResource($lead);
-            }
-        }
+        $columnObj = [];
 
         $fileName = 'Report Export - ' . $this->formatDateTime(now(), 'M j Y g:i:s a', timezone: config('app.timezone')) . '.csv';
 
-        $exportLead = (new FastExcel(reportGenerator($reportQuery)))
+        array_push($columns, ...['buyer_name', 'integration_name', 'affiliate_name', 'affid',]);
+
+        $exportLead = (new FastExcel(collect($this->reportGenerator($reportQuery, $columnObj))
+                        ->map(function ($lead) use ($columnObj, $columns) {
+                            $newLead = [];
+
+                            foreach($columnObj as $key => $value) {
+                                if(empty($value) || ! in_array($key, $columns)) continue;
+                                $newLead[$key] = $lead->{$key};
+                            }
+                            return $newLead;
+                        })))
                         ->configureCsv(',', '"', 'UTF-8', false)
                         ->download($fileName);
-
 
         (new GlobalLogService())
             ->saveLogs(
@@ -250,5 +257,17 @@ class ExcelService
             );
 
         return $exportLead;
+    }
+
+    public function reportGenerator($reportQuery, &$columnObj)
+    {
+        foreach ($reportQuery->cursor() as $report) {
+
+            foreach(array_keys((array) $report) as $key) {
+                $columnObj[$key] = ($columnObj[$key] ?? 0) + (! empty($report->{$key}) ? 1 : 0);
+            }
+
+            yield new ReportingResource($report);
+        }
     }
 }
