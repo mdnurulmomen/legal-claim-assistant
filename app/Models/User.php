@@ -37,6 +37,7 @@ class User extends Authenticatable
         'email_verified_at',
         'password',
         'api_token',
+        'google2fa_secret',
         'data',
         'status'
     ];
@@ -67,6 +68,14 @@ class User extends Authenticatable
             'is_test' => 'boolean',
             'has_two_fa' => 'boolean'
         ];
+    }
+
+    protected function google2faSecret(): Attribute
+    {
+        return new Attribute(
+            get: fn ($value) =>  $value ? decrypt($value) : null,
+            set: fn ($value) =>  $value ? encrypt($value) : null,
+        );
     }
 
     public function adminRole(): BelongsTo

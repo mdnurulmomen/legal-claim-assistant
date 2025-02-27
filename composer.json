@@ -6,6 +6,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "bacon/bacon-qr-code": "^3.0",
         "intervention/image-laravel": "^1.4",
         "kreait/laravel-firebase": "^5.10",
         "laravel/framework": "^11.0",
@@ -13,6 +14,7 @@
         "laravel/tinker": "^2.9",
         "league/flysystem-aws-s3-v3": "^3.0",
         "league/flysystem-read-only": "^3.0",
+        "pragmarx/google2fa-laravel": "^2.2",
         "predis/predis": "^2.2",
         "propaganistas/laravel-phone": "^5.3",
         "rap2hpoutre/fast-excel": "^5.5",
