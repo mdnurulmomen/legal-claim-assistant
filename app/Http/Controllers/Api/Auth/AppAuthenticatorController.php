@@ -44,10 +44,12 @@ class AppAuthenticatorController extends Controller
         }
 
         $google2fa = app('pragmarx.google2fa');
+        $isNewQR = false;
 
         if (empty($user->google2fa_secret)) {
             $user->google2fa_secret = $google2fa->generateSecretKey();
             $user->save();
+            $isNewQR = true;
         }
 
         $qrCodeUrl = $google2fa->getQRCodeUrl(
@@ -58,7 +60,8 @@ class AppAuthenticatorController extends Controller
 
         return withSuccess([
             'qr_code' => $this->generateQrCode($qrCodeUrl),
-            'secret' => $user->google2fa_secret
+            'secret' => $user->google2fa_secret,
+            'is_new_qr' => $isNewQR
         ]);
     }
 
