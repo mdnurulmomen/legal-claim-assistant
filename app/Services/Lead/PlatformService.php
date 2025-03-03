@@ -21,6 +21,8 @@ use Illuminate\Support\Facades\DB;
 class PlatformService
 {
     use FormatterTrait;
+
+
     /**
      * Retrieves a list of filtered leads from the platform data table.
      *
@@ -38,6 +40,8 @@ class PlatformService
         $selectableKeys = $this->formatSelectableKeys($request, $fillableKeys);
         $conditions = $this->formatConditions($request, $fillableKeys, $leadIds);
 
+
+
         $isAmountField = in_array('revenue', $request->mapped_headers) || in_array('affiliate_payout', $request->mapped_headers);
         $userId = auth()->id();
 
@@ -54,14 +58,14 @@ class PlatformService
 
         $newKeyValueConditions = [];
 
-        foreach($conditionKeys as $conditionKey) {
-            if(! in_array($conditionKey, $fillableKeys)) continue;
+        // foreach($conditionKeys as $conditionKey) {
+        //     if(! in_array($conditionKey, $fillableKeys)) continue;
 
-            $newKeyValueConditions[$conditionKey] = $requestedConditions->pluck($conditionKey)
-                                                        ->unique()->values()->all();
-        }
+        //     $newKeyValueConditions[$conditionKey] = $requestedConditions->pluck($conditionKey)
+        //                                                 ->unique()->values()->all();
+        // }
 
-        info('new key Conditions', $newKeyValueConditions);
+        // info('new key Conditions', $newKeyValueConditions);
 
         foreach($custom as $item) {
             $conditionKeys[] = $item['lead_key'];
@@ -92,16 +96,20 @@ class PlatformService
 
         try {
 
+            // $phones = PlatformData::limit(1000)->where('id', '<', 3040638)->latest('id')->pluck('phone');
+            // info('phone', $phones->toArray());
+            // abort(400, 'custome');
+
             // DB::beginTransaction();
 
-            $config = DispositionConfig::create([
-                'user_id' => $userId,
-                'uid' => str()->uuid()
-            ]);
+            // $config = DispositionConfig::create([
+            //     'user_id' => $userId,
+            //     'uid' => str()->uuid()
+            // ]);
 
             $leads = PlatformData::query()
                     ->select($selectableKeys)
-                    // ->whereIn('lead_status', ['Pending', 'Returned', 'Disqualified', 'Sent Agreement', 'Agreement Signed', 'Retained'])
+                    ->whereIn('lead_status', ['Pending', 'Returned', 'Disqualified', 'Sent Agreement', 'Agreement Signed', 'Retained'])
                     ->when(! empty($leadIds), function ($query) use ($leadIds) {
                         return $query->leftJoin('platform_data_items as pdi', 'platform_datas.id', '=', 'pdi.platform_data_id')
                                     ->selectRaw("
@@ -121,11 +129,11 @@ class PlatformService
                                                     ->limit(1)
                         ]);
                     })
-                    ->when(! empty($newKeyValueConditions), function($query) use ($newKeyValueConditions) {
-                        foreach($newKeyValueConditions as $key => $values) {
-                            $query->whereIn($key, $values);
-                        }
-                    })
+                    // ->when(! empty($newKeyValueConditions), function($query) use ($newKeyValueConditions) {
+                    //     foreach($newKeyValueConditions as $key => $values) {
+                    //         $query->whereIn($key, $values);
+                    //     }
+                    // })
                     // ->when(! empty($conditions), function ($query) use ($conditions) {
                     //     foreach ($conditions as $index => $condition) {
 
@@ -169,7 +177,23 @@ class PlatformService
                     //     };
                     // })
                     ->orderBy('platform_datas.id')
-                    ->lazyById(2000);
+                    ->lazyById(2000)
+                    ->each(function ($record) {
+
+                        // Transform or process the data
+                        // $buffer[] = [
+                        //     'column1' => $record->column1,
+                        //     'column2' => $record->column2,
+                        //     'created_at' => now(),
+                        //     'updated_at' => now(),
+                        // ];
+
+                        // When batch reaches 5K, insert and clear the buffer
+                        // if (count($buffer) >= $batchSize) {
+                        //     DB::table('your_table')->insert($buffer);
+                        //     $buffer = []; // Clear the buffer
+                        // }
+                    });
 
                     info($leads->count());
 

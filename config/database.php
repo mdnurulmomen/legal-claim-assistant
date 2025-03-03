@@ -59,6 +59,24 @@ return [
             ]) : [],
         ],
 
+        // 'mongodb' => [
+        //     'driver'   => 'mongodb',
+        //     'host'     => env('MONGO_DB_HOST', '127.0.0.1'),
+        //     'port'     => env('MONGO_DB_PORT', 27017),
+        //     'database' => env('MONGO_DB_DATABASE', ''),
+        //     'username' => env('MONGO_DB_USERNAME', ''),
+        //     'password' => env('MONGO_DB_PASSWORD', ''),
+        //     'options'  => [
+        //         'database' => env('MONGO_DB_AUTH_DATABASE', 'admin'),
+        //     ],
+        // ],
+
+        'mongodb' => [
+            'driver' => 'mongodb',
+            'dsn' => env('MONGODB_URI', 'mongodb://localhost:27017'),
+            'database' => env('MONGODB_DATABASE', 'laravel_app'),
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),
