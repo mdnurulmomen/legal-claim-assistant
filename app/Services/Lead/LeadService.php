@@ -833,10 +833,9 @@ class LeadService extends ReportingService
      * Formats the report request data.
      *
      * @param array $requestData
-     * @param Request $request
      * @return array
      */
-    public function formatReportRequest(array $requestData, Request $request): array
+    public function formatReportRequest(array $requestData): array
     {
         if(! empty($requestData['show_in_portal'])){
             $requestData['is_retainer'] = 2;
