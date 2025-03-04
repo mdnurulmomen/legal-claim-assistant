@@ -40,6 +40,7 @@ class LeadFilterService
         //             ]);
 
         $config = collect();
+        $count = 0;
 
         $todos = PlatformData::query()
                     ->select($selectableKeys)
@@ -78,10 +79,10 @@ class LeadFilterService
                     })
                     ->select('platform_datas.*')
                     ->lazyById(5000)
-                    ->each(function ($lead) use (&$buffer, $batchSize, $config, $now) {
-                        // Transform or process the data
+                    ->each(function ($lead) use (&$buffer, $batchSize, $config, $now, &$count) {
+                        $count += 1;
                         $buffer[] = [
-                            'disposition_config_id' => $config->id ?? null,
+                            // 'disposition_config_id' => $config->id ?? null,
                             'platform_data_id' => $lead->id,
                             'lead_status' => $lead->lead_status,
                             'data' => [],
@@ -102,7 +103,8 @@ class LeadFilterService
                     }
 
         return [
-            'todos_count' => $todos->count(),
+            'todos_count' => $count,
+            'temp_table' => DB::table('temp_conditions')->count()
             // 'total' => DispositionLogMongo::count(),
             // 'data' => DispositionLogMongo::limit(40)->get()
         ];
