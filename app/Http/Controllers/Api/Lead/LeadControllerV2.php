@@ -10,6 +10,7 @@ use App\Models\Buyer;
 use App\Models\DispositionConfig;
 use App\Models\DispositionLog;
 use App\Services\Lead\PlatformService;
+use App\Services\Lead\LeadFilterService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -162,5 +163,18 @@ class LeadControllerV2 extends Controller
             'duplicate' => $statistics[1] ?? 0,
             'unique' => $statistics[0] ?? 0,
         ]);
+    }
+
+    public function filteredLeads(Request $request, LeadFilterService $leadFilterService): Response
+    {
+        $data = $leadFilterService->getFilterLeadsV2($request);
+
+        if(empty($data)) {
+            return withError('No leads found.');
+        }
+
+        return withError('Custom Error', data: $data);
+
+        return withSuccess($data);
     }
 }

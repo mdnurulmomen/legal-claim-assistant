@@ -16,7 +16,7 @@ return new class extends Migration
             $table->id();
             $table->foreignIdFor(PlatformData::class)->constrained('platform_datas', 'id');
             $table->string('field')->nullable();
-            $table->string('value')->nullable();
+            $table->string('value')->index()->nullable();
             $table->string('key_type')->nullable();
             $table->text('additional_info')->nullable();
             $table->index(['field', 'value', 'key_type'], 'platform_data_items_field_value_type_index');

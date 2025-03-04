@@ -35,4 +35,5 @@ Route::prefix('leads-v2')->as('leads-v2.')
         $route->get('buyer-list', 'buyerList')->name('buyer.list');
         $route->post('lead-logs', 'leadLogs')->name('lead-logs');
         $route->get('log-statistics', 'logStatistics')->name('log-statistics');
+        $route->post('filtered-leads', 'filteredLeads')->name('filtered-leads');
     });
