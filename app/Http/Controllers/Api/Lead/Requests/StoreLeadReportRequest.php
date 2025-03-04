@@ -34,6 +34,7 @@ class StoreLeadReportRequest extends FormRequest
             'affiliate_specs_id' => ['nullable', 'integer'],
             'sold_type' => ['nullable', 'string'],
             'is_retainer' => ['nullable', 'boolean'],
+            'is_returned' => ['nullable', 'boolean'],
             'show_in_portal' => ['nullable', 'boolean'],
             'is_paid' => ['nullable', 'boolean'],
             'is_internal' => ['nullable', 'boolean'],
@@ -45,7 +46,8 @@ class StoreLeadReportRequest extends FormRequest
             'is_posted' => ['nullable', 'boolean'],
             'page_source' => ['nullable', 'string', 'max:255'],
             'affm_source_id' => ['nullable', 'string'],
-            'created_at' => ['required', 'date']
+            'created_at' => ['required', 'date'],
+            'lead_status' => ['nullable', 'string', 'max:255']
         ];
     }
 

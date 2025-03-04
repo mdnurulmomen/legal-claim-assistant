@@ -8,11 +8,14 @@ use App\Http\Controllers\Api\Affiliates\Resources\AffiliateResource;
 use App\Http\Controllers\Api\Affiliates\Resources\SingleAffiliateResource;
 use App\Http\Controllers\Controller;
 use App\Models\Affiliate;
+use App\Models\AccountManager;
 use App\Models\Impersonation;
 use App\Models\User;
+use App\Services\Lead\LeadService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Validator;
 
 class AffiliateController extends Controller
 {
@@ -40,21 +43,23 @@ class AffiliateController extends Controller
                 $searchTxt = "%{$request->search_txt}%";
 
                 return $query->where(function ($query) use ($searchTxt, $request) {
-                    $query->when(! hasAffiliateAccess(), function ($query) use ($request) {
-                            $formattedTxt = explode(',', str_replace(' ', '', $request->search_txt));
 
-                            return $query->where('data->affids', 'like', '%' . $request->search_txt . '%')
-                                        ->orWhereJsonContains('data->affids', $formattedTxt);
+                    $affIds = explode(',', str_replace(' ', '', $request->search_txt));
 
-                        }, function ($query) use($searchTxt) {
-                           return $query->where('name', 'like', $searchTxt)
+                    return $query->where(function($query) use ($request, $affIds) {
+                        return $query->where('data->affids', 'like', '%' . $request->search_txt . '%')
+                                    ->orWhereJsonContains('data->affids', $affIds);
+                    })
+                    ->when(hasAffiliateAccess(), function ($query) use ($request, $searchTxt) {
+                        return $query->orWhere('name', 'like', $searchTxt)
                                     ->orWhere('email', 'like', $searchTxt)
                                     ->orWhere('username', 'like', $searchTxt)
                                     ->orWhereHas('affiliate', function ($query) use ($searchTxt) {
                                             $query->where('country', 'like', $searchTxt)
                                             ->orWhere('company_name', 'like', $searchTxt);
                                     });
-                        });
+
+                    });
                 });
 
             })
@@ -127,16 +132,25 @@ class AffiliateController extends Controller
         $userData = $user->data;
 
         //unset the old affids
-        unset($userData['affids']);
+        unset($userData['affids'], $userData['reportColumnsPPL']);
 
         //set the new affids
         $userData['affids'] = $request->affids;
+        if(! empty($request->report_columns)){
+            $userData['reportColumnsPPL'] = $request->report_columns;
+        }
 
         //manipulate the request data and assign the new data
         $validatedData = array_merge($validatedData, ['data' => $userData]);
 
         //unset the affids from the validated data
         unset($validatedData['affids']);
+
+        // unset password is empty
+        if( empty(trim($validatedData['password'])) || empty(trim($validatedData['password_confirmation'])) ){
+            unset($validatedData['password']);
+            unset($validatedData['password_confirmation']);
+        }
 
         $user->update($validatedData);
 
@@ -171,6 +185,15 @@ class AffiliateController extends Controller
             ]));
         }
 
+        if( isset($validatedData['manager']) && !empty($validatedData['manager']) ){
+            AccountManager::updateOrCreate(
+                [ 'affiliate_id'    => $user->id ],
+                [ 'user_id'         =>  $validatedData['manager'] ]
+            );
+        } else {
+            AccountManager::where('affiliate_id', $user->id)->delete();
+        }
+
 
         return withSuccess(new SingleAffiliateResource($user->load('affiliate')), 'Affiliate updated successfully');
     }
@@ -201,16 +224,16 @@ class AffiliateController extends Controller
             return withError('Affiliate IDs are already assigned to another affiliate');
         }
 
-        //get the validated data
         $validatedData = $request->validated();
 
-        //manipulate the request data and assign the new data
-        $validatedData = array_merge($validatedData, ['data' => [
-            'affids' => $validatedData['affids']
-        ]]);
+        $data = ['affids' => $validatedData['affids']];
+        if(! empty($request->report_columns)){
+            $data['reportColumnsPPL'] = $request->report_columns;
+        }
 
-        //unset the affids from the validated data
-        unset($validatedData['affids']);
+        $validatedData['data'] = $data;
+
+        unset($validatedData['report_columns'], $validatedData['affids']);
 
         $affiliate = User::create($validatedData);
         $affiliate->affiliate()->create($request->only(
@@ -226,6 +249,13 @@ class AffiliateController extends Controller
                 'vat_number',
             ]
         ));
+
+        if( isset($validatedData['manager']) && !empty($validatedData['manager']) ){
+            AccountManager::updateOrCreate(
+                [ 'affiliate_id'    => $affiliate->id ],
+                [ 'user_id'         =>  $validatedData['manager'] ]
+            );
+        }
 
         // return with success response
         return withSuccess(new AffiliateResource($affiliate->load('affiliate')), 'Affiliate created successfully');
@@ -252,12 +282,59 @@ class AffiliateController extends Controller
     }
 
     /**
+     * Retrieves a list of affiliates based on the request parameters.
+     *
+     * @param Request $request
+     * @param LeadService $leadService
+     * @return Response
+     */
+    public function affiliateList(Request $request, LeadService $leadService): Response
+    {
+        $affiliates = $leadService->getAffiliates($request);
+        return withSuccess($affiliates,  'Affiliates retrieved successfully');
+    }
+
+    /**
+     * Save the report columns for the affiliate based on the provided ID.
+     *
+     * @param Request $request
+     * @param int $userId
+     * @return Response
+     */
+    public function saveReportColumns(Request $request, int $userId): Response
+    {
+        $validator = Validator::make($request->all(), [
+            'report_columns' => 'nullable|array'
+        ]);
+
+        if ($validator->fails()) {
+            return withError($validator->errors()->first());
+        }
+
+        $user = User::find($userId);
+        if(empty($user)){
+            return withError('Affiliate not found!');
+        }
+
+        $data = $user->data ?? [];
+        $data['reportColumnsPPL'] = $request->report_columns;
+
+        if(empty($data['reportColumnsPPL'])){
+            unset($data['reportColumnsPPL']);
+        }
+
+        $user->data = $data;
+        $user->save();
+
+        return withSuccess(message: 'Report columns saved successfully');
+    }
+
+    /**
      * Impersonation of the affiliate based on the provided ID.
      * @param Request $request
      * @param int $id
      * @return Response
      */
-
     public function impersonate(Request $request, $id)
     {
         //check if the user is an affiliate

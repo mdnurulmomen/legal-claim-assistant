@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Lead;
 
 use App\Http\Controllers\Api\Lead\Resources\LeadResource;
+use App\Jobs\GlobalPostBackTriggerJob;
 use App\Models\Integration;
 use App\Models\LeadLog;
 use App\Models\LeadReport;
@@ -10,6 +11,8 @@ use App\Models\PageSetting;
 use App\Models\PlatformData;
 use App\Models\PlatformList;
 use App\Models\User;
+use App\Services\ReportingService;
+use App\Traits\FormatterTrait;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -20,6 +23,8 @@ use Illuminate\Support\Facades\DB;
 
 class LeadService extends ReportingService
 {
+    use FormatterTrait;
+
     protected $validOrderByColumns = [
         'email',
         'phone',
@@ -72,7 +77,7 @@ class LeadService extends ReportingService
         ->map(function ($header) use ($serialization) {
             return [
                 'field' => $header,
-                'headerName' => ucwords(str_replace('_', ' ', $header)),
+                'headerName' => $header,
                 'minWidth' => 200,
                 'hide' => ! in_array($header, $serialization),
                 'editable' => true,
@@ -81,6 +86,32 @@ class LeadService extends ReportingService
         })
         ->values()
         ->all();
+    }
+
+    /**
+     * Formats an array of headers into a sorted and formatted array for the
+     * columns only.
+     *
+     * @param Collection $headers
+     * @return array
+     */
+    public function formatHeadersOnly(Collection $headers): array
+    {
+        $serialization = $this->getSortFields();
+
+        return collect($headers)
+                    ->sortBy(function ($item) use ($serialization) {
+                        $index = array_search($item, $serialization);
+                        return $index === false ? PHP_INT_MAX : $index;
+                    })
+                    ->map(function (string $header) {
+                        return [
+                            'value' => $header,
+                            'label' => $header
+                        ];
+                    })
+                    ->values()
+                    ->all();
     }
 
     /**
@@ -95,7 +126,7 @@ class LeadService extends ReportingService
                         ->selectRaw('
                             SUM(lead_reports.lead_revenue) as total_revenue,
                             SUM(lead_reports.lead_profit) as total_profit,
-                            (SUM(lead_reports.affiliate_payout) / COUNT(DISTINCT platform_datas.id)) as avg_affiliate_payout,
+                            SUM(lead_reports.affiliate_payout) as avg_affiliate_payout,
                             (SUM(lead_reports.affiliate_margin) / COUNT(DISTINCT platform_datas.id)) as avg_affiliate_margin
                         ')
                         ->first();
@@ -138,7 +169,15 @@ class LeadService extends ReportingService
                 return $query->where($searchCol, $searchText);
             }
 
-            return $query->orWhereRaw('LOWER(datas) like ?', ["%{$searchText}%"]);
+            if (strlen($searchText) === 10 && PlatformData::where('platform_datas.affm_lead_id', $searchText)->exists()) {
+                return $query->where('platform_datas.affm_lead_id', $searchText);
+            }
+
+            if(PlatformData::where('platform_datas.affid', $searchText)->exists()) {
+                return $query->where('platform_datas.affid', $searchText);
+            }
+
+            return $query->whereRaw('LOWER(datas) like ?', ["%{$searchText}%"]);
 
                 // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.first_name"))) LIKE ?', ["%{$searchText}%"])
                 // ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(datas, "$.last_name"))) LIKE ?', ["%{$searchText}%"]);
@@ -273,7 +312,7 @@ class LeadService extends ReportingService
                     continue;
                 }
 
-                if(in_array($item['column'], ['list_name', 'buyer_name', 'buyer_integration', 'affiliate_name', 'affid', 'lead_status', 'phone', 'email'])){
+                if(in_array($item['column'], ['list_name', 'buyer_name', 'buyer_integration', 'affiliate_name', 'affid', 'lead_status', 'phone', 'email', 'affm_lead_id'])){
                     $relationalTerms[] = $this->formatAdvanceConditionToSql($item);
                     continue;
                 }
@@ -313,6 +352,7 @@ class LeadService extends ReportingService
             'less_than' => $this->makeConditions($conditions['column'], '<', $conditions['value'], $isRelational),
             'equals' => $this->makeConditions($conditions['column'], '=', $conditions['value'], $isRelational),
             'not_equals' => $this->makeConditions($conditions['column'], '!=', $conditions['value'], $isRelational),
+            'equals_any' => $this->makeConditions($conditions['column'], '=', $conditions['value'], $isRelational),
             'exists' => $this->makeConditions($conditions['column'], 'exists', null, $isRelational),
             'does_not_exist' => $this->makeConditions($conditions['column'], 'does_not_exist', null, $isRelational),
             default => []
@@ -426,6 +466,11 @@ class LeadService extends ReportingService
                     foreach ($conditionGroup as $index => $condition) {
 
                         $type = $this->getConditionType($condition['operator']);
+
+                        if(in_array($condition['operator'], ['=', '!='])) {
+                            $type = null;
+                        }
+
                         $method = $this->getConditionMethod($index, $type);
 
                         if($type) {
@@ -644,24 +689,39 @@ class LeadService extends ReportingService
      * @param string $date
      * @return void
      */
-    public function updateReportData(LeadReport $report, Request $request, array $formattedData, bool $isCreate = false): void
+    public function updateReportData(LeadReport $report, Request $request, array $formattedData, bool $isCreate = false, PlatformData $platformData = null): void
     {
         $leadData = [
             'retained_date' => null,
-            'is_retainer' => $formattedData['is_retainer']
+            'returned_date' => null,
+            'is_retainer' => $formattedData['is_retainer'],
+            'is_returned' => $formattedData['is_returned']
         ];
 
-        $isReportUpdatable = ($report->is_retainer != $formattedData['is_retainer']) || ($isCreate && $formattedData['is_retainer']);
+        $isReportUpdatable = (bool) $formattedData['is_retainer'] || (bool) $formattedData['is_returned'];
 
         $date = empty($request->created_at) ? now() : Carbon::parse($request->created_at)->startOfDay();
 
-        if($isReportUpdatable && ! empty($request->is_retainer) && ! empty($request->created_at)){
+        if(! empty($request->is_retainer) && ! empty($request->created_at)){
             $date = Carbon::parse($request->created_at)->midDay();
             $leadData['retained_date'] = $date;
         }
 
-        if($isReportUpdatable && empty($request->is_retainer)){
+        if(! empty($request->is_returned) && ! empty($request->created_at)){
+            $date = Carbon::parse($request->created_at)->midDay();
+            $leadData['returned_date'] = $date;
+        }
+
+        if($platformData->created_at && ($platformData->created_at->greaterThan(Carbon::parse($request->created_at)))){
+            $date = $platformData->created_at->addHour();
+        }
+
+        if(empty($request->is_retainer)){
             $leadData['retained_date'] = null;
+        }
+
+        if(empty($request->is_returned)){
+            $leadData['returned_date'] = null;
         }
 
         DB::table('lead_reports')
@@ -669,9 +729,15 @@ class LeadService extends ReportingService
             ->where('created_at', '!=', $date)
             ->update(['created_at' => $date]);
 
-        if($isReportUpdatable){
+        if($isReportUpdatable || ($request->is_retainer || $request->is_returned)){
             $this->updatePlatformData($request->lead_id, $leadData);
         }
+
+        // if(! empty($request->is_returned)) {
+        //     $leadData['returned_date'] = $date;
+        //     $leadData['is_returned'] = 1;
+        //     $this->updatePlatformData($request->lead_id, $leadData);
+        // }
     }
 
     /**
@@ -682,19 +748,26 @@ class LeadService extends ReportingService
      * @param bool $isRetainer
      * @return void
      */
-    public function updateLeadStatus(int $leadId, int $reportId, bool $isRetainer): void
+    public function updateLeadStatus(int $leadId, int $reportId, bool $isRetainer, ?string $leadStatus = null, int $isReturned = 0): void
     {
-        if($isRetainer){
-            $this->updatePlatformData($leadId, ['lead_status' => 'Retained']);
+        if($isRetainer || $isReturned){
+            $this->updatePlatformData($leadId, [
+                'lead_status' => $isRetainer ? 'Retained' : 'Returned'
+            ]);
             return;
         }
 
-        $isRetained = $this->hasAnyRetainedLead($leadId, $reportId);
-        if($isRetained) return;
+        // $hasReturned = $this->hasAnyReturnedLead($leadId, $reportId);
+
+        $isRetainedOrReturned = $this->hasAnyRetainedLead($leadId, $reportId);
+        if($isRetainedOrReturned) return;
 
         $this->updatePlatformData($leadId, [
-            'lead_status' => 'Pending',
-            'retained_date' => null
+            'lead_status' => $leadStatus ?: 'Pending',
+            'retained_date' => null,
+            'returned_date' => null,
+            'is_retainer' => 0,
+            'is_returned' => 0
         ]);
     }
 
@@ -714,7 +787,30 @@ class LeadService extends ReportingService
                     return $query->where('id', '!=', $reportId);
                 })
                 ->where('lead_id', $leadId)
-                ->where('is_retainer', '>', 0)
+                ->where(function($query) {
+                    $query->where('is_retainer', '>', 0)
+                        ->orWhere('is_returned', '>', 0);
+                })
+                ->exists();
+    }
+
+    /**
+     * Checks if there is any returned lead report for given lead ID,
+     * excluding the given report ID if it is not empty.
+     *
+     * @param int $leadId
+     * @param int $reportId
+     *
+     * @return bool
+     */
+    public function hasAnyReturnedLead(int $leadId, int | null $reportId = null): bool
+    {
+        return LeadReport::query()
+                ->when(! empty($reportId), function($query) use ($reportId) {
+                    return $query->where('id', '!=', $reportId);
+                })
+                ->where('lead_id', $leadId)
+                ->where('is_returned', '>', 0)
                 ->exists();
     }
 
@@ -737,15 +833,20 @@ class LeadService extends ReportingService
      * Formats the report request data.
      *
      * @param array $requestData
+     * @param Request $request
      * @return array
      */
-    public function formatReportRequest(array $requestData): array
+    public function formatReportRequest(array $requestData, Request $request): array
     {
         if(! empty($requestData['show_in_portal'])){
             $requestData['is_retainer'] = 2;
         }
 
         unset($requestData['show_in_portal']);
+
+        if(! array_key_exists('lead_status', $requestData)){
+            unset($requestData['lead_status']);
+        }
 
         return $requestData;
     }
@@ -767,8 +868,8 @@ class LeadService extends ReportingService
                     ->first();
 
         $this->updatePlatformData($leadId, [
-            'revenue' => (float) $report->revenue,
-            'payout' => (float) $report->revenue - (float) $report->payout
+            'revenue' => $report ? (float) $report->revenue : 0,
+            'payout' => $report ? (float) $report->revenue - (float) $report->payout : 0
         ]);
     }
 
@@ -824,7 +925,8 @@ class LeadService extends ReportingService
             'affid' => 'platform_datas.affid',
             'phone' => 'platform_datas.phone',
             'email' => 'platform_datas.email',
-            'lead_status' => 'platform_datas.lead_status'
+            'lead_status' => 'platform_datas.lead_status',
+            'affm_lead_id' => 'platform_datas.affm_lead_id'
         ];
 
         return $this->convertConditionToSql([
@@ -897,13 +999,18 @@ class LeadService extends ReportingService
      */
     public function getAffiliates(Request $request): Collection
     {
-        return User::select('id as value', 'name as label', 'data->affids as affids', 'role')
-                ->when(! empty($request->search_txt), function ($query) use ($request) {
-                    return $query->where('name', 'like', '%'.$request->search_txt.'%');
-                })
-                ->where('role', 'affiliate')
-                ->get()
-                ->map(function ($user): array {
+        $affiliates = User::select('id as value', 'name as label', 'data->affids as affids', 'role')
+                        ->when(! empty($request->search_txt), function ($query) use ($request) {
+                            return $query->where('name', 'like', '%'.$request->search_txt.'%');
+                        })
+                        ->where('role', 'affiliate')
+                        ->when(! empty($request->is_remote_search), function($query) {
+                            return $query->limit(50);
+                        })
+                        ->get();
+
+        return $affiliates->map(function ($user): array {
+
                     if(! hasAffiliateAccess() && $user->role === 'affiliate') {
                         return [
                             'value' => $user->value,
@@ -913,7 +1020,7 @@ class LeadService extends ReportingService
 
                     return [
                         'value' => $user->value,
-                        'label' => $user->name
+                        'label' => $user->label
                     ];
                 });
     }
@@ -986,7 +1093,6 @@ class LeadService extends ReportingService
                             return $query->$method($item['conditional_keys']);
                         });
                     })
-                    ->take(2)
                     ->get()
                     ->groupBy(function($item) use ($selectableFields) {
                         return collect($selectableFields)->map(function($field) use ($item) {
@@ -1153,7 +1259,6 @@ class LeadService extends ReportingService
 
         $leadReportDataGenerator = $this->generateLeadReportData($leadReports->toArray(), $leadGroup, $updatableReportFields, $leadRevenuePayouts);
         $leadReportData = iterator_to_array($leadReportDataGenerator, false);
-        if (empty($leadReportData)) return;
 
         if(count($leadReportData) > 0) {
             LeadReport::upsert(
@@ -1161,6 +1266,11 @@ class LeadService extends ReportingService
                 ['id'],
                 $updatableReportFields
             );
+
+            GlobalPostBackTriggerJob::dispatch([
+                'type' => 'bulk_retainer',
+                'lead_reports' => $leadReportData
+            ]);
         }
 
         if(count($leadRevenuePayouts) > 0) {
@@ -1311,5 +1421,29 @@ class LeadService extends ReportingService
         $reportData = $this->calculateRevenuePayout((float) $formData['lead_revenue'], (float) $formData['affiliate_payout']);
 
         return array_merge($formData, $reportData);
+    }
+
+    /**
+     * Formats the given integrations by grouping them by buyer unique ID and plucking the buyer headers.
+     *
+     * @param Request $request
+     * @param Collection $integrations
+     * @return array
+     */
+    public function formatIntegrations(Request $request, Collection $integrations): array
+    {
+        return $integrations
+                ->groupBy('buyer_unique_id')
+                ->map(fn ($group, $buyerUniqueId) => [
+                    'buyer_unique_id' => $buyerUniqueId,
+                    'buyer_headers' => $group
+                        ->pluck('buyer_headers')
+                        ->flatten(1)
+                        ->unique()
+                        ->values()
+                        ->toArray(),
+                ])
+                ->values()
+                ->toArray();
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\PlatformListPing;
 
 use App\Http\Controllers\Api\PlatformListPing\Resources\PlatformListPingResource;
+use App\Http\Controllers\Api\PlatformListPing\Resources\PlatformListPingLogResource;
 use App\Http\Controllers\Controller;
 use App\Models\PlatformList;
 use Illuminate\Http\Request;
@@ -109,6 +110,8 @@ class PlatformListPingController extends Controller
 
         //group by list and affid
         $pingLogData = $platformPingQuery->selectRaw("
+            platform_pings.id,
+            platform_pings.lead_id,
             platform_pings.affiliate_id,
             users.name,
             JSON_EXTRACT(users.data, '$.affids') AS affids,
@@ -123,7 +126,7 @@ class PlatformListPingController extends Controller
             platform_pings.sold,
             platform_pings.accepted,
             platform_pings.created_at
-        ")
+        ")->orderBy('created_at', 'desc')
         ->paginate($limit);
 
         return withSuccessResourceList(PlatformListPingResource::collection($pingLogData));
@@ -203,7 +206,7 @@ class PlatformListPingController extends Controller
 
         // use simple pagination can improve performance
         // $data = $data->simplePaginate(10);
-        $data = $data->get();
+        $data = $data->orderBy('created_at', 'desc')->get();
 
         $morePages = true;
 
@@ -222,6 +225,45 @@ class PlatformListPingController extends Controller
         );
         return withSuccess($results);
         // return response()->json($results);
+    }
+
+    /**
+     * Retrieves lead, ping log, post log based on the request.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function getPingInfo(Request $request, $id)
+    {
+        $lead = PlatformPings::where('id', $id)->first();
+
+        if($lead){
+            $lead_log = [];
+            $lead_log = $lead->ping_logs;
+
+            //sort the order by order key
+            if (isset($lead_log["direct_posts"])) {
+                uasort($lead_log["direct_posts"], function($a, $b) {
+                    return $a['order'] - $b['order'];
+                });
+            }
+
+            if (isset($lead_log["grouped_pings"]) && count($lead_log["grouped_pings"]) > 0) {
+                //order by price
+                uasort($lead_log["grouped_pings"], function($a, $b) {
+                    $aPrice = isset($a['price']['amount']) ? $a['price']['amount'] : 0;
+                    $bPrice = isset($b['price']['amount']) ? $b['price']['amount'] : 0;
+                    return $bPrice - $aPrice;
+                });
+            }
+
+            $results = array(
+                'log_data'  => $lead_log,
+                'lead'      => $lead,
+            );
+            return withSuccess($results);
+        }
+        return withError('Invalid Ping Log request.');
     }
 
 }

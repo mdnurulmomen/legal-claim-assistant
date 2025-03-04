@@ -34,9 +34,10 @@ class IntegrationSettingRequest extends FormRequest
             'curl.method' => ['required', 'string'],
             'auth' => ['nullable'],
             'phone_format' => ['required', 'string'],
+            'lead_id_key' => ['nullable', 'string', 'max:255'],
             'save_data' => ['required', 'array'],
             'custom_params' => ['nullable', 'array'],
-            'ping' => ['required', 'array'],
+            'ping' => ['nullable', 'array'],
             'ping.required' => ['sometimes', 'boolean'],
             'ping.triggers' => ['nullable', 'array'],
             'ping.save_data' => ['nullable', 'array'],
@@ -48,10 +49,18 @@ class IntegrationSettingRequest extends FormRequest
             'payout' => ['required', 'array'],
             'buyer_payout_by_affid' => ['nullable', 'array'],
             'caps' => ['nullable', 'array'],
-            'cv_trigger' => ['nullable', 'array']
+            'cv_trigger' => ['nullable', 'array'],
         ];
 
-        if($this->ping['required']) {
+        if(array_key_exists('brand_data', $this->all())) {
+            $rules['brand_data'] = ['required', 'array'];
+            $rules['brand_data.sort_by'] = ['nullable', 'string'];
+            $rules['brand_data.save_data'] = ['required', 'array'];
+            $rules['brand_data.save_data.*.save_as'] = ['required', 'string'];
+            $rules['brand_data.save_data.*.buyer_key'] = ['required', 'string'];
+        }
+
+        if($this->ping && $this->ping['required']) {
             $rules['ping.triggers'] = ['required', 'array'];
             $rules['ping.payout.params'] = ['required', 'string'];
             $rules['ping.save_data'] = ['required', 'array'];
@@ -87,6 +96,10 @@ class IntegrationSettingRequest extends FormRequest
             'ping.payout.params' => 'Please enter Ping Payout Parameter.',
             'curl.url' => 'Please enter a valid endpoint.',
             'curl.method' => 'Please enter a valid HTTP method.',
+            'brand_data.sort_by' => 'Please enter a valid sort by value.',
+            'brand_data.save_data' => 'Please select at least one from Brand Save Data.',
+            'brand_data.save_data.*.save_as' => 'Please enter a valid save as value.',
+            'brand_data.save_data.*.buyer_key' => 'Please enter a valid buyer key.',
         ];
     }
 }

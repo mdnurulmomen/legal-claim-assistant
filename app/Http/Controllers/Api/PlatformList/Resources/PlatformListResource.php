@@ -23,8 +23,9 @@ class PlatformListResource extends JsonResource
             'sources' => array_unique(array_merge([$this->source] ?? [], $this->options['additional_sources'] ?? [])),
             'status' => $this->status,
             'cv_trigger' => $this->cv_trigger ?? [],
-            'integrations' => $this->integrations,
+            'integrations' => $this->integrations ? json_decode(json_encode($this->integrations)) : [],
             'lead_headers' => $this->lead_headers ?? [],
+            'options' => $this->options ?? [],
             'updated_at' => $this->updated_at ? $this->updated_at->diffForHumans() : '',
             'created_at' => $this->created_at ? $this->created_at->toDateTimeString() : ''
         ];

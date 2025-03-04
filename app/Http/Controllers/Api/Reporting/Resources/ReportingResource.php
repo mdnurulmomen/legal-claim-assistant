@@ -25,13 +25,14 @@ class ReportingResource extends JsonResource
             $avg_retain_time = number_format($this->avg_retain_time) . " " . $dayLabel;
         }
 
-        return [
+        $data = [
             'id' => $this->id,
             'platform_name' => $this->platform_name ?? '',
             'buyer_name' => $this->buyer_name ?? '',
             'integration_name' => $this->integration_name ?? '',
             'affiliate_name' => hasAffiliateAccess() ? $this->affiliate_name : $this->formatAffIds($this->affids),
             'affid' => $this->affid ?? '',
+            'retained_date' => $this->retained_date ?? '',
             'posted' => (float) $this->posted,
             'accepted' => (float) $this->accepted,
             'rejected' => (float) $this->rejected,
@@ -48,5 +49,7 @@ class ReportingResource extends JsonResource
             'average_profit' => (float) $this->average_profit,
             'affiliate_average_payout' => (float) $this->affiliate_average_payout
         ];
+
+        return $data;
     }
 }

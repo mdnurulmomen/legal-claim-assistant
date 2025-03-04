@@ -32,10 +32,12 @@ class SingleAffiliateResource extends JsonResource
             'bank_swift_code' => $this->affiliate?->bank_swift_code,
             'vat_number' => $this->affiliate?->vat_number,
             'status' => $this->status,
+            'manager' => $this->accountManager?->id,
             'affid' => $this->data['affid'] ?? null,
 //            'workspace' => $this->workspace,
             'is_test' => $this->is_test,
-            'total_posting_docs' => $this->posting_docs_count
+            'total_posting_docs' => $this->posting_docs_count,
+            'data' => $this->data ? (object) $this->data : new \stdClass
         ];
     }
 }

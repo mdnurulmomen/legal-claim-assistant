@@ -1,13 +1,15 @@
 <?php
 
 use App\Http\Controllers\Api\Lead\LeadController;
+use App\Http\Controllers\Api\Lead\LeadControllerV2;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('leads')->as('leads.')
     ->controller(LeadController::class)
-    ->middleware('auth:sanctum')
+   ->middleware('auth:sanctum')
     ->group(function ($route) {
         $route->post('list', 'list')->name('list');
+        $route->get('list', 'list')->name('list.get');
         $route->get('get-latest-leads', 'getLatestLeads')->name('get-latest-leads');
         $route->get('headers', 'getLeadHeaders')->name('headers');
         $route->get('lead-info/{leadId}', 'getLeadInfo')->name('lead-info');
@@ -21,4 +23,16 @@ Route::prefix('leads')->as('leads.')
         $route->get('get-integrations', 'getIntegrations')->name('get-integrations');
         $route->get('get-lead-options/{type}', 'getLeadOptions')->name('get-lead-options');
         $route->put('update-filled-fields', 'updateFilledFields')->name('update.filled-fields');
+        $route->get('lead-log-info/{id}',  'getLeadLogInfo')->name('lead-log-info');
+        $route->post('filtered-leads', 'filteredLeads')->name('filtered-leads');
+    });
+
+Route::prefix('leads-v2')->as('leads-v2.')
+    ->controller(LeadControllerV2::class)
+    ->middleware('auth:sanctum')
+    ->group(function ($route) {
+        $route->put('bulk-update-leads', 'bulkUpdateLeads')->name('bulk-update-leads');
+        $route->get('buyer-list', 'buyerList')->name('buyer.list');
+        $route->post('lead-logs', 'leadLogs')->name('lead-logs');
+        $route->get('log-statistics', 'logStatistics')->name('log-statistics');
     });

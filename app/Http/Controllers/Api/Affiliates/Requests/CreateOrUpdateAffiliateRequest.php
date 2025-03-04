@@ -59,6 +59,8 @@ class CreateOrUpdateAffiliateRequest extends FormRequest
             'bank_account_number' => ['required', 'string', 'max:255'],
             'bank_swift_code' => ['required', 'string', 'max:255'],
             'vat_number' => ['required', 'string', 'max:255'],
+            'manager' => ['nullable', 'integer', Rule::exists('users', 'id')],
+            'report_columns' => ['nullable', 'array'],
         ];
     }
 

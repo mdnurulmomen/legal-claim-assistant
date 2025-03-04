@@ -8,12 +8,14 @@ use App\Http\Controllers\Controller;
 use App\Models\LeadReport;
 use App\Models\PlatformList;
 use App\Models\User;
+use App\Services\ExcelService;
 use App\Services\ReportingService;
 use App\Traits\CommonTrait;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportingController extends Controller
 {
@@ -24,9 +26,9 @@ class ReportingController extends Controller
      *
      * @param Request $request
      * @param ReportingService $reportingService
-     * @return Response
+     * @return Response | string | StreamedResponse
      */
-    public function reportingList(Request $request, ReportingService $reportingService): Response
+    public function reportingList(Request $request, ReportingService $reportingService, ExcelService $excelService): Response | string | StreamedResponse
     {
         $limit = $request->get('limit', 10);
         [$orderBy, $orderIn] = $reportingService->formatOrderByIn($request);
@@ -43,6 +45,7 @@ class ReportingController extends Controller
                         affiliate.name as affiliate_name,
                         JSON_EXTRACT(affiliate.data, '$.affids') AS affids,
                         lead_reports.affid,
+                        pd.retained_date,
                         COUNT(CASE WHEN lead_reports.is_posted = 1 THEN 1 END) as posted,
                         COUNT(CASE WHEN lead_reports.buyer_id IS NOT NULL AND lead_reports.is_posted = 1 THEN 1 END) as accepted,
                         COUNT(CASE WHEN lead_reports.buyer_id IS NULL AND lead_reports.is_posted = 1 THEN 1 END) as rejected,
@@ -62,21 +65,6 @@ class ReportingController extends Controller
                     ->leftJoin('buyers', 'lead_reports.buyer_id', '=', 'buyers.id')
                     ->leftJoin('integrations', 'lead_reports.buyer_integration_id', '=', 'integrations.id')
                     ->leftJoin('users as affiliate', 'lead_reports.affiliate_id', '=', 'affiliate.id')
-                    ->when(in_array('lead_reports.affid', $groupBy), function ($query) {
-                        return $query->whereNotNull('lead_reports.affid');
-                    })
-                    ->when(in_array('lead_reports.buyer_id', $groupBy), function ($query) {
-                        return $query->whereNotNull('lead_reports.buyer_id');
-                    })
-                    ->when(in_array('lead_reports.buyer_integration_id', $groupBy), function ($query) {
-                        return $query->whereNotNull('lead_reports.buyer_integration_id');
-                    })
-                    ->when(in_array('lead_reports.list_id', $groupBy), function ($query) {
-                        return $query->whereNotNull('lead_reports.list_id');
-                    })
-                    ->when(in_array('lead_reports.affiliate_id', $groupBy), function ($query) {
-                        return $query->whereNotNull('lead_reports.affiliate_id');
-                    })
                     ->when(! empty($relationalConditions), function (Builder $query) use ($relationalConditions, $reportingService) {
                         return $reportingService->convertRelationsToSql($query, $relationalConditions);
                     })
@@ -122,6 +110,10 @@ class ReportingController extends Controller
         if(! empty($request->is_total)) {
             $leads = $reportingService->getReportTotals($baseQuery, $request);
             return withSuccess($leads);
+        }
+
+        if(! empty($request->is_export)){
+            return $excelService->exportReportData($request, $baseQuery);
         }
 
         $leads = $baseQuery->paginate($limit);

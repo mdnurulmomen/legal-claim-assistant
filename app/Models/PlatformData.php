@@ -12,6 +12,7 @@ class PlatformData extends Model
     protected $table = 'platform_datas';
 
     protected $fillable = [
+        'affm_lead_id',
         'list_id',
         'affiliate_id',
         'affid',
@@ -23,6 +24,7 @@ class PlatformData extends Model
         'affm_source_id',
         'affiliate_specs_id',
         'sold_type',
+        'internal_lead_note',
         'datas',
         'revenue',
         'payout',
@@ -31,6 +33,7 @@ class PlatformData extends Model
         'is_sold',
         'is_internal',
         'retained_date',
+        'returned_date',
         'page_source',
     ];
 

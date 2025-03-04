@@ -28,7 +28,8 @@ class SiteSettingRequest extends FormRequest
         return [
             'page' => ['required', 'string', 'max:255', Rule::in(array_keys(Utility::$pageSlugs))],
             'data' => ['required', 'array'],
-            'type' => ['required', 'string', 'max:255']
+            'type' => ['required', 'string', 'max:255'],
+            'uid' => ['nullable', 'string', 'max:255'],
         ];
     }
 

@@ -39,6 +39,7 @@ class AffiliateResource extends JsonResource
             'bank_account_number' => '',
             'bank_swift_code' => '',
             'vat_number' => '',
+            'data' => $this->data ? (object) $this->data : new \stdClass
         ];
 
         $hasAccess = hasAffiliateAccess();

@@ -17,6 +17,7 @@ class LeadReportResource extends JsonResource
         return [
             'id' => $this->id,
             'is_retainer' => (bool) $this->is_retainer,
+            'is_returned' => (bool) $this->is_returned,
             'show_in_portal' => $this->is_retainer < 2 ? false : true,
             'is_paid' => (bool) $this->is_paid,
             'is_posted' => (bool) $this->is_posted,
@@ -27,7 +28,8 @@ class LeadReportResource extends JsonResource
             'affiliate_margin' => (float) $this->affiliate_margin,
             'profit_margin' => (float) $this->profit_margin,
             'sold_type' => $this->sold_type,
-            'created_at' => $this->created_at->format('Y-m-d')
+            'created_at' => $this->created_at->format('Y-m-d'),
+            'lead_status' => $this->lead_status
         ];
     }
 }

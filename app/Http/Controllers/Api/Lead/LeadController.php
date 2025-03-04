@@ -6,15 +6,20 @@ use App\Http\Controllers\Api\Lead\Requests\StoreLeadReportRequest;
 use App\Http\Controllers\Api\Lead\Requests\UpdateFilledRequest;
 use App\Http\Controllers\Api\Lead\Requests\UpdateLeadsRequest;
 use App\Http\Controllers\Api\Lead\Resources\LeadInfoResource;
+use App\Http\Controllers\Api\Lead\Resources\LeadLogResource;
 use App\Http\Controllers\Api\Lead\Resources\LeadReportResource;
 use App\Http\Controllers\Api\Lead\Resources\LeadResource;
 use App\Http\Controllers\Controller;
+use App\Jobs\GlobalPostBackTriggerJob;
 use App\Models\Integration;
 use App\Models\LeadReport;
 use App\Models\PlatformData;
+use App\Models\PlatformPings;
+use App\Models\LeadLog;
 use App\Models\PlatformList;
 use App\Services\ExcelService;
-use App\Services\LeadService;
+use App\Services\Lead\LeadService;
+use App\Services\Lead\PlatformService;
 use App\Traits\CommonTrait;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -48,34 +53,38 @@ class LeadController extends Controller
         [$orderBy, $orderIn] = $leadService->formatLeadOrderByIn($request);
 
         $leadQuery = PlatformData::query()
-                        ->when(! empty($request->is_total), function($query) {
+                        ->when(! empty($request->is_total) || ! empty($request->is_export), function($query) {
                             return $query->select('platform_datas.id');
                         })
-                        ->when(empty($request->is_total), function($query) use ($request) {
+                        ->when(empty($request->is_total) && empty($request->is_export), function($query) use ($request) {
                             return $query->select(
                                 'platform_datas.id',
+                                'platform_datas.list_id',
                                 'platform_datas.datas',
                                 'platform_datas.email',
                                 'platform_datas.phone',
                                 'platform_datas.buyer_integration_id',
-                                'integrations.name as buyer_integration',
                                 'platform_datas.buyer_id',
                                 'buyers.name as buyer_name',
-                                'platform_datas.affiliate_id',
                                 'users.name as affiliate_name',
+                                'platform_lists.name as list_name',
+                                'integrations.name as buyer_integration',
+                                'platform_datas.affiliate_id',
                                 'users.data->affids as affids',
                                 'platform_datas.lead_status',
-                                'platform_lists.name as list_name',
                                 'platform_datas.created_at',
                                 'platform_datas.retained_date',
+                                'platform_datas.returned_date',
                                 'platform_datas.sold_type',
+                                'platform_datas.affm_lead_id',
+                                'platform_datas.internal_lead_note'
                             );
                         })
                         ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
                         ->leftJoin('buyers', 'buyers.id', '=', 'platform_datas.buyer_id')
                         ->leftJoin('users', 'users.id', '=', 'platform_datas.affiliate_id')
                         ->leftJoin('platform_lists', 'platform_lists.id', '=', 'platform_datas.list_id')
-                        ->when(empty($request->is_total), function($query) use ($orderBy, $orderIn) {
+                        ->when(empty($request->is_total) && empty($request->is_export), function($query) use ($orderBy, $orderIn) {
                             return $query->addSelect([
                                 'revenue' => LeadReport::select(DB::raw('sum(lead_reports.lead_revenue)'))
                                                 ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
@@ -121,7 +130,7 @@ class LeadController extends Controller
                         ->latest('platform_datas.id');
 
         if(! empty($request->is_export)){
-            return $excelService->formatLeadExportData($leadQuery);
+            return $excelService->formatLeadExportData($request, $leadQuery);
         }
 
         if(! empty($request->is_total)) {
@@ -193,6 +202,10 @@ class LeadController extends Controller
                                 ->unique()
                                 ->values();
 
+        if(! empty($request->without_format)) {
+            return withSuccess($leadService->formatHeadersOnly($platformDataColumns));
+        }
+
         $platformDataColumns = $leadService->formatHeaders($platformDataColumns);
 
         return withSuccess([
@@ -218,7 +231,8 @@ class LeadController extends Controller
                         'platform_datas.phone',
                         'integrations.name as buyer_integration',
                         'buyers.name as buyer_name',
-                        'users.name as affiliate_name'
+                        'users.name as affiliate_name',
+                        'platform_datas.created_at'
                     )
                     ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
                     ->leftJoin('buyers', 'buyers.id', '=', 'platform_datas.buyer_id')
@@ -233,7 +247,8 @@ class LeadController extends Controller
                             'platform_datas.lead_status',
                             'platform_datas.affm_source_id',
                             'platform_datas.affiliate_specs_id',
-                            'platform_datas.sold_type'
+                            'platform_datas.sold_type',
+                            'platform_datas.is_internal',
                         );
                     })
                     ->addSelect([
@@ -302,6 +317,7 @@ class LeadController extends Controller
                         ->select(
                             'id',
                             'is_retainer',
+                            'is_returned',
                             'is_paid',
                             'is_internal',
                             'is_posted',
@@ -356,26 +372,42 @@ class LeadController extends Controller
      */
     public function storeLeadReports(StoreLeadReportRequest $request, LeadService $leadService): Response
     {
-        if(! empty($request->is_retainer) && $leadService->hasAnyRetainedLead($request->lead_id)){
-            return withError('Lead has been retained and cannot be created.');
+        if((! empty($request->is_retainer) || ! empty($request->is_returned)) && $leadService->hasAnyRetainedLead($request->lead_id)){
+            return withError('Lead has been retained or returned and cannot be created.');
         }
 
-        $formattedData = $leadService->formatReportRequest($request->validated());
+        // if($request->is_returned && $leadService->hasAnyReturnedLead($request->lead_id)){
+        //     return withError('Lead has been returned and cannot be created.');
+        // }
+
+        $lead = PlatformData::find($request->lead_id);
+        if(empty($lead)){
+            return withError('Invalid Lead Id Provided');
+        }
+
+        $formattedData = $leadService->formatReportRequest($request->validated(), $request);
 
         try {
             DB::beginTransaction();
             $report = LeadReport::create($formattedData);
-            $leadService->updateReportData($report, $request, $formattedData, isCreate: true);
-            $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer);
+            $leadService->updateReportData($report, $request, $formattedData, isCreate: true, platformData: $lead);
+            $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer, $request->lead_status, $formattedData['is_returned']);
             $leadService->updateRevenuePayout($request->lead_id);
             DB::commit();
 
-            return withSuccess(message: 'Lead Created Successfully');
         } catch (\Throwable $th) {
             DB::rollBack();
-            info($th->getMessage());
-            return withError('Lead Report Creation Failed');
+            return withError(message: 'Lead Report Creation Failed');
         }
+
+        if($report->is_retainer){
+            GlobalPostBackTriggerJob::dispatch([
+                'type' => 'single_retainer',
+                'lead_id' => $report->lead_id
+            ]);
+        }
+
+        return withSuccess(message: 'Lead Created Successfully');
     }
 
     /**
@@ -388,19 +420,22 @@ class LeadController extends Controller
     public function getSingleReports(Request $request, int $reportId): Response
     {
         $report = LeadReport::query()
+                        ->leftJoin('platform_datas', 'lead_reports.lead_id', '=', 'platform_datas.id')
                         ->select(
-                            'id',
-                            'is_retainer',
-                            'is_paid',
-                            'is_internal',
-                            'is_posted',
-                            'lead_revenue',
-                            'affiliate_payout',
-                            'lead_profit',
-                            'affiliate_margin',
-                            'profit_margin',
-                            'sold_type',
-                            'created_at'
+                            'lead_reports.id',
+                            'lead_reports.is_retainer',
+                            'lead_reports.is_returned',
+                            'lead_reports.is_paid',
+                            'lead_reports.is_internal',
+                            'lead_reports.is_posted',
+                            'lead_reports.lead_revenue',
+                            'lead_reports.affiliate_payout',
+                            'lead_reports.lead_profit',
+                            'lead_reports.affiliate_margin',
+                            'lead_reports.profit_margin',
+                            'lead_reports.sold_type',
+                            'lead_reports.created_at',
+                            'platform_datas.lead_status'
                         )
                         ->find($reportId);
 
@@ -426,29 +461,44 @@ class LeadController extends Controller
             return withError('Invalid Report Id Provided');
         }
 
-        if(! empty($request->is_retainer) && $leadService->hasAnyRetainedLead($request->lead_id, $reportId)){
-            return withError('Lead has been retained and cannot be updated.');
+        $lead = PlatformData::find($request->lead_id);
+        if(empty($lead)){
+            return withError('Invalid Lead Id Provided');
         }
 
-        $formattedData = $leadService->formatReportRequest($request->validated());
+        if((! empty($request->is_retainer) || ! empty($request->is_returned)) && $leadService->hasAnyRetainedLead($request->lead_id, $reportId)){
+            return withError('Lead has been retained / returned and cannot be updated.');
+        }
+
+        $formattedData = $leadService->formatReportRequest($request->validated(), $request);
         $clonedReport = $report->replicate();
         $clonedReport->id = $report->id;
 
         try {
 
             DB::beginTransaction();
+
             $report->update($formattedData);
-            $leadService->updateReportData($clonedReport, $request, $formattedData);
-            $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer);
+            $leadService->updateReportData($clonedReport, $request, $formattedData, platformData: $lead);
+            $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer, $request->lead_status, $formattedData['is_returned']);
             $leadService->updateRevenuePayout($request->lead_id);
+
             DB::commit();
 
-            return withSuccess(message: 'Lead Report Updated Successfully!');
         } catch (\Throwable $th) {
             DB::rollBack();
             info($th->getMessage());
             return withError('Lead Report Update Failed!');
         }
+
+        if(empty($clonedReport->is_retainer) && $request->is_retainer){
+            GlobalPostBackTriggerJob::dispatch([
+                'type' => 'single_retainer',
+                'lead_id' => $report->lead_id
+            ]);
+        }
+
+        return withSuccess(message: 'Lead Report Updated Successfully!');
     }
 
     /**
@@ -476,22 +526,19 @@ class LeadController extends Controller
      * @param Request $request
      * @return Response
      */
-    public function getIntegrations(Request $request): Response
+    public function getIntegrations(Request $request, LeadService $leadService): Response
     {
         $platformId = $request->platform_id;
         $searchText = strtolower($request->search_txt);
-
-        $selectColumns = [];
-        if(! empty($request->select_columns)){
-            $selectColumns = explode(',', $request->select_columns);
-        }
 
         $integrations = Integration::query()
                             ->select('buyer_unique_id', 'buyer_headers')
                             ->whereNotNull('buyer_headers')
                             ->when(! empty($searchText), function ($query) use ($searchText) {
-                                return $query->where('buyer_unique_id', 'like', "%{$searchText}%")
-                                            ->orWhereRaw('LOWER(buyer_headers) like ?', ["%{$searchText}%"]);
+                                return $query->where(function($query) use ($searchText) {
+                                    return $query->where('buyer_unique_id', 'like', "%{$searchText}%")
+                                        ->orWhereRaw('LOWER(buyer_headers) like ?', ["%{$searchText}%"]);
+                                });
                             })
                             ->when(! empty($platformId), function ($query) use ($platformId) {
                                 return $query->where('list_id', $platformId);
@@ -499,6 +546,7 @@ class LeadController extends Controller
                             ->limit(100)
                             ->get();
 
+        $integrations = $leadService->formatIntegrations($request, $integrations);
         return withSuccess($integrations);
     }
 
@@ -516,6 +564,7 @@ class LeadController extends Controller
         return withSuccess($data);
     }
 
+
     public function updateFilledFields(UpdateFilledRequest $request, LeadService $leadService): Response
     {
         try {
@@ -529,5 +578,62 @@ class LeadController extends Controller
         }
 
         return withSuccess(message: 'Lead Filled Fields Updated Successfully!');
+    }
+
+    /**
+     * Retrieves lead post log based on the request.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function getLeadLogInfo(Request $request, $leadId)
+    {
+        if($leadId) {
+            $lead_log   = [];
+            $lead       = LeadLog::where('lead_id', $leadId)->first();
+
+            if (!$lead) {
+                $lead = PlatformData::where('id', $leadId)->first();
+            } else {
+                $lead_log   = $lead->log_data;
+                $lead       = $lead->lead;
+            }
+
+            if ($lead) {
+                //sort the order by order key
+                if (isset($lead_log["direct_posts"])) {
+                    uasort($lead_log["direct_posts"], function($a, $b) {
+                        return $a['order'] - $b['order'];
+                    });
+                }
+
+                if (isset($lead_log["grouped_pings"]) && count($lead_log["grouped_pings"]) > 0) {
+                    //order by price
+                    uasort($lead_log["grouped_pings"], function($a, $b) {
+                        $aPrice = isset($a['price']['amount']) ? $a['price']['amount'] : 0;
+                        $bPrice = isset($b['price']['amount']) ? $b['price']['amount'] : 0;
+                        return $bPrice - $aPrice;
+                    });
+                }
+
+                $results = array(
+                    'log_data'  => $lead_log,
+                    'lead'      => $lead,
+                );
+                return withSuccess($results);
+            }
+        }
+        return withError('Invalid Lead Log request.');
+    }
+
+    public function filteredLeads(Request $request, PlatformService $platformService): Response
+    {
+        $data = $platformService->getFilteredLeads($request);
+
+        if(empty($data)) {
+            return withError('No leads found.');
+        }
+
+        return withSuccessResourceList(LeadLogResource::collection($data));
     }
 }

@@ -29,6 +29,18 @@ class Utility
     ];
 
     /**
+     * Define Invoice status
+     *
+     * @var array
+     */
+    public static $invoiceStatuses = [
+        'Pending' => 'Pending',
+        'Rejected' => 'Rejected',
+        'Unpaid' => 'Unpaid',
+        'Paid' => 'Paid'
+    ];
+
+    /**
      * Define Report Tabs
      *
      * @var array
@@ -49,6 +61,17 @@ class Utility
     public static $pageSlugs = [
         'report' => 'Report',
         'global_leads' => 'Global Leads',
+    ];
+
+    /**
+     * Define Log Types
+     *
+     * @var array
+     */
+    public static $aliasLogTypes = [
+        'lead_export' => 'lead_export',
+        'report_export' => 'report_export',
+        'integration_trigger' => 'integration_trigger'
     ];
 
 }
