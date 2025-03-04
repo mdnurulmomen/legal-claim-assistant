@@ -173,6 +173,8 @@ class LeadControllerV2 extends Controller
             return withError('No leads found.');
         }
 
+        return withError('Custom Error', data: $data);
+
         return withSuccess($data);
     }
 }
