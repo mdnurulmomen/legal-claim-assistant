@@ -126,7 +126,7 @@ class LeadService extends ReportingService
                         ->selectRaw('
                             SUM(lead_reports.lead_revenue) as total_revenue,
                             SUM(lead_reports.lead_profit) as total_profit,
-                            (SUM(lead_reports.affiliate_payout) / COUNT(DISTINCT platform_datas.id)) as avg_affiliate_payout,
+                            SUM(lead_reports.affiliate_payout) as avg_affiliate_payout,
                             (SUM(lead_reports.affiliate_margin) / COUNT(DISTINCT platform_datas.id)) as avg_affiliate_margin
                         ')
                         ->first();
