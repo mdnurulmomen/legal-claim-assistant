@@ -2,8 +2,9 @@
 
 namespace App\Services\Lead;
 
-// use App\Models\DispositionConfigMongo;
-// use App\Models\DispositionLogMongo;
+use App\Models\DispositionConfigMongo;
+use App\Models\DispositionLogMongo;
+use App\Models\LeadReport;
 use App\Models\PlatformData;
 use App\Models\PlatformDataItem;
 use Illuminate\Http\Request;
@@ -33,17 +34,28 @@ class LeadFilterService
 
         $fillableKeys = (new PlatformData())->getFillable();
         $selectableKeys = $this->formatSelectableKeys($request, $fillableKeys);
+        $isAmountField = in_array('revenue', $request->mapped_headers) || in_array('affiliate_payout', $request->mapped_headers);
 
-        // $config = DispositionConfigMongo::create([
-        //                 'user_id' => $userId,
-        //                 'uid' => (string) str()->uuid()
-        //             ]);
-
-        $config = collect();
-        $count = 0;
+        $config = DispositionConfigMongo::create([
+                        'user_id' => $userId,
+                        'uid' => (string) str()->uuid()
+                    ]);
 
         $todos = PlatformData::query()
                     ->select($selectableKeys)
+                    ->when($isAmountField, function ($query) {
+                        return $query->addSelect([
+                            'revenue' => LeadReport::selectRaw('IFNULL(SUM(lead_revenue), 0)')
+                                            ->whereColumn('lead_id', 'platform_datas.id')
+                                            ->where('is_retainer', 0)
+                                            ->limit(1),
+
+                            'affiliate_payout' => LeadReport::selectRaw('IFNULL(SUM(lead_revenue) - SUM(affiliate_payout), 0)')
+                                                    ->whereColumn('lead_id', 'platform_datas.id')
+                                                    ->where('is_retainer', 0)
+                                                    ->limit(1)
+                        ]);
+                    })
                     ->whereExists(function ($query) use ($firstCondition) {
                         $query->select(DB::raw(1))->from('temp_conditions as tc');
 
@@ -67,22 +79,13 @@ class LeadFilterService
 
                             $query->whereColumn("tc.$column", "platform_datas.$column");
                         }
-
-                            // ->whereColumn('tc.buyer_id', 'platform_datas.buyer_id')
-                            // ->whereColumn('tc.phone', 'platform_datas.phone')
-                            // ->whereExists(function ($subQuery) {
-                            //     $subQuery->select(DB::raw(1))
-                            //         ->from('platform_data_items as pdi')
-                            //         ->whereColumn('pdi.value', 'tc.lead_id')
-                            //         ->whereColumn('platform_datas.id', 'pdi.platform_data_id');
-                            // });
                     })
                     ->select('platform_datas.*')
                     ->lazyById(5000)
-                    ->each(function ($lead) use (&$buffer, $batchSize, $config, $now, &$count) {
-                        $count += 1;
+                    ->each(function ($lead) use (&$buffer, $batchSize, $config, $now) {
+
                         $buffer[] = [
-                            // 'disposition_config_id' => $config->id ?? null,
+                            'disposition_config_id' => $config->id,
                             'platform_data_id' => $lead->id,
                             'lead_status' => $lead->lead_status,
                             'data' => [],
@@ -93,20 +96,18 @@ class LeadFilterService
                         ];
 
                         if (count($buffer) >= $batchSize) {
-                            // DispositionLogMongo::insert($buffer);
+                            DispositionLogMongo::insert($buffer);
                             $buffer = [];
                         }
                     });
 
                     if (!empty($buffer)) {
-                        // DispositionLogMongo::insert($buffer);
+                        DispositionLogMongo::insert($buffer);
                     }
 
         return [
-            'todos_count' => $count,
-            'temp_table' => DB::table('temp_conditions')->count()
-            // 'total' => DispositionLogMongo::count(),
-            // 'data' => DispositionLogMongo::limit(40)->get()
+            'total' => DispositionLogMongo::count(),
+            'data' => DispositionLogMongo::limit(40)->get()
         ];
     }
 
@@ -151,8 +152,8 @@ class LeadFilterService
         }
         $columnsSql[] = "INDEX(" . implode("), INDEX(", $columns) . ")";
 
-        // DispositionLogMongo::truncate();
-        // DispositionConfigMongo::truncate();
+        DispositionLogMongo::truncate();
+        DispositionConfigMongo::truncate();
 
         DB::statement("CREATE TEMPORARY TABLE temp_conditions (" . implode(', ', $columnsSql) . ")");
 

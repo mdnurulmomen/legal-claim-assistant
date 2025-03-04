@@ -11,10 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Schema::connection('mongodb')->create('disposition_config_mongos', function (Blueprint $collection) {
-        //     $collection->index('uid');
-        //     $collection->index('user_id');
-        // });
+        Schema::connection('mongodb')->create('disposition_config_mongos', function (Blueprint $collection) {
+            $collection->index('uid');
+            $collection->index('user_id');
+        });
     }
 
     /**
@@ -22,6 +22,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Schema::connection('mongodb')->dropIfExists('disposition_config_mongos');
+        Schema::connection('mongodb')->dropIfExists('disposition_config_mongos');
     }
 };
