@@ -8,7 +8,6 @@ use App\Http\Controllers\Api\Lead\Resources\LeadResource;
 use App\Http\Controllers\Api\Reporting\Resources\ReportingResource;
 use App\Library\Services\CountryFuzzyMatcher;
 use App\Models\PlatformData;
-use App\Traits\AffiliateTrait;
 use App\Traits\FormatterTrait;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -20,7 +19,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExcelService
 {
-    use FormatterTrait, AffiliateTrait;
+    use FormatterTrait;
 
     /**
      * Formats the lead export data and returns it as a CSV file or a string.
@@ -44,50 +43,41 @@ class ExcelService
 
         [$tableColumns, $amountColumns] = $this->formatExportColumns($columns);
 
+        $leadReport = function ($column) {
+            return "(
+                SELECT SUM(lead_reports.{$column})
+                FROM lead_reports
+                WHERE lead_reports.lead_id = platform_datas.id
+                LIMIT 1
+            )";
+        };
+
         $leadQuery = $leadQuery
                         ->select($tableColumns)
-                        ->when(!empty($amountColumns), function ($query) use ($amountColumns) {
-                            $query->leftJoin('lead_reports', 'lead_reports.lead_id', '=', 'platform_datas.id');
-
+                        ->when(! empty($amountColumns), function ($query) use ($amountColumns, $leadReport) {
                             foreach ($amountColumns as $column) {
-                                $query->addSelect(DB::raw("SUM(lead_reports.{$this->convertKeyToColumn($column)}) AS {$column}"));
+                                $query->addSelect(DB::raw($leadReport($this->convertKeyToColumn($column)) . " AS {$column}"));
                             }
                         })
                         ->selectRaw("platform_datas.created_at")
-                        ->groupBy('platform_datas.id')
-                        ->orderBy('platform_datas.id')
                         ->skip($skip)
                         ->take($take);
 
-        $columnObj = [];
-
-        function leadGenerators($leadQuery, &$columnObj) {
-            foreach ($leadQuery->cursor() as $lead) {
-                foreach(array_keys($lead->toArray()) as $key) {
-                    $columnObj[$key] = ($columnObj[$key] ?? 0) + (! empty($lead->{$key}) ? 1 : 0);
-                }
-
-                if(! empty($lead->created_at)) {
-                    $lead->created_at = $lead->created_at->format('Y-m-d H:i');
-                }
-                yield $lead;
+        function leadGenerators($leadQuery) {
+            // return $leadQuery->lazyById(5000)->each(function($lead) {
+            //     yield new ExcelLeadResource($lead);
+            // });
+            foreach ($leadQuery->cursor(5000) as $lead) {
+                yield new ExcelLeadResource($lead);
             }
         }
 
         $fileName = 'Lead Export - ' . $this->formatDateTime(now(), 'M j Y g:i:s a', timezone: config('app.timezone')) . ".$fileType";
 
-        $exportLead = (new FastExcel(collect(leadGenerators($leadQuery, $columnObj))
-                        ->map(function ($lead) use ($columnObj) {
-                            $newLead = [];
-
-                            foreach($columnObj as $key => $value) {
-                                if(empty($value)) continue;
-                                $newLead[$key] = $lead->{$key};
-                            }
-                            return $newLead;
-                        })))
+        $exportLead = (new FastExcel(leadGenerators($leadQuery)))
                         ->configureCsv(',', '"', 'UTF-8', false)
                         ->download($fileName);
+
 
         (new GlobalLogService())
             ->saveLogs(
@@ -173,6 +163,9 @@ class ExcelService
                 if(in_array($slugKey, ['phone', 'mobile', 'phone_number', 'mobile_number', 'mobile_no', 'phone_no', 'number'])) {
                     $newValue = (new CountryFuzzyMatcher())->formatPhoneNumber($value, $country);
                 }
+                //  else {
+                //     $newValue = $this->formatString($value);
+                // }
 
                 return [$slugKey => $newValue];
             })->all();
@@ -228,24 +221,18 @@ class ExcelService
 
         $reportQuery = $reportQuery->skip($skip)->take($take);
 
-        $columnObj = [];
+        function reportGenerator($reportQuery) {
+            foreach ($reportQuery->cursor() as $lead) {
+                yield new ReportingResource($lead);
+            }
+        }
 
         $fileName = 'Report Export - ' . $this->formatDateTime(now(), 'M j Y g:i:s a', timezone: config('app.timezone')) . '.csv';
 
-        array_push($columns, ...['buyer_name', 'integration_name', 'affiliate_name', 'affid',]);
-
-        $exportLead = (new FastExcel(collect($this->reportGenerator($reportQuery, $columnObj))
-                        ->map(function ($lead) use ($columnObj, $columns) {
-                            $newLead = [];
-
-                            foreach($columnObj as $key => $value) {
-                                if(empty($value) || ! in_array($key, $columns)) continue;
-                                $newLead[$key] = $lead->{$key};
-                            }
-                            return $newLead;
-                        })))
+        $exportLead = (new FastExcel(reportGenerator($reportQuery)))
                         ->configureCsv(',', '"', 'UTF-8', false)
                         ->download($fileName);
+
 
         (new GlobalLogService())
             ->saveLogs(
@@ -257,17 +244,5 @@ class ExcelService
             );
 
         return $exportLead;
-    }
-
-    public function reportGenerator($reportQuery, &$columnObj)
-    {
-        foreach ($reportQuery->cursor() as $report) {
-
-            foreach(array_keys((array) $report) as $key) {
-                $columnObj[$key] = ($columnObj[$key] ?? 0) + (! empty($report->{$key}) ? 1 : 0);
-            }
-
-            yield new ReportingResource($report);
-        }
     }
 }
