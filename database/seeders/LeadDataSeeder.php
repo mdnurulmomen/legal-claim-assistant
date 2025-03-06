@@ -17,8 +17,10 @@ class LeadDataSeeder extends Seeder
      */
     public function run(): void
     {
-        set_time_limit(0);
-        ini_set('memory_limit', -1);
+        // set_time_limit(0);
+        // ini_set('memory_limit', -1);
+
+        abort(400, 'Custom Error');
 
         // Pre-load necessary data for lookup
         $listIds = PlatformList::pluck('id')->toArray();
