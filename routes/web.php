@@ -17,10 +17,10 @@ Route::get('/', function () {
 
 Route::get('/test', function (Request $request) {
 
-    // return response('Hello World test!', 200, [
-    //     'Content-Type' => 'text/plain',
-    //     'X-Content-Type-Options' => 'nosniff',
-    //     'X-Frame-Options' => 'deny',
-    //     'X-XSS-Protection' => '1; mode=block'
-    // ]);
+    return response('Hello World test!', 200, [
+        'Content-Type' => 'text/plain',
+        'X-Content-Type-Options' => 'nosniff',
+        'X-Frame-Options' => 'deny',
+        'X-XSS-Protection' => '1; mode=block'
+    ]);
 });
