@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Lead\Resources\LeadResource;
 use App\Http\Controllers\Api\Reporting\Resources\ReportingResource;
 use App\Library\Services\CountryFuzzyMatcher;
 use App\Models\PlatformData;
+use App\Models\PlatformDataItem;
 use App\Traits\FormatterTrait;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -59,14 +60,16 @@ class ExcelService
                                 $query->addSelect(DB::raw($leadReport($this->convertKeyToColumn($column)) . " AS {$column}"));
                             }
                         })
+                        ->addSelect([
+                            'custom_lead_id' => PlatformDataItem::whereColumn('platform_datas.id', 'platform_data_items.platform_data_id')
+                                                    ->select('platform_data_items.value')
+                                                    ->limit(1)
+                        ])
                         ->selectRaw("platform_datas.created_at")
                         ->skip($skip)
                         ->take($take);
 
         function leadGenerators($leadQuery) {
-            // return $leadQuery->lazyById(5000)->each(function($lead) {
-            //     yield new ExcelLeadResource($lead);
-            // });
             foreach ($leadQuery->cursor(5000) as $lead) {
                 yield new ExcelLeadResource($lead);
             }

@@ -18,6 +18,7 @@ class ExcelLeadResource extends JsonResource
     public function toArray($request): array
     {
         $columns = json_decode($request->columns, true);
+        $columns[] = 'custom_lead_id';
 
         if (!is_array($columns)) {
             return [];

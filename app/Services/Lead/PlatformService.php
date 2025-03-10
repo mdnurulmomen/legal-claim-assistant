@@ -56,17 +56,6 @@ class PlatformService
 
         $conditionKeys = array_keys($firstCondition);
 
-        $newKeyValueConditions = [];
-
-        // foreach($conditionKeys as $conditionKey) {
-        //     if(! in_array($conditionKey, $fillableKeys)) continue;
-
-        //     $newKeyValueConditions[$conditionKey] = $requestedConditions->pluck($conditionKey)
-        //                                                 ->unique()->values()->all();
-        // }
-
-        // info('new key Conditions', $newKeyValueConditions);
-
         foreach($custom as $item) {
             $conditionKeys[] = $item['lead_key'];
             $leadKeys[$item['lead_key']] = 'custom_lead_id';
@@ -95,10 +84,6 @@ class PlatformService
         // abort(400, 'Disposition config not found !');
 
         try {
-
-            // $phones = PlatformData::limit(1000)->where('id', '<', 3040638)->latest('id')->pluck('phone');
-            // info('phone', $phones->toArray());
-            // abort(400, 'custome');
 
             // DB::beginTransaction();
 
@@ -599,7 +584,7 @@ class PlatformService
 
         $leads = PlatformData::query()
                     ->select('id', 'datas', ... $selectableFields)
-                    ->whereIn('id', $filledData->pluck('id'))
+                    ->whereIn('id', $filledData->pluck('id')->toArray())
                     ->when(! empty($isAmountField), function($query) {
                         return $query->addSelect([
                             'affiliate_id',
@@ -665,7 +650,7 @@ class PlatformService
                                     ->map(fn($item) => $item === 'revenue' ? 'lead_revenue' : $item)
                                     ->values();
 
-        $isRevenuePayoutField = $updatableReportFields->contains(fn($field) => in_array($field, ['revenue', 'affiliate_payout']));
+        $isRevenuePayoutField = $updatableReportFields->contains(fn($field) => in_array($field, ['lead_revenue', 'affiliate_payout']));
 
         if(empty($updatableReportFields)) return;
 
@@ -880,6 +865,11 @@ class PlatformService
                     if($uploadType === 'disposition_upload') {
                         $report['lead_revenue'] = $evenlyDistributedRevenue;
                         $report['affiliate_payout'] = $evenlyDistributedPayout;
+                        $adjustment = $this->calculateRevenuePayout((float) $report['lead_revenue'], (float) $report['affiliate_payout']);
+
+                        $report['lead_profit'] = $adjustment['lead_profit'];
+                        $report['affiliate_margin'] = $adjustment['affiliate_margin'];
+                        $report['profit_margin'] = $adjustment['profit_margin'];
                     }
 
                     if(! empty($report['is_retainer']) && $uploadType === 'retainer_upload') {
@@ -897,21 +887,21 @@ class PlatformService
                 yield $report;
             }
 
-            $isRevenuePayoutFieldsNotEmpty = !empty($revenuePayoutFields);
-            $isRetainerUpload = $uploadType === 'retainer_upload';
             $isDispositionUploadWithNoReports = $uploadType === 'disposition_upload' && $reportsCount < 1;
             $newRetainer = null;
 
-            if($isRevenuePayoutFieldsNotEmpty && ($isRetainerUpload || $isDispositionUploadWithNoReports)) {
+            if(! empty($revenuePayoutFields) && ($uploadType === 'retainer_upload' || $isDispositionUploadWithNoReports)) {
 
                 $newRetainer = $this->getFormData($lead, $oldRetainer, $uploadType, $evenlyDistributedRevenue, $evenlyDistributedPayout);
 
                 $this->sumRevenuePayout($revenue, $payout, $newRetainer);
 
+                yield $newRetainer;
+            }
+
+            if(! empty($revenuePayoutFields)) {
                 $leadRevenuePayouts[] = $this->getRevenuePayout($lead, $revenue, $payout, $newRetainer, $uploadType);
                 $this->resetRevenuePayout($revenue, $payout);
-
-                yield $newRetainer;
             }
         }
     }
@@ -951,7 +941,7 @@ class PlatformService
      * @param float $affiliatePayout
      * @return array
      */
-    private function getRevenuePayout($lead, $revenue, $payout, $leadReport = null, string $uploadType = null): array
+    private function getRevenuePayout($lead, $revenue, $payout, $leadReport = null, $uploadType = null): array
     {
         $data = [
             'id' => $lead['id'],
@@ -1048,26 +1038,33 @@ class PlatformService
 
     public function processLeads(iterable $leads, Request $request, array $portalLeadIds, array $portalExceptedLeadIds, bool $isAllShowPortal): iterable
     {
-        foreach ($leads as $item) {
+        $headers = $request->filled_headers;
 
-            $item['id'] = (string) $item['id'];
+        foreach ($leads as $item) {
+            $formattedItem = [
+                'id' => (string) $item['platform_data_id'],
+            ];
+
+            foreach($headers as $header) {
+                $formattedItem[$header] = $item->updatable_data[$header] ?? null;
+            }
 
             if ($request->upload_type === 'disposition_upload') {
-                yield $item;
+                yield $formattedItem;
                 continue;
             }
 
-            $item['is_show_portal'] = $isAllShowPortal;
+            $formattedItem['is_show_portal'] = $isAllShowPortal;
 
             if (!empty($portalLeadIds)) {
-                $item['is_show_portal'] = in_array($item['id'], $portalLeadIds);
+                $formattedItem['is_show_portal'] = in_array($item['platform_data_id'], $portalLeadIds);
             }
 
             if (!empty($portalExceptedLeadIds)) {
-                $item['is_show_portal'] = !in_array($item['id'], $portalExceptedLeadIds);
+                $formattedItem['is_show_portal'] = !in_array($item['platform_data_id'], $portalExceptedLeadIds);
             }
 
-            yield $item;
+            yield $formattedItem;
         }
     }
 }
