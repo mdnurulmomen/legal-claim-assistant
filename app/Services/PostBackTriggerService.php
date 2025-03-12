@@ -149,14 +149,10 @@ class PostBackTriggerService {
                                 $parameter = null;
                         }
 
-                        info($parameter);
-
                         return $parameter;
 
                     }, $postback->url);
                 }
-
-                info('skip post upon: ' . ($skip_postback ? 'skip post' : 'no skip post'));
 
                 if ($skip_postback) {
                     continue;
@@ -281,7 +277,6 @@ class PostBackTriggerService {
 
     public function postBackTrigger($url, $lead_id = null, $type = 'global_postback')
     {
-        info('url =>' . $url);
         try {
             // Perform the GET request
             $response = Http::get($url);
