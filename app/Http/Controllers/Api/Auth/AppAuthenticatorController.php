@@ -43,26 +43,31 @@ class AppAuthenticatorController extends Controller
             return withError('Your account is inactive. Please contact to admin.', 400);
         }
 
-        $google2fa = app('pragmarx.google2fa');
-        $isNewQR = false;
+        $data = [
+            'qr_code' => "",
+            'secret' => "",
+            'is_new_qr' => false
+        ];
 
         if (empty($user->google2fa_secret)) {
+
+            $google2fa = app('pragmarx.google2fa');
+
             $user->google2fa_secret = $google2fa->generateSecretKey();
             $user->save();
-            $isNewQR = true;
+
+            $qrCodeUrl = $google2fa->getQRCodeUrl(
+                config('app.name'),
+                $user->email,
+                $user->google2fa_secret
+            );
+
+            $data['qr_code'] = $this->generateQrCode($qrCodeUrl);
+            $data['secret'] = $user->google2fa_secret;
+            $data['is_new_qr'] = true;
         }
 
-        $qrCodeUrl = $google2fa->getQRCodeUrl(
-                        config('app.name'),
-                        $user->email,
-                        $user->google2fa_secret
-                    );
-
-        return withSuccess([
-            'qr_code' => $this->generateQrCode($qrCodeUrl),
-            'secret' => $user->google2fa_secret,
-            'is_new_qr' => $isNewQR
-        ]);
+        return withSuccess($data);
     }
 
     /**
@@ -134,5 +139,60 @@ class AppAuthenticatorController extends Controller
         }
 
         return withError('Invalid Verification Code!');
+    }
+
+    /**
+     * Generate a QR Code image data URI using Bacon QR Code. If the user has never had a QR code, generate a new one.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function generateQr(Request $request)
+    {
+        $user = User::find(auth()->id());
+        if(empty($user)) {
+            return withError('User not found', 404);
+        }
+
+        $data = [
+            'qr_code' => "",
+            'secret' => "",
+            'is_new_qr' => false
+        ];
+
+        $google2fa = app('pragmarx.google2fa');
+
+        if(empty($user->google2fa_secret) && empty($request->is_generate_new)) {
+            return withSuccess($data);
+        }
+
+        if(! empty($user->google2fa_secret) && empty($request->is_generate_new)) {
+            $qrCodeUrl = $google2fa->getQRCodeUrl(
+                config('app.name'),
+                $user->email,
+                $user->google2fa_secret
+            );
+
+            $data['qr_code'] = $this->generateQrCode($qrCodeUrl);
+            $data['secret'] = $user->google2fa_secret;
+
+            return withSuccess($data);
+        }
+
+        $user->google2fa_secret = $google2fa->generateSecretKey();
+        $user->save();
+
+        $qrCodeUrl = $google2fa->getQRCodeUrl(
+            config('app.name'),
+            $user->email,
+            $user->google2fa_secret
+        );
+
+        $data['qr_code'] = $this->generateQrCode($qrCodeUrl);
+        $data['secret'] = $user->google2fa_secret;
+
+        $data['is_new_qr'] = true;
+
+        return withSuccess($data);
     }
 }
