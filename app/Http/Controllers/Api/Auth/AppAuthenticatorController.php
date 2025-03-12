@@ -149,7 +149,9 @@ class AppAuthenticatorController extends Controller
      */
     public function generateQr(Request $request)
     {
-        $user = User::find(auth()->id());
+        $userId = ! empty($request->user_id) ? $request->user_id : auth()->id();
+
+        $user = User::find($userId);
         if(empty($user)) {
             return withError('User not found', 404);
         }
