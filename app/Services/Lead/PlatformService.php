@@ -783,7 +783,7 @@ class PlatformService
             if(empty($lead)) continue;
 
             $logData = $log->log_data;
-            $originalPayload = $logData && $logData['original_payload'] ? $logData['original_payload'] : null;
+            $originalPayload = $logData['original_payload'] ?? null;
             if(empty($originalPayload)) continue;
 
             $data = is_string($lead['datas']) ? json_decode($lead['datas'], true) : $lead['datas'];
