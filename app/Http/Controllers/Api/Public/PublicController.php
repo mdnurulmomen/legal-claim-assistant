@@ -64,7 +64,7 @@ class PublicController extends Controller
         GlobalPostBackTriggerJob::dispatch([
             'type' => 'single_retainer',
             'lead_id' => $platformData->id
-        ]);
+        ], 'on_retainer_added');
 
         return withSuccess(message: 'Retainer Event Triggered Successfully!');
     }
