@@ -8,10 +8,10 @@ use Illuminate\Support\Facades\Http;
 
 class PostBackTriggerService {
 
-    public function trigger($data)
+    public function trigger($data, $postBackType)
     {
         //get the postbacks
-        $postbacks = GlobalPostback::where('postback_event', 'on_retainer_added')->get();
+        $postbacks = GlobalPostback::where('postback_event', $postBackType)->get();
 
         if( $postbacks->isEmpty() ){
             return;
@@ -36,7 +36,6 @@ class PostBackTriggerService {
 
                           //get the target value
                           $target_value = null;
-
 
                           //if it's not dynamic field name
                           if ((substr($field, 0, 1) === "{" && substr($field, -1) === "}")) {
