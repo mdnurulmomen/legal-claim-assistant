@@ -538,6 +538,11 @@ class LeadService extends ReportingService
 
         $this->updateLeadReports($updatedLeadsData);
         $this->updateLeadLogs($leads);
+
+        GlobalPostBackTriggerJob::dispatch([
+            'type' => 'bulk_retainer',
+            'lead_ids' => $leadData->pluck('id')->all()
+        ], 'on_lead_update');
     }
 
     /**
@@ -1269,7 +1274,7 @@ class LeadService extends ReportingService
             GlobalPostBackTriggerJob::dispatch([
                 'type' => 'bulk_retainer',
                 'lead_reports' => $leadReportData
-            ]);
+            ], 'on_retainer_added');
         }
 
         if(count($leadRevenuePayouts) > 0) {
