@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -21,4 +22,12 @@ Route::prefix('user')->as('user.')
 
         $route->get('partner-list', 'partnerList')->name('partner.list');
         $route->post('manager-list', 'managerList')->name('manager.list');
+    });
+
+
+Route::prefix('profile')->as('profile.')
+    ->controller(ProfileController::class)
+    ->middleware('auth:sanctum')
+    ->group(function ($route) {
+        $route->get('basic-info', 'basicInfo')->name('basic.info');
     });

@@ -30,5 +30,6 @@ Route::prefix('auth')->as('auth.')
             ->group(function($child) {
                 $child->post('generate-2fa', 'generate2FA')->name('generate.2fa')->middleware(['guest', 'throttle:40,1']);
                 $child->post('verify-2fa', 'verify2FA')->name('verify.2fa')->middleware(['guest', 'throttle:40,1']);
+                $child->post('generate-qr', 'generateQr')->name('generate.qr')->middleware(['auth:sanctum']);
             });
     });
