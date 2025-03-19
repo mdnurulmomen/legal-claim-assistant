@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\IntegratedMail\Requests;
+namespace App\Http\Controllers\Api\Setting\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -25,8 +25,9 @@ class CreateOrUpdateIntegratedMailRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => ['required', 'string', 'max:255'],
+            'title' => ['required', 'string', 'max:255', Rule::unique('integration_emails', 'title')->ignore($this->contentId)],
             'content' => ['required', 'string'],
+            'status' => ['required', Rule::in(['active', 'inactive'])],
         ];
     }
 

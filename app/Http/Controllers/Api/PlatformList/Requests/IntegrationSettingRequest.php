@@ -50,6 +50,12 @@ class IntegrationSettingRequest extends FormRequest
             'buyer_payout_by_affid' => ['nullable', 'array'],
             'caps' => ['nullable', 'array'],
             'cv_trigger' => ['nullable', 'array'],
+            'delivery_method' => ['nullable', 'string', 'max:255', Rule::in(['endpoint', 'email'])],
+            'mail_subject' => ['nullable', 'string', 'max:255'],
+            'mail_to' => ['nullable', 'string', 'max:255', 'email'],
+            'mail_cc' => ['nullable', 'array'],
+            'mail_cc.*' => ['nullable', 'string', 'max:255', 'email'],
+            'integration_email_id' => ['nullable', 'integer', Rule::exists('integration_emails', 'id')],
         ];
 
         if(array_key_exists('brand_data', $this->all())) {
