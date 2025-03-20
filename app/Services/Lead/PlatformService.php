@@ -632,6 +632,18 @@ class PlatformService
 
         $this->updateRelevantLeadReports($fields, $leadData, $leadIds, $request->upload_type);
         $this->updateRelevantLeadLog($fields, $leadGroup, $leadIds, $fillable);
+
+        if($request->upload_type === 'retainer_upload') {
+            GlobalPostBackTriggerJob::dispatch([
+                'type' => 'bulk_retainer',
+                'lead_ids' => $leads->pluck('id')->all()
+            ], 'on_retainer_added');
+        } else {
+            GlobalPostBackTriggerJob::dispatch([
+                'type' => 'bulk_retainer',
+                'lead_ids' => $leads->pluck('id')->all()
+            ], 'on_lead_update');
+        }
     }
 
     /**
@@ -708,13 +720,6 @@ class PlatformService
 
             if(count($newReports) > 0) {
                 LeadReport::insert($newReports);
-            }
-
-            if($isRevenuePayoutField && $uploadType === 'retainer_upload') {
-                GlobalPostBackTriggerJob::dispatch([
-                    'type' => 'bulk_retainer',
-                    'lead_reports' => $leadReportData->toArray()
-                ]);
             }
         }
 
