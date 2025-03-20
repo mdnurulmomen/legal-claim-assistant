@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Controllers\Api\GlobalPostback;
+namespace App\Http\Controllers\Api\Setting;
 
 use App\Helpers\SettingHandler;
 use App\Helpers\Utility;
-use App\Http\Controllers\Api\GlobalPostback\Requests\CreateOrUpdateGlobalPostbackRequest;
-use App\Http\Controllers\Api\GlobalPostback\Resources\GlobalPostbackResource;
-use App\Http\Controllers\Api\GlobalPostback\Resources\SingleGlobalPostbackResource;
+use App\Http\Controllers\Api\Setting\Requests\CreateOrUpdateGlobalPostbackRequest;
+use App\Http\Controllers\Api\Setting\Resources\GlobalPostbackResource;
+use App\Http\Controllers\Api\Setting\Resources\SingleGlobalPostbackResource;
 use App\Http\Controllers\Controller;
 use App\Models\GlobalPostback;
 use App\Traits\CommonTrait;

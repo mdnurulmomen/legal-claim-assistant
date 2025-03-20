@@ -227,6 +227,16 @@ class MenuSeeder extends Seeder
                 'order' => 14.2,
                 'created_at' => $now,
                 'updated_at' => $now
+            ],
+            [
+                'id' => 21,
+                'title' => 'Integration Email',
+                'route_name' => 'integrationEmail',
+                'type' => 'endpoint',
+                'menu_id' => null,
+                'order' => 9.1,
+                'created_at' => $now,
+                'updated_at' => $now
             ]
         ];
 
