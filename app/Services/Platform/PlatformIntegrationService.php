@@ -278,7 +278,7 @@ class PlatformIntegrationService
                 strcasecmp($value, 'false') === 0 => false,   // Boolean false
                 strcasecmp($value, 'null') === 0 => null,     // Null
                 strcasecmp($value, 'undefined') === 0 => null, // Null
-                is_numeric($value) => ((ctype_digit($value) && $value[0] === '0')
+                is_numeric($value) => ((ctype_digit($value) && (((string) $value)[0]) === '0')
                         ? $value
                         : (strpos($value, '.') === false ? (int) $value : (float) $value)),
 
