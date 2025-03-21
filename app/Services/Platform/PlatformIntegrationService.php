@@ -278,11 +278,11 @@ class PlatformIntegrationService
                 strcasecmp($value, 'false') === 0 => false,   // Boolean false
                 strcasecmp($value, 'null') === 0 => null,     // Null
                 strcasecmp($value, 'undefined') === 0 => null, // Null
-                is_numeric($value) => strpos($value, '.') === false
-                    ? (int) $value                           // Integer
-                    : (float) $value,                        // Float
+                is_numeric($value) => ((ctype_digit($value) && $value[0] === '0')
+                        ? $value
+                        : (strpos($value, '.') === false ? (int) $value : (float) $value)),
 
-                default => $value,                                  // Fallback to string
+                default => $value
             };
 
             $updatedArray[$key] = $newValue;
