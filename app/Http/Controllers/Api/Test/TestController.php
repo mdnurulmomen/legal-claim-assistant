@@ -180,27 +180,27 @@ class TestController extends Controller
                         $formattedLeads[] = $this->formatLead($lead, $formattedReports, $newReports);
                     });
 
-        try {
-            DB::beginTransaction();
-                PlatformData::upsert(
-                    $formattedLeads,
-                    ['id'],
-                    ['retained_date', 'lead_status', 'is_retainer']
-                );
+        // try {
+        //     DB::beginTransaction();
+        //         PlatformData::upsert(
+        //             $formattedLeads,
+        //             ['id'],
+        //             ['retained_date', 'lead_status', 'is_retainer']
+        //         );
 
-                LeadReport::upsert(
-                    $formattedReports,
-                    ['id'],
-                    ['is_retainer']
-                );
+        //         LeadReport::upsert(
+        //             $formattedReports,
+        //             ['id'],
+        //             ['is_retainer']
+        //         );
 
-                LeadReport::insert($newReports);
+        //         LeadReport::insert($newReports);
 
-            DB::commit();
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            return withError('Lead Filled Fields Update Failed.' . $th->getMessage());
-        }
+        //     DB::commit();
+        // } catch (\Throwable $th) {
+        //     DB::rollBack();
+        //     return withError('Lead Filled Fields Update Failed.' . $th->getMessage());
+        // }
 
         return withSuccess([
             'formatted_leads' => $formattedLeads,
