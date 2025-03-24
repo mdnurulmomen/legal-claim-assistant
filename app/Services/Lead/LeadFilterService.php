@@ -62,6 +62,13 @@ class LeadFilterService
                                                     ->limit(1)
                         ]);
                     })
+                    ->when(in_array('buyer_name', $columns), function($query) {
+                        return $query->addSelect([
+                            'custom_lead_id' => PlatformDataItem::whereColumn('platform_datas.id', 'platform_data_items.platform_data_id')
+                                                    ->select('platform_data_items.value')
+                                                    ->limit(1)
+                        ]);
+                    })
                     ->when($isAmountField, function ($query) use($request) {
                         return $query->addSelect([
                             'revenue' => LeadReport::selectRaw('IFNULL(SUM(lead_revenue), 0)')
@@ -97,6 +104,18 @@ class LeadFilterService
 
                             if (strpos($column, 'buyer_id_') === 0) {
                                 $query->whereColumn("tc.$column", "platform_datas.buyer_id");
+                                continue;
+                            }
+
+                            if ($column === 'buyer_name') {
+
+                                $query->whereExists(function ($subQuery) use($column) {
+                                        $subQuery->select(DB::raw(1))
+                                            ->from('buyers')
+                                            ->whereColumn('buyers.name', "tc.$column")
+                                            ->whereColumn('platform_datas.buyer_id', 'buyers.id');
+                                    });
+
                                 continue;
                             }
 
