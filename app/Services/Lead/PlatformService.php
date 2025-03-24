@@ -973,7 +973,7 @@ class PlatformService
     * @param array $leadReportData
     * @return array
     */
-    public function getFormData(array $lead, ?array $oldRetainer = null, string $uploadType = null, float $evenlyDistributedRevenue = 0, float $evenlyDistributedPayout = 0): array
+    public function getFormData(array $lead, ?array $oldRetainer = null, string $uploadType = "", float $evenlyDistributedRevenue = 0, float $evenlyDistributedPayout = 0): array
     {
         $newDate = now();
 

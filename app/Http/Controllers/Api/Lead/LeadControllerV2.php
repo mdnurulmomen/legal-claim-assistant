@@ -13,7 +13,6 @@ use App\Services\Lead\PlatformService;
 use App\Services\Lead\LeadFilterService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\DB;
 
 class LeadControllerV2 extends Controller
 {
@@ -68,9 +67,6 @@ class LeadControllerV2 extends Controller
         $portalExceptedLeadIds = isset($request->portal_selection['excepted_ids']) ? json_decode($request->portal_selection['excepted_ids'], true) : [];
         $isAllShowPortal = isset($request->portal_selection['is_checked_all']) ? (bool) $request->portal_selection['is_checked_all'] : false;
 
-        $batchSize = 2000;
-        $buffer = [];
-
         try {
             // DB::beginTransaction();
 
@@ -111,8 +107,7 @@ class LeadControllerV2 extends Controller
             return withError('Lead Filled Fields Update Failed.' . $th->getMessage());
         }
 
-        return withSuccess(
-            [
+        return withSuccess([
                 'total_updated' => $savedLogs->count(),
             ],
             'Lead Filled Fields Updated Successfully!'
@@ -149,6 +144,13 @@ class LeadControllerV2 extends Controller
         return withSuccess($buyers);
     }
 
+    /**
+     * Retrieves a list of lead logs based on the given request filters.
+     *
+     * @param Request $request
+     * @param LeadFilterService $leadFilterService
+     * @return Response
+     */
     public function leadLogs(Request $request, LeadFilterService $leadFilterService): Response
     {
         try {
@@ -159,7 +161,13 @@ class LeadControllerV2 extends Controller
         }
     }
 
-    public function logStatistics(Request $request)
+    /**
+     * Retrieves statistics of lead dispositions, categorizing them as duplicate or unique.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function logStatistics(Request $request): Response
     {
         $config = DispositionConfigMongo::where('user_id', auth()->id())->latest('id')->select('id')->first();
         if(empty($config)) {
@@ -184,6 +192,17 @@ class LeadControllerV2 extends Controller
         ]);
     }
 
+    /**
+     * Retrieves a list of filtered leads from the platform data table, filtered by the
+     * given conditions. The conditions must contain at least one of the following
+     * filterable fields: {@see \App\Services\Lead\LeadFilterService::getFilterableFields()}.
+     * If the conditions do not contain any of the filterable fields, an error will be
+     * returned.
+     *
+     * @param Request $request
+     * @param LeadFilterService $leadFilterService
+     * @return Response
+     */
     public function filteredLeads(Request $request, LeadFilterService $leadFilterService): Response
     {
         $filterableFields = $leadFilterService->getFilterableFields();
