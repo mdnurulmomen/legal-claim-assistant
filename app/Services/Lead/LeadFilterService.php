@@ -434,7 +434,8 @@ class LeadFilterService
             'email',
             'buyer_id',
             'lead_status',
-            'affm_source_id'
+            'affm_source_id',
+            'buyer_name'
         ];
     }
 
