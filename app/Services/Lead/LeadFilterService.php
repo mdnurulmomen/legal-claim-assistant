@@ -2,6 +2,7 @@
 
 namespace App\Services\Lead;
 
+use App\Models\Buyer;
 use App\Models\DispositionConfigMongo;
 use App\Models\DispositionLogMongo;
 use App\Models\LeadReport;
@@ -64,9 +65,7 @@ class LeadFilterService
                     })
                     ->when(in_array('buyer_name', $columns), function($query) {
                         return $query->addSelect([
-                            'custom_lead_id' => PlatformDataItem::whereColumn('platform_datas.id', 'platform_data_items.platform_data_id')
-                                                    ->select('platform_data_items.value')
-                                                    ->limit(1)
+                            'buyer_name' => Buyer::select('name')->whereColumn('platform_datas.buyer_id', 'buyers.id')->limit(1)
                         ]);
                     })
                     ->when($isAmountField, function ($query) use($request) {
