@@ -249,6 +249,8 @@ class TestController extends Controller
     public function getFormData($lead): array
     {
         $newDate = now();
+        $revenue = (float) $lead->revenue;
+        $payout = (float) $lead->payout;
 
         $formData = [
             'lead_id' => $lead['id'] ?? null,
@@ -260,14 +262,14 @@ class TestController extends Controller
             'affiliate_specs_id' => $lead['affiliate_specs_id'] ?? null,
             'affm_source_id' => $lead['affm_source_id'] ?? null,
             'is_retainer' => 1,
-            'lead_revenue' => (float) ($lead['revenue'] ?? 0),
-            'affiliate_payout' => (float) ($lead['payout'] ?? 0),
+            'lead_revenue' => $revenue,
+            'affiliate_payout' => $payout,
             'lead_profit' => 0,
             'affiliate_margin' => 0,
             'profit_margin' => 0,
             'sold_type' => $lead['sold_type'] ?? null,
-            'created_at' => $newDate,
-            'updated_at' => $newDate
+            'created_at' => $lead['retained_date'] ?? $newDate,
+            'updated_at' => $lead['retained_date'] ?? $newDate
         ];
 
         $reportData = $this->calculateRevenuePayout((float) $formData['lead_revenue'], (float) $formData['affiliate_payout']);
