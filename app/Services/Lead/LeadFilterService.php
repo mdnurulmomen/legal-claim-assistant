@@ -183,12 +183,12 @@ class LeadFilterService
 
         return DispositionLogMongo::query()
                 ->where('disposition_config_id', $config->id)
-                ->when(! empty($searchText) && empty($request->is_updatable_only), function ($query) use ($searchText) {
-                    return $query->whereRaw('LOWER(data) like ?', ["%{$searchText}%"]);
-                })
-                ->when(! empty($searchText) && ! empty($request->is_updatable_only), function ($query) use ($searchText) {
-                    return $query->whereRaw('LOWER(updatable_data) like ?', ["%{$searchText}%"]);
-                })
+                // ->when(! empty($searchText) && empty($request->is_updatable_only), function ($query) use ($searchText) {
+                //     return $query->whereRaw('LOWER(data) like ?', ["%{$searchText}%"]);
+                // })
+                // ->when(! empty($searchText) && ! empty($request->is_updatable_only), function ($query) use ($searchText) {
+                //     return $query->whereRaw('LOWER(updatable_data) like ?', ["%{$searchText}%"]);
+                // })
                 ->when(! empty($leadStatus), function ($query) use ($leadStatus) {
                     return $query->where('lead_status', $leadStatus);
                 })
