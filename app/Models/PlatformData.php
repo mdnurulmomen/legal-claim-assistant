@@ -50,4 +50,14 @@ class PlatformData extends Model
     {
         return $this->hasOne(LeadReport::class, 'lead_id', 'id');
     }
+
+    /**
+     * Get all lead reports associated with this platform data.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function leadReports()
+    {
+        return $this->hasMany(LeadReport::class, 'lead_id', 'id');
+    }
 }
