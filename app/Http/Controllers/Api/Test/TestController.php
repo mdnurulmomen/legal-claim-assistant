@@ -180,27 +180,27 @@ class TestController extends Controller
                         $formattedLeads[] = $this->formatLead($lead, $formattedReports, $newReports);
                     });
 
-        try {
-            DB::beginTransaction();
-                PlatformData::upsert(
-                    $formattedLeads,
-                    ['id'],
-                    ['retained_date', 'lead_status', 'is_retainer']
-                );
+        // try {
+        //     DB::beginTransaction();
+        //         PlatformData::upsert(
+        //             $formattedLeads,
+        //             ['id'],
+        //             ['retained_date', 'lead_status', 'is_retainer']
+        //         );
 
-                LeadReport::upsert(
-                    $formattedReports,
-                    ['id'],
-                    ['is_retainer']
-                );
+        //         LeadReport::upsert(
+        //             $formattedReports,
+        //             ['id'],
+        //             ['is_retainer']
+        //         );
 
-                LeadReport::insert($newReports);
+        //         LeadReport::insert($newReports);
 
-            DB::commit();
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            return withError('Lead Filled Fields Update Failed.' . $th->getMessage());
-        }
+        //     DB::commit();
+        // } catch (\Throwable $th) {
+        //     DB::rollBack();
+        //     return withError('Lead Filled Fields Update Failed.' . $th->getMessage());
+        // }
 
         return withSuccess([
             'formatted_leads' => $formattedLeads,
@@ -249,6 +249,8 @@ class TestController extends Controller
     public function getFormData($lead): array
     {
         $newDate = now();
+        $revenue = (float) $lead->revenue;
+        $payout = (float) $lead->payout;
 
         $formData = [
             'lead_id' => $lead['id'] ?? null,
@@ -260,14 +262,14 @@ class TestController extends Controller
             'affiliate_specs_id' => $lead['affiliate_specs_id'] ?? null,
             'affm_source_id' => $lead['affm_source_id'] ?? null,
             'is_retainer' => 1,
-            'lead_revenue' => (float) ($lead['revenue'] ?? 0),
-            'affiliate_payout' => (float) ($lead['payout'] ?? 0),
+            'lead_revenue' => $revenue,
+            'affiliate_payout' => $payout,
             'lead_profit' => 0,
             'affiliate_margin' => 0,
             'profit_margin' => 0,
             'sold_type' => $lead['sold_type'] ?? null,
-            'created_at' => $newDate,
-            'updated_at' => $newDate
+            'created_at' => $lead['retained_date'] ?? $newDate,
+            'updated_at' => $lead['retained_date'] ?? $newDate
         ];
 
         $reportData = $this->calculateRevenuePayout((float) $formData['lead_revenue'], (float) $formData['affiliate_payout']);
