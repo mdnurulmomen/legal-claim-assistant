@@ -220,7 +220,7 @@ class TestController extends Controller
             'is_retainer' => $lead->is_retainer
         ];
 
-        if($lead->revenue == "0.00" || $lead->payout == "0.00") {
+        if($lead->revenue == "0.00") {
             $newLead['lead_status'] = 'Pending';
             $newLead['retained_date'] = null;
             $newLead['is_retainer'] = 0;
