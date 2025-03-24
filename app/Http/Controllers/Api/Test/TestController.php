@@ -229,7 +229,12 @@ class TestController extends Controller
             $newLead['retained_date'] = $lead->updated_at;
             $newLead['is_retainer'] = 1;
 
-            if($lead->leadReports->isNotEmpty()) {
+            if(
+                $lead->leadReports->isNotEmpty()
+                && $lead->leadReports->doesntContain(function ($item) {
+                    return $item['is_retainer'] > 0;
+                })
+            ) {
                 $lastReport = $lead->leadReports->last();
 
                 $formattedReports[] = [
