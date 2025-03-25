@@ -399,12 +399,13 @@ class LeadController extends Controller
                 'type' => 'single_retainer',
                 'lead_id' => $report->lead_id
             ]);
-        } else {
-            GlobalPostBackTriggerJob::dispatch([
-                'type' => 'single_lead_update',
-                'lead_id' => $report->lead_id
-            ], 'on_lead_update');
         }
+        //  else {
+        //     GlobalPostBackTriggerJob::dispatch([
+        //         'type' => 'single_lead_update',
+        //         'lead_id' => $report->lead_id
+        //     ], 'on_lead_update');
+        // }
 
         return withSuccess(message: 'Lead Created Successfully');
     }
@@ -487,21 +488,26 @@ class LeadController extends Controller
             return withError('Lead Report Update Failed!');
         }
 
+        $isRevenuePayoutUpdated = ((float) $clonedReport->lead_revenue !== (float) $request->lead_revenue) || ((float) $clonedReport->affiliate_payout !== (float) $request->affiliate_payout);
+
         if(empty($clonedReport->is_retainer) && $request->is_retainer){
-            info('inside retainer update');
             GlobalPostBackTriggerJob::dispatch([
                 'type' => 'single_retainer',
                 'lead_id' => $report->lead_id
             ]);
+        } else if(! empty($request->is_retainer) && $isRevenuePayoutUpdated){
+            GlobalPostBackTriggerJob::dispatch([
+                'type' => 'single_retainer_revenue',
+                'lead_id' => $report->lead_id
+            ], 'on_retainer_revenue_update');
         }
 
-        if(empty($clonedReport->is_retainer) && empty($request->is_retainer)){
-            info('inside lead update');
-            GlobalPostBackTriggerJob::dispatch([
-                'type' => 'single_lead_update',
-                'lead_id' => $report->lead_id
-            ], 'on_lead_update');
-        }
+        // if(empty($clonedReport->is_retainer) && empty($request->is_retainer)){
+        //     GlobalPostBackTriggerJob::dispatch([
+        //         'type' => 'single_lead_update',
+        //         'lead_id' => $report->lead_id
+        //     ], 'on_lead_update');
+        // }
 
         return withSuccess(message: 'Lead Report Updated Successfully!');
     }

@@ -638,12 +638,13 @@ class PlatformService
                 'type' => 'bulk_retainer',
                 'lead_ids' => $leads->pluck('id')->all()
             ], 'on_retainer_added');
-        } else {
-            GlobalPostBackTriggerJob::dispatch([
-                'type' => 'bulk_retainer',
-                'lead_ids' => $leads->pluck('id')->all()
-            ], 'on_lead_update');
         }
+        //  else {
+        //     GlobalPostBackTriggerJob::dispatch([
+        //         'type' => 'bulk_retainer',
+        //         'lead_ids' => $leads->pluck('id')->all()
+        //     ], 'on_lead_update');
+        // }
     }
 
     /**
