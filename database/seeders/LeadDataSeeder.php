@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Lead;
 use App\Models\Affiliate;
+use App\Models\Buyer;
 use App\Models\Integration;
 use App\Models\PlatformData;
 use App\Models\PlatformList;
@@ -27,23 +28,27 @@ class LeadDataSeeder extends Seeder
         $faker = Faker::create();
         $buyers = [];
 
-        for($i = 1; $i <= 200; $i++) {
-            $buyer = [
-                'name' => $faker->name(),
-                'company_name' => $faker->company(),
-                'alias' => $faker->companySuffix(),
-                'email' => $faker->email(),
-                'phone' => $faker->phoneNumber(),
-                'address' => $faker->streetAddress(),
-                'city' => $faker->city(),
-                'state' => $faker->state(),
-                'zip' => $faker->postcode(),
-                'country' => $faker->country(),
-                'website' => $faker->url(),
-                'notes' => $faker->text(),
-                'status' => $faker->randomElement(['Pending', 'Returned', 'Disqualified', 'Sent Agreement', 'Agreement Signed', 'Retained'])
-            ];
-        }
+        // for($i = 1; $i <= 200; $i++) {
+        //     $buyers[] = [
+        //         'name' => $faker->name(),
+        //         'company_name' => $faker->company(),
+        //         'alias' => $faker->companySuffix(),
+        //         'email' => $faker->email(),
+        //         'phone' => $faker->phoneNumber(),
+        //         'address' => $faker->streetAddress(),
+        //         'city' => $faker->city(),
+        //         'state' => $faker->state(),
+        //         'zip' => $faker->postcode(),
+        //         'country' => $faker->country(),
+        //         'website' => $faker->url(),
+        //         'notes' => $faker->text(),
+        //         'status' => $faker->randomElement(['Active', 'Inactive']),
+        //         'created_at' => $now,
+        //         'updated_at' => $now
+        //     ];
+        // }
+
+        // Buyer::insert($buyers);
 
         // Pre-load necessary data for lookup
         // $listIds = PlatformList::pluck('id')->toArray();

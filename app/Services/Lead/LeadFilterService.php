@@ -26,11 +26,11 @@ class LeadFilterService
         $now = now();
 
         $requestedConditions = collect($request->conditions ?? []);
-
-        $conditions = $this->formatConditionsData($requestedConditions);
-        if(empty($conditions)) {
+        if(empty($requestedConditions)) {
             abort(400, 'Filter items must not be empty!');
         }
+
+        $conditionFirst = $this->formatAndSaveConditionData($requestedConditions);
 
         $groupedData = iterator_to_array($this->groupCsvData($request));
 
@@ -39,9 +39,7 @@ class LeadFilterService
         //     RemoveConfigLogs::dispatch($oldConfig->id);
         // }
 
-        $this->saveDataToTemporaryTable($conditions);
-
-        $columns = array_keys($conditions[0] ?? []);
+        $columns = array_keys($conditionFirst);
         $fillableKeys = (new PlatformData())->getFillable();
         $selectableKeys = $this->formatSelectableKeys($request, $fillableKeys);
         $isAmountField = in_array('revenue', $request->mapped_headers) || in_array('affiliate_payout', $request->mapped_headers);
@@ -336,50 +334,46 @@ class LeadFilterService
         return $formattedKeys;
     }
 
-    /**
-     * Formats the conditions data for saving to the temporary table.
-     *
-     * @param array $conditions The array of condition objects.
-     * @return array The formatted conditions data.
-     */
-    public function formatConditionsData($conditions) {
+    public function formatAndSaveConditionData($conditions) {
+        $firstCondition = [];
 
-        $formattedConditions = $conditions->map(function($item) {
-                                    $newItem = $item;
+        foreach($conditions->chunk(2000) as $chunk) {
+            $formattedConditions = $this->formatConditions($chunk);
 
-                                    $custom = $newItem['custom'] ?? [];
-                                    unset($newItem['custom']);
+            if(empty($firstCondition)) {
+                $firstCondition = $formattedConditions[0] ?? [];
+                $this->createTemporaryTable($firstCondition);
+            }
 
-                                    if(! empty($custom) && is_array($custom)) {
-                                        foreach($custom as $key => $item) {
-                                            $newKey = $key + 1;
-                                            $newItem["buyer_id_$newKey" ]= $item['buyer_id'];
-                                            $newItem["lead_id_$newKey" ]= $item['lead_id'];
-                                        }
-                                    }
+            DB::table('temp_conditions')->insert($formattedConditions);
+        }
 
-                                    return $newItem;
-                                })
-                                ->all();
-
-        return $formattedConditions;
-
+        return $firstCondition;
     }
 
-    /**
-     * Save the given conditions data to a temporary table.
-     *
-     * The table columns are determined by the keys of the first condition.
-     * The columns are created with the following types:
-     * - buyer_id_*: int
-     * - All other columns: VARCHAR(255) COLLATE utf8mb4_unicode_ci
-     *
-     * @param array $conditions The array of condition objects.
-     * @return void
-     */
-    public function saveDataToTemporaryTable($conditions)
+    public function formatConditions($conditions)
     {
-        $firstCondition = $conditions[0] ?? [];
+        return $conditions->map(function($item) {
+                $newItem = $item;
+
+                $custom = $newItem['custom'] ?? [];
+                unset($newItem['custom']);
+
+                if(! empty($custom) && is_array($custom)) {
+                    foreach($custom as $key => $item) {
+                        $newKey = $key + 1;
+                        $newItem["buyer_id_$newKey" ]= $item['buyer_id'];
+                        $newItem["lead_id_$newKey" ]= $item['lead_id'];
+                    }
+                }
+
+                return $newItem;
+            })
+            ->all();
+    }
+
+    public function createTemporaryTable($firstCondition)
+    {
         $columns = array_keys($firstCondition);
 
         $columnsSql = [];
@@ -394,10 +388,6 @@ class LeadFilterService
         $columnsSql[] = "INDEX(" . implode("), INDEX(", $columns) . ")";
 
         DB::statement("CREATE TEMPORARY TABLE temp_conditions (" . implode(', ', $columnsSql) . ")");
-
-        foreach (array_chunk($conditions, 5000) as $chunk) {
-            DB::table('temp_conditions')->insert($chunk);
-        }
     }
 
     /**
