@@ -399,6 +399,11 @@ class LeadController extends Controller
                 'type' => 'single_retainer',
                 'lead_id' => $report->lead_id
             ]);
+        } else {
+            GlobalPostBackTriggerJob::dispatch([
+                'type' => 'single_lead_update',
+                'lead_id' => $report->lead_id
+            ], 'on_lead_update');
         }
 
         return withSuccess(message: 'Lead Created Successfully');
@@ -483,10 +488,19 @@ class LeadController extends Controller
         }
 
         if(empty($clonedReport->is_retainer) && $request->is_retainer){
+            info('inside retainer update');
             GlobalPostBackTriggerJob::dispatch([
                 'type' => 'single_retainer',
                 'lead_id' => $report->lead_id
             ]);
+        }
+
+        if(empty($clonedReport->is_retainer) && empty($request->is_retainer)){
+            info('inside lead update');
+            GlobalPostBackTriggerJob::dispatch([
+                'type' => 'single_lead_update',
+                'lead_id' => $report->lead_id
+            ], 'on_lead_update');
         }
 
         return withSuccess(message: 'Lead Report Updated Successfully!');
