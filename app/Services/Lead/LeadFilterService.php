@@ -2,6 +2,7 @@
 
 namespace App\Services\Lead;
 
+use App\Models\Buyer;
 use App\Models\DispositionConfigMongo;
 use App\Models\DispositionLogMongo;
 use App\Models\LeadReport;
@@ -62,6 +63,11 @@ class LeadFilterService
                                                     ->limit(1)
                         ]);
                     })
+                    ->when(in_array('buyer_name', $columns), function($query) {
+                        return $query->addSelect([
+                            'buyer_name' => Buyer::select('name')->whereColumn('platform_datas.buyer_id', 'buyers.id')->limit(1)
+                        ]);
+                    })
                     ->when($isAmountField, function ($query) use($request) {
                         return $query->addSelect([
                             'revenue' => LeadReport::selectRaw('IFNULL(SUM(lead_revenue), 0)')
@@ -97,6 +103,18 @@ class LeadFilterService
 
                             if (strpos($column, 'buyer_id_') === 0) {
                                 $query->whereColumn("tc.$column", "platform_datas.buyer_id");
+                                continue;
+                            }
+
+                            if ($column === 'buyer_name') {
+
+                                $query->whereExists(function ($subQuery) use($column) {
+                                        $subQuery->select(DB::raw(1))
+                                            ->from('buyers')
+                                            ->whereColumn('buyers.name', "tc.$column")
+                                            ->whereColumn('platform_datas.buyer_id', 'buyers.id');
+                                    });
+
                                 continue;
                             }
 
@@ -165,12 +183,12 @@ class LeadFilterService
 
         return DispositionLogMongo::query()
                 ->where('disposition_config_id', $config->id)
-                ->when(! empty($searchText) && empty($request->is_updatable_only), function ($query) use ($searchText) {
-                    return $query->whereRaw('LOWER(data) like ?', ["%{$searchText}%"]);
-                })
-                ->when(! empty($searchText) && ! empty($request->is_updatable_only), function ($query) use ($searchText) {
-                    return $query->whereRaw('LOWER(updatable_data) like ?', ["%{$searchText}%"]);
-                })
+                // ->when(! empty($searchText) && empty($request->is_updatable_only), function ($query) use ($searchText) {
+                //     return $query->whereRaw('LOWER(data) like ?', ["%{$searchText}%"]);
+                // })
+                // ->when(! empty($searchText) && ! empty($request->is_updatable_only), function ($query) use ($searchText) {
+                //     return $query->whereRaw('LOWER(updatable_data) like ?', ["%{$searchText}%"]);
+                // })
                 ->when(! empty($leadStatus), function ($query) use ($leadStatus) {
                     return $query->where('lead_status', $leadStatus);
                 })
@@ -416,7 +434,8 @@ class LeadFilterService
             'email',
             'buyer_id',
             'lead_status',
-            'affm_source_id'
+            'affm_source_id',
+            'buyer_name'
         ];
     }
 
