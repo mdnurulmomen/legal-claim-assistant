@@ -22,21 +22,40 @@ class LeadDataSeeder extends Seeder
 
         abort(400, 'Custom Error');
 
-        // Pre-load necessary data for lookup
-        $listIds = PlatformList::pluck('id')->toArray();
-        $affiliateIds = Affiliate::pluck('id')->toArray();
-        $integrations = Integration::select('id', 'buyer_id')->get()
-                                    ->mapWithKeys(fn($item) => [(string) $item['id'] => (string) $item['buyer_id']])
-                                    ->toArray();
-        $leadStatuses = ['Pending', 'Returned', 'Disqualified', 'Sent Agreement', 'Agreement Signed', 'Retained'];
         $now = now();
 
-        // Initialize Faker instance
         $faker = Faker::create();
+        $buyers = [];
 
-        // Set the number of records you want to insert
-        $totalRecords = 1000000;
-        $batchSize = 1000;  // Number of records per batch
+        for($i = 1; $i <= 200; $i++) {
+            $buyer = [
+                'name' => $faker->name(),
+                'company_name' => $faker->company(),
+                'alias' => $faker->companySuffix(),
+                'email' => $faker->email(),
+                'phone' => $faker->phoneNumber(),
+                'address' => $faker->streetAddress(),
+                'city' => $faker->city(),
+                'state' => $faker->state(),
+                'zip' => $faker->postcode(),
+                'country' => $faker->country(),
+                'website' => $faker->url(),
+                'notes' => $faker->text(),
+                'status' => $faker->randomElement(['Pending', 'Returned', 'Disqualified', 'Sent Agreement', 'Agreement Signed', 'Retained'])
+            ];
+        }
+
+        // Pre-load necessary data for lookup
+        // $listIds = PlatformList::pluck('id')->toArray();
+        // $affiliateIds = Affiliate::pluck('id')->toArray();
+        // $integrations = Integration::select('id', 'buyer_id')->get()
+        //                             ->mapWithKeys(fn($item) => [(string) $item['id'] => (string) $item['buyer_id']])
+        //                             ->toArray();
+        // $leadStatuses = ['Pending', 'Returned', 'Disqualified', 'Sent Agreement', 'Agreement Signed', 'Retained'];
+
+
+        // $totalRecords = 1000000;
+        // $batchSize = 1000;
 
         // for ($i = 0; $i < $totalRecords; $i += $batchSize) {
         //     $leads = [];
