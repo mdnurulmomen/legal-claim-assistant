@@ -521,9 +521,11 @@ class LeadController extends Controller
     public function getBuyerIntegrations(Request $request): Response
     {
         $integrations = Integration::query()
-                            ->select('id as value', 'name as label')
+                            ->select('integrations.id as value', DB::raw("CONCAT(integrations.name , ' (', pl.name, ')') as label"))
+                            // ->select('id as value', 'name as label')
+                            ->leftJoin('platform_lists as pl', 'integrations.list_id', '=', 'pl.id')
                             ->when(! empty($request->search_txt), function ($query) use ($request) {
-                                return $query->where('name', 'like', "%{$request->search_txt}%");
+                                return $query->where('integrations.name', 'like', "%{$request->search_txt}%");
                             })
                             ->limit(50)
                             ->get();
