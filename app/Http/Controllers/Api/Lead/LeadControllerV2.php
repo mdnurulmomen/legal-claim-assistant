@@ -226,4 +226,45 @@ class LeadControllerV2 extends Controller
 
         return withSuccessResourceList(LeadLogResource::collection($data));
     }
+
+    /**
+     * Checks if the leads have been previously dispositioned with the Retained status.
+     * If yes, it returns an error message. Otherwise, it returns a success message.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function checkLeads(Request $request): Response
+    {
+        $config = DispositionConfigMongo::where('user_id', auth()->id())->latest('id')->select('id')->first();
+        if(empty($config)) {
+            return withError('No configuration found');
+        }
+
+        $leadIds = ! empty($request->lead_ids) ? json_decode($request->lead_ids, true) : [];
+        $exceptedIds = ! empty($request->excepted_ids) ? json_decode($request->excepted_ids, true) : [];
+
+        $exists = DispositionLogMongo::query()
+                    ->where('updatable_data.lead_status', 'Retained')
+                    ->where('disposition_config_id', $config->id)
+                    ->when(! empty($leadIds), function($query) use ($leadIds) {
+                        return $query->whereIn('platform_data_id', $leadIds);
+                    })
+                    ->when(! empty($exceptedIds), function($query) use ($exceptedIds) {
+                        return $query->whereNotIn('platform_data_id', $exceptedIds);
+                    })
+                    ->when(! empty($request->show_type === 'duplicate'), function($query) {
+                        return $query->where('is_duplicate', true);
+                    })
+                    ->when(! empty($request->show_type === 'unique'), function($query) {
+                        return $query->where('is_duplicate', false);
+                    })
+                    ->exists();
+
+        if($exists) {
+            return withError("Can't update leads to Retained when upload type is Disposition Upload.");
+        }
+
+        return withSuccess(message: 'Leads are good to go.');
+    }
 }
