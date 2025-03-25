@@ -245,37 +245,10 @@ class PostBackTriggerService {
         return false;
     }
 
-    /**
-     * Helper function to check numeric range.
-     */
-    private function isBetween($subject, array $target): bool
-    {
-        return $subject >= $target[0] && $subject <= $target[1];
-    }
-
-    /**
-     * Helper function to check date range.
-     */
-    private function isBetweenDate($subject, array $target): bool
-    {
-        $subjectTime = strtotime($subject);
-        $startTime = strtotime($target[0]);
-        $endTime = strtotime($target[1]);
-
-        return $subjectTime >= $startTime && $subjectTime <= $endTime;
-    }
-
-    /**
-     * Handle unknown operators by logging and returning false.
-     */
-    private function handleUnknownOperator(string $operator): bool
-    {
-        \Sentry\captureMessage('Unknown operator: ' . $operator);
-        return false;
-    }
 
     public function postBackTrigger($url, $lead_id = null, $type = 'global_postback')
     {
+
         try {
             // Perform the GET request
             $response = Http::get($url);
