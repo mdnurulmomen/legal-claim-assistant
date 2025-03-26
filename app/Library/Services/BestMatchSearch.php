@@ -14,6 +14,11 @@ class BestMatchSearch
      */
     public function findBestMatch($data, string $keyword): ?string
     {
+
+        if(in_array($keyword, $data)) {
+            return $keyword;
+        }
+
         $bestMatch = "";
         $highestScore = 0;
 

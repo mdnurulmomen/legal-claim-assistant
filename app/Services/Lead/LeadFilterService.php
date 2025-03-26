@@ -2,6 +2,7 @@
 
 namespace App\Services\Lead;
 
+use App\Library\Services\BestMatchSearch;
 use App\Models\Buyer;
 use App\Models\DispositionConfigMongo;
 use App\Models\DispositionLogMongo;
@@ -30,7 +31,7 @@ class LeadFilterService
             abort(400, 'Filter items must not be empty!');
         }
 
-        $conditionFirst = $this->formatAndSaveConditionData($requestedConditions);
+        $conditionFirst = $this->formatAndSaveConditionData($requestedConditions, $request);
 
         $groupedData = iterator_to_array($this->groupCsvData($request));
 
@@ -109,8 +110,8 @@ class LeadFilterService
                                 $query->whereExists(function ($subQuery) use($column) {
                                         $subQuery->select(DB::raw(1))
                                             ->from('buyers')
-                                            ->whereColumn('buyers.name', "tc.$column")
-                                            ->whereColumn('platform_datas.buyer_id', 'buyers.id');
+                                            ->whereColumn('platform_datas.buyer_id', 'buyers.id')
+                                            ->whereColumn('buyers.name', "tc.$column");
                                     });
 
                                 continue;
@@ -334,11 +335,17 @@ class LeadFilterService
         return $formattedKeys;
     }
 
-    public function formatAndSaveConditionData($conditions) {
+    public function formatAndSaveConditionData($conditions, $request) {
         $firstCondition = [];
+        $buyers = [];
+        $matchSearch = new BestMatchSearch();
+
+        if(in_array('buyer_name', array_keys($conditions[0] ?? [])) && (($request->rules['buyer_name'] ?? null) === 'contains')) {
+            $buyers = $this->getBuyerNames();
+        }
 
         foreach($conditions->chunk(2000) as $chunk) {
-            $formattedConditions = $this->formatConditions($chunk);
+            $formattedConditions = $this->formatConditions($chunk, $buyers, $matchSearch);
 
             if(empty($firstCondition)) {
                 $firstCondition = $formattedConditions[0] ?? [];
@@ -351,8 +358,34 @@ class LeadFilterService
         return $firstCondition;
     }
 
-    public function formatConditions($conditions)
+    public function getBuyerNames()
     {
+        return DB::table('buyers')->pluck('name')->toArray();
+    }
+
+    public function formatConditions($conditions, $buyers, $matchSearch)
+    {
+        if(! empty($buyers)) {
+            return $conditions->map(function($item) use ($buyers, $matchSearch) {
+
+                $newItem = $item;
+                unset($newItem['custom']);
+
+                if(! empty($custom) && is_array($custom)) {
+                    foreach($custom as $key => $item) {
+                        $newKey = $key + 1;
+                        $newItem["buyer_id_$newKey" ]= $item['buyer_id'];
+                        $newItem["lead_id_$newKey" ]= $item['lead_id'];
+                    }
+                }
+
+                $newItem['buyer_name'] = $matchSearch->findBestMatch($buyers, $item['buyer_name']);
+
+                return $newItem;
+            })
+            ->all();
+        }
+
         return $conditions->map(function($item) {
                 $newItem = $item;
 
