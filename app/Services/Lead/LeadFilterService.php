@@ -11,10 +11,11 @@ use App\Models\PlatformData;
 use App\Models\PlatformDataItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Faker\Factory as Faker;
 
 class LeadFilterService
 {
+
+    protected $actualBuyers = [];
 
     public function getFilterLeadsV2(Request $request)
     {
@@ -33,7 +34,7 @@ class LeadFilterService
 
         $conditionFirst = $this->formatAndSaveConditionData($requestedConditions, $request);
 
-        $groupedData = iterator_to_array($this->groupCsvData($request));
+        $groupedData = iterator_to_array($this->groupCsvData($request, $conditionFirst));
 
         // $oldConfig = DispositionConfigMongo::where('user_id', $userId)->latest('id')->select('id')->first();
         // if(! empty($oldConfig)) {
@@ -124,12 +125,11 @@ class LeadFilterService
 
                     foreach($todos as $lead) {
                         $keys = array_map(
-                            fn($key) => strtolower($lead[$key] ?? ''),
+                            fn($key) => $lead[$key] ?? '',
                             $conditionalKeys
                         );
 
                         $groupedKey = implode('_', array_filter($keys));
-
                         $groupedKeyCounts[$groupedKey] = ($groupedKeyCounts[$groupedKey] ?? 0) + 1;
 
                         $buffer[] = [
@@ -246,13 +246,18 @@ class LeadFilterService
 
         foreach ($csvData as $item) {
 
-            $keys = array_map(
-                fn($key) => strtolower($item[$actualHeadersObj[$key]] ?? ''),
-                $conditionKeys
-            );
+            $keys = array_map(function($key) use ($actualHeadersObj, $item) {
+                            $keyValue = $item[$actualHeadersObj[$key]] ?? '';
+
+                            if(! empty($this->actualBuyers) && $key === 'buyer_name') {
+                                return $this->actualBuyers[$keyValue] ?? $keyValue;
+                            }
+                            return $keyValue;
+                        },
+                        $conditionKeys
+                    );
 
             $groupedKey = implode('_', array_filter($keys));
-
             $grouped[$groupedKey][] = $item;
 
             if (count($grouped) > 10000) {
@@ -379,8 +384,10 @@ class LeadFilterService
                     }
                 }
 
-                $newItem['buyer_name'] = $matchSearch->findBestMatch($buyers, $item['buyer_name']);
+                $oldBuyerName = $item['buyer_name'];
 
+                $newItem['buyer_name'] = $matchSearch->findBestMatch($buyers, $oldBuyerName) ?? $oldBuyerName;
+                $this->actualBuyers[$oldBuyerName] = $newItem['buyer_name'];
                 return $newItem;
             })
             ->all();
