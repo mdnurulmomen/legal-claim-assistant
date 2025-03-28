@@ -129,7 +129,7 @@ class LeadFilterService
                             $conditionalKeys
                         );
 
-                        $groupedKey = implode('_', array_filter($keys));
+                        $groupedKey = strtolower(implode('_', array_filter($keys)));
                         $groupedKeyCounts[$groupedKey] = ($groupedKeyCounts[$groupedKey] ?? 0) + 1;
 
                         $buffer[] = [
@@ -257,7 +257,7 @@ class LeadFilterService
                         $conditionKeys
                     );
 
-            $groupedKey = implode('_', array_filter($keys));
+            $groupedKey = strtolower(implode('_', array_filter($keys)));
             $grouped[$groupedKey][] = $item;
 
             if (count($grouped) > 10000) {
