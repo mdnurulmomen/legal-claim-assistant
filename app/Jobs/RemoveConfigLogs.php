@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\DispositionConfigMongo;
 use App\Models\DispositionLogMongo;
+use App\Models\DispositionMissingRecordMongo;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -30,6 +31,10 @@ class RemoveConfigLogs implements ShouldQueue
         do {
             $deletedRows = DispositionLogMongo::where('disposition_config_id', $this->configId)->limit(5000)->delete();
         } while ($deletedRows > 0);
+
+        do {
+            $missingRows = DispositionMissingRecordMongo::where('disposition_config_id', $this->configId)->limit(5000)->delete();
+        } while ($missingRows > 0);
 
         DispositionConfigMongo::where('id', $this->configId)->delete();
     }

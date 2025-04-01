@@ -25,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('disposition_log_mongos');
+        Schema::connection('mongodb')->dropIfExists('disposition_log_mongos');
     }
 };

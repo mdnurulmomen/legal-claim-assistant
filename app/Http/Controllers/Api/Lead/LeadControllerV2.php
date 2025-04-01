@@ -4,18 +4,23 @@ namespace App\Http\Controllers\Api\Lead;
 
 use App\Http\Controllers\Api\Lead\Requests\BulkUpdateLeadRequest;
 use App\Http\Controllers\Api\Lead\Resources\LeadLogResource;
+use App\Http\Controllers\Api\Lead\Resources\MissingRecordResource;
 use App\Http\Controllers\Controller;
 use App\Jobs\RemoveConfigLogs;
 use App\Models\Buyer;
 use App\Models\DispositionConfigMongo;
 use App\Models\DispositionLogMongo;
+use App\Models\DispositionMissingRecordMongo;
+use App\Services\ExcelService;
 use App\Services\Lead\PlatformService;
 use App\Services\Lead\LeadFilterService;
+use App\Traits\CommonTrait;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class LeadControllerV2 extends Controller
 {
+    use CommonTrait;
 
     /**
      * Bulk update filled fields of leads in the database.
@@ -53,12 +58,6 @@ class LeadControllerV2 extends Controller
         if(! empty(array_diff($request->filled_headers, $keys))) {
             return withError('Invalid headers');
         }
-
-        $headers = collect($request->filled_headers)
-                    ->map(fn($item) => "updatable_data->{$item} as {$item}")
-                    ->push('platform_data_id as id')
-                    ->values()
-                    ->all();
 
         $leadIds = isset($request->selection_type['lead_ids']) ? json_decode($request->selection_type['lead_ids'], true) : [];
         $exceptedLeadIds = isset($request->selection_type['excepted_ids']) ? json_decode($request->selection_type['excepted_ids'], true) : [];
@@ -162,6 +161,46 @@ class LeadControllerV2 extends Controller
     }
 
     /**
+     * Retrieves a list of missing records based on the given request filters.
+     * When `is_export` is set to true, the function will return an Excel file containing the missing records.
+     *
+     * @param Request $request
+     * @param ExcelService $excelService
+     * @return Response|StreamedResponse
+     */
+    public function missingRecords(Request $request, ExcelService $excelService)
+    {
+        $userId = auth()->id() ?? $request->user->id;
+
+        $config = DispositionConfigMongo::where('user_id', $userId)->latest('id')->select('id', 'headers')->first();
+        if(empty($config)) {
+            return withError('No configuration found');
+        }
+
+        $missingQuery = DispositionMissingRecordMongo::where('disposition_config_id', $config->id)
+                            ->when(!empty($request->search_txt) && !empty($config->headers), function ($query) use ($request, $config) {
+                                $searchTxt = ".*" . preg_quote($request->search_txt) . ".*";
+
+                                    $orConditions = [];
+
+                                    foreach($config->headers as $index => $header) {
+                                        $orConditions[] = ["data.$header" => ['$regex' => $searchTxt, '$options' => 'i']];
+                                    }
+
+                                $query->whereRaw(['$or' => $orConditions]);
+                            })
+                            ->latest('id');
+
+        if(! empty($request->is_export)){
+            return $excelService->formatMissingRecordsExportData($request, $missingQuery);
+        }
+
+        $missingRecords = $missingQuery->paginate($request->limit ?? 20);
+
+        return withSuccessResourceList(MissingRecordResource::collection($missingRecords));
+    }
+
+    /**
      * Retrieves statistics of lead dispositions, categorizing them as duplicate or unique.
      *
      * @param Request $request
@@ -186,9 +225,12 @@ class LeadControllerV2 extends Controller
 
         $stats = collect($statistics)->pluck('count', '_id');
 
+        $missingRecords = DispositionMissingRecordMongo::where('disposition_config_id', $config->id)->count();
+
         return withSuccess([
             'duplicate' => $stats[1] ?? 0,
             'unique' => $stats[0] ?? 0,
+            'total_missing_records' => $missingRecords
         ]);
     }
 
