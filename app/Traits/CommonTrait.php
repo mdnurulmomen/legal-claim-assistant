@@ -60,4 +60,31 @@ trait CommonTrait
         }
         return $result;
     }
+
+    /**
+     * Returns the condition method based on the given index and type.
+     *
+     * @param int $index
+     * @param string|null $type
+     * @return string
+     */
+    public function getConditionMethod(int $index, string $type = ""): string
+    {
+        $method = $index == 0 ? 'where' : 'orWhere';
+        if(! $type) return $method;
+
+        $matchType = match($type){
+            'exists' => 'NotNull',
+            'does_not_exist' => 'Null',
+            'equals' => 'In',
+            'not_equals' => 'NotIn',
+            default => null
+        };
+
+        if($matchType){
+            $method .= $matchType;
+        }
+
+        return $method;
+    }
 }

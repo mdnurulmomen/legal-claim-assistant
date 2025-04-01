@@ -6,6 +6,7 @@ use App\Library\Services\BestMatchSearch;
 use App\Models\Buyer;
 use App\Models\DispositionConfigMongo;
 use App\Models\DispositionLogMongo;
+use App\Models\DispositionMissingRecordMongo;
 use App\Models\LeadReport;
 use App\Models\PlatformData;
 use App\Models\PlatformDataItem;
@@ -54,7 +55,7 @@ class LeadFilterService
                         'uid' => (string) str()->uuid()
                     ]);
 
-        $todos = PlatformData::query()
+        $leads = PlatformData::query()
                     ->select($selectableKeys)
                     ->when(in_array('lead_id_1', $columns), function($query) {
                         return $query->addSelect([
@@ -123,7 +124,7 @@ class LeadFilterService
                     })
                     ->lazyById(10000);
 
-                    foreach($todos as $lead) {
+                    foreach($leads as $lead) {
                         $keys = array_map(
                             fn($key) => $lead[$key] ?? '',
                             $conditionalKeys
@@ -138,7 +139,7 @@ class LeadFilterService
                             'lead_status' => $lead->lead_status,
                             'data' => $lead->toArray(),
                             'is_duplicate' => $groupedKeyCounts[$groupedKey] > 1 ? true : false,
-                            'updatable_data' => $groupedData[$groupedKey] ?? [],
+                            'updatable_data' => $groupedData[$groupedKey] ?? null,
                             'created_at' => $now,
                             'updated_at' => $now
                         ];
@@ -153,7 +154,39 @@ class LeadFilterService
                         DispositionLogMongo::insert($buffer);
                     }
 
+        $this->saveMissingRecords($groupedData, $groupedKeyCounts, $config, $userId);
+
+        $config->headers = array_keys(reset($groupedData));
+        $config->save();
+
         return $this->getDispositionLog(new Request());
+    }
+
+    /**
+     * Saves missing records to the database.
+     *
+     * @param array $groupedData The grouped data from the request body.
+     * @param array $groupedKeyCounts The count of records with the same grouped key.
+     * @param DispositionConfigMongo $config The disposition config object.
+     * @param int $userId The ID of the authenticated user.
+     *
+     * @return void
+     */
+    public function saveMissingRecords($groupedData, $groupedKeyCounts, $config, $userId): void
+    {
+        $missingRecords = array_values(array_diff_key($groupedData, $groupedKeyCounts));
+        $missingRecords = array_chunk($missingRecords, 3000);
+
+        foreach($missingRecords as $records) {
+            $formattedRecords = array_map(function($record) use ($config, $userId) {
+                return [
+                    'disposition_config_id' => $config->id,
+                    'user_id' => $userId,
+                    'data' => $record
+                ];
+            }, $records);
+            DispositionMissingRecordMongo::insert($formattedRecords);
+        }
     }
 
     /**
@@ -306,9 +339,9 @@ class LeadFilterService
     public function getMappedHeaders($mappedHeads, $conditionKeys)
     {
         return collect($mappedHeads)
-                    ->reject(function($item) use ($conditionKeys) {
-                        return in_array($item, $conditionKeys);
-                    })
+                    // ->reject(function($item) use ($conditionKeys) {
+                    //     return in_array($item, $conditionKeys);
+                    // })
                     ->values()
                     ->all();
     }

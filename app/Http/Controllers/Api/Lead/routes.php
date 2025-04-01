@@ -34,6 +34,7 @@ Route::prefix('leads-v2')->as('leads-v2.')
         $route->put('bulk-update-leads', 'bulkUpdateLeads')->name('bulk-update-leads');
         $route->get('buyer-list', 'buyerList')->name('buyer.list');
         $route->post('lead-logs', 'leadLogs')->name('lead-logs');
+        $route->post('missing-records', 'missingRecords')->name('missing-records');
         $route->get('log-statistics', 'logStatistics')->name('log-statistics');
         $route->post('filtered-leads', 'filteredLeads')->name('filtered-leads');
         $route->get('check-leads', 'checkLeads')->name('check-leads');

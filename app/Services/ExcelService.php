@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Helpers\Utility;
 use App\Http\Controllers\Api\Lead\Resources\ExcelLeadResource;
 use App\Http\Controllers\Api\Lead\Resources\LeadResource;
+use App\Http\Controllers\Api\Lead\Resources\MissingRecordResource;
 use App\Http\Controllers\Api\Reporting\Resources\ReportingResource;
 use App\Library\Services\CountryFuzzyMatcher;
 use App\Models\PlatformData;
@@ -90,6 +91,30 @@ class ExcelService
                 ],
                 [ 'data' => $columns ]
             );
+
+        return $exportLead;
+    }
+
+    /**
+     * Formats the missing records export data and returns it as a CSV file or a string.
+     *
+     * @param Request $request
+     * @param Builder $leadQuery
+     * @return string|StreamedResponse
+     */
+    public function formatMissingRecordsExportData(Request $request, Builder $leadQuery): string|StreamedResponse
+    {
+        function missingRecordsGenerators($leadQuery) {
+            foreach ($leadQuery->cursor(3000) as $lead) {
+                yield new MissingRecordResource($lead);
+            }
+        }
+
+        $fileName = 'Not Found Records Export - ' . $this->formatDateTime(now(), 'M j Y g:i:s a', timezone: config('app.timezone')) . ".csv";
+
+        $exportLead = (new FastExcel(missingRecordsGenerators($leadQuery)))
+                        ->configureCsv(',', '"', 'UTF-8', false)
+                        ->download($fileName);
 
         return $exportLead;
     }
