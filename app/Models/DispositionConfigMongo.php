@@ -13,6 +13,6 @@ class DispositionConfigMongo extends Model
     protected $fillable = [
         'user_id',
         'uid',
-        'conditions'
+        'headers'
     ];
 }

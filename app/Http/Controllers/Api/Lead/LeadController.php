@@ -65,18 +65,18 @@ class LeadController extends Controller
                                 'platform_datas.phone',
                                 'platform_datas.buyer_integration_id',
                                 'platform_datas.buyer_id',
-                                'buyers.name as buyer_name',
-                                'users.name as affiliate_name',
-                                'platform_lists.name as list_name',
-                                'integrations.name as buyer_integration',
                                 'platform_datas.affiliate_id',
-                                'users.data->affids as affids',
                                 'platform_datas.lead_status',
                                 'platform_datas.created_at',
                                 'platform_datas.retained_date',
                                 'platform_datas.sold_type',
                                 'platform_datas.affm_lead_id',
-                                'platform_datas.internal_lead_note'
+                                'platform_datas.internal_lead_note',
+                                'buyers.name as buyer_name',
+                                'users.name as affiliate_name',
+                                'platform_lists.name as list_name',
+                                'integrations.name as buyer_integration',
+                                'users.data->affids as affids',
                             );
                         })
                         ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
