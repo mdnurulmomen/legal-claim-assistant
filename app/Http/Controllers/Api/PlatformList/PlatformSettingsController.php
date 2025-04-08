@@ -38,7 +38,9 @@ class PlatformSettingsController extends Controller
             return withError('Platform Settings Saved Failed!');
         }
 
-        ClearListCache::dispatch();
+        if($platform->tag) {
+            ClearListCache::dispatch($platform->tag);
+        }
 
         return withSuccess(message: 'Platform Settings saved successfully');
     }
