@@ -124,24 +124,29 @@ class LeadFilterService
                     })
                     ->lazyById(10000);
 
-                    foreach($leads as $lead) {
-                        $keys = array_map(
-                            fn($key) => $lead[$key] ?? '',
-                            $conditionalKeys
-                        );
+                    function generateGroupedKey($lead, array $conditionalKeys): string {
+                        $keys = array_map(fn($key) => $lead[$key] ?? '', $conditionalKeys);
+                        return strtolower(implode('_', array_filter($keys)));
+                    }
 
-                        $groupedKey = strtolower(implode('_', array_filter($keys)));
+                    foreach ($leads as $lead) {
+                        $groupedKey = generateGroupedKey($lead, $conditionalKeys);
                         $groupedKeyCounts[$groupedKey] = ($groupedKeyCounts[$groupedKey] ?? 0) + 1;
+                    }
+
+                    foreach($leads as $lead) {
+
+                        $groupedKey = generateGroupedKey($lead, $conditionalKeys);
 
                         $buffer[] = [
                             'disposition_config_id' => $config->id,
                             'platform_data_id' => $lead->id,
                             'lead_status' => $lead->lead_status,
                             'data' => $lead->toArray(),
-                            'is_duplicate' => $groupedKeyCounts[$groupedKey] > 1 ? true : false,
+                            'is_duplicate' => $groupedKeyCounts[$groupedKey] > 1,
                             'updatable_data' => $groupedData[$groupedKey] ?? null,
                             'created_at' => $now,
-                            'updated_at' => $now
+                            'updated_at' => $now,
                         ];
 
                         if (count($buffer) >= $batchSize) {
