@@ -299,7 +299,7 @@ class LeadService extends ReportingService
             return [[], []];
         }
 
-        $filters = json_decode($filters, true);
+        $filters = is_string($filters) ? json_decode($filters, true) : $filters;
         $formattedFilters = [];
         $relationalConditions = [];
 
