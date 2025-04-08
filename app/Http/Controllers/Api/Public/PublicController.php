@@ -69,4 +69,42 @@ class PublicController extends Controller
         return withSuccess(message: 'Retainer Event Triggered Successfully!');
     }
 
+    public function rulesAndDefaultColumns(Request $request)
+    {
+        $rules = [
+            'equals',
+            'not_equals',
+            'equals_any',
+            'contains',
+            'does_not_contain',
+            'begins_with',
+            'does_not_begin_with',
+            'greater_than',
+            'less_than',
+            'exists',
+            'does_not_exists'
+        ];
+
+        $defaultColumns = [
+            'list_name',
+            'affm_lead_id',
+            'profit',
+            'affiliate_payout',
+            'affiliate_margin',
+            'buyer_integration',
+            'buyer_name',
+            'affiliate_name',
+            'lead_status',
+            'timestamp',
+            'retained_date',
+            'returned_date',
+            'internal_lead_note',
+        ];
+
+        return withSuccess([
+            'rules' => $rules,
+            'default_columns' => $defaultColumns
+        ]);
+    }
+
 }

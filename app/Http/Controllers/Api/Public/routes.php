@@ -19,5 +19,8 @@ Route::prefix('public')->as('public.')
         $route->middleware([UserApiTokenVerifier::class])
             ->group(function ($childRoute) {
                 $childRoute->post('lead-list', [LeadController::class, 'list'])->name('lead-list');
+                $childRoute->get('get-integrations', [LeadController::class, 'getIntegrations'])->name('get-integration');
+                $childRoute->get('filter-options/{type}', [LeadController::class, 'getLeadOptions'])->name('filter-options');
+                $childRoute->get('rules-and-default-columns', [PublicController::class, 'rulesAndDefaultColumns'])->name('rules-and-default-columns');
             });
     });
