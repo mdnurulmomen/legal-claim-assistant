@@ -1004,8 +1004,15 @@ class LeadService extends ReportingService
     public function getAffiliates(Request $request): Collection
     {
         $affiliates = User::select('id as value', 'name as label', 'data->affids as affids', 'role')
-                        ->when(! empty($request->search_txt), function ($query) use ($request) {
-                            return $query->where('name', 'like', '%'.$request->search_txt.'%');
+                        ->when(! empty($request->search_txt) && hasAffiliateAccess(), function ($query) use ($request) {
+
+                            $affIds = explode(',', str_replace(' ', '', $request->search_txt));
+
+                            return $query->where('name', 'like', '%'.$request->search_txt.'%')
+                                    ->orWhere(function($query2) use ($request, $affIds) {
+                                                return $query2->where('data->affids', 'like', '%' . $request->search_txt . '%')
+                                                            ->orWhereJsonContains('data->affids', $affIds);
+                                            });
                         })
                         ->where('role', 'affiliate')
                         ->when(! empty($request->is_remote_search), function($query) {
@@ -1014,17 +1021,18 @@ class LeadService extends ReportingService
                         ->get();
 
         return $affiliates->map(function ($user): array {
+                    $affids = $user->affids ? implode(', ', json_decode($user->affids, true)) : '';
 
                     if(! hasAffiliateAccess() && $user->role === 'affiliate') {
                         return [
                             'value' => $user->value,
-                            'label' => $user->affids ? implode(', ', json_decode($user->affids, true)) : ''
+                            'label' => $affids
                         ];
                     }
 
                     return [
                         'value' => $user->value,
-                        'label' => $user->label
+                        'label' => $user->label . ($affids ? ' (' . $affids . ')' : '')
                     ];
                 });
     }
