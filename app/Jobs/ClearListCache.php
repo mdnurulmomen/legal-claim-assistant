@@ -16,7 +16,7 @@ class ClearListCache implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct()
+    public function __construct(protected ?string $tag = null)
     {
         //
     }
@@ -26,7 +26,7 @@ class ClearListCache implements ShouldQueue
      */
     public function handle(): void
     {
-        $url = "https://monetize.affimedia.nl/api/v1/clear-list-cache/VGPKQICNRWO7Z9H";
+        $url = "https://monetize.affimedia.nl/api/v1/clear-list-cache/" . $this->tag;
 
         try{
             $response = Http::get($url);
