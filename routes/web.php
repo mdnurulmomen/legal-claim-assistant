@@ -3,6 +3,7 @@
 use App\Library\Services\BestMatchSearch;
 use App\Models\Integration;
 use App\Models\IntegrationEmail;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -16,18 +17,11 @@ Route::get('/', function () {
 });
 
 Route::get('/test', function (Request $request) {
-    $data = ['doe', 'jojhn', 'ojhn', 'jh'];
-    $keyword = 'jh';
 
-    $result = (new BestMatchSearch())->findBestMatch($data, $keyword);
-
-    return response($result, 200, [
+    return response('Hello World test!', 200, [
         'Content-Type' => 'text/plain',
+        'X-Content-Type-Options' => 'nosniff',
+        'X-Frame-Options' => 'deny',
+        'X-XSS-Protection' => '1; mode=block'
     ]);
-    // return response('Hello World test!', 200, [
-    //     'Content-Type' => 'text/plain',
-    //     'X-Content-Type-Options' => 'nosniff',
-    //     'X-Frame-Options' => 'deny',
-    //     'X-XSS-Protection' => '1; mode=block'
-    // ]);
 });
