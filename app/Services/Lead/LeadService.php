@@ -1004,15 +1004,30 @@ class LeadService extends ReportingService
     public function getAffiliates(Request $request): Collection
     {
         $affiliates = User::select('id as value', 'name as label', 'data->affids as affids', 'role')
-                        ->when(! empty($request->search_txt) && hasAffiliateAccess(), function ($query) use ($request) {
+                        ->when(!empty($request->search_txt), function ($query) use ($request) {
 
-                            $affIds = explode(',', str_replace(' ', '', $request->search_txt));
+                            $searchTxt = "%{$request->search_txt}%";
 
-                            return $query->where('name', 'like', '%'.$request->search_txt.'%')
-                                    ->orWhere(function($query2) use ($request, $affIds) {
-                                                return $query2->where('data->affids', 'like', '%' . $request->search_txt . '%')
-                                                            ->orWhereJsonContains('data->affids', $affIds);
-                                            });
+                            return $query->where(function ($query) use ($searchTxt, $request) {
+
+                                $affIds = explode(',', str_replace(' ', '', $request->search_txt));
+
+                                return $query->where(function($query) use ($request, $affIds) {
+                                    return $query->where('data->affids', 'like', '%' . $request->search_txt . '%')
+                                                ->orWhereJsonContains('data->affids', $affIds);
+                                })
+                                ->when(hasAffiliateAccess(), function ($query) use ($request, $searchTxt) {
+                                    return $query->orWhere('name', 'like', $searchTxt)
+                                                ->orWhere('email', 'like', $searchTxt)
+                                                ->orWhere('username', 'like', $searchTxt)
+                                                ->orWhereHas('affiliate', function ($query) use ($searchTxt) {
+                                                        $query->where('country', 'like', $searchTxt)
+                                                        ->orWhere('company_name', 'like', $searchTxt);
+                                                });
+
+                                });
+                            });
+
                         })
                         ->where('role', 'affiliate')
                         ->when(! empty($request->is_remote_search), function($query) {
