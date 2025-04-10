@@ -19,7 +19,7 @@ class TemplateOfferResource extends JsonResource
             'id'                => $this->id,
             'tag'              => $this->tag,
             'name'              => $this->name,
-            'created_at'        => $this->created_at->format('d M Y'),
+            'created_at'        => $this->created_at ? $this->created_at->format('d M Y') : null,
         ];
     }
 }
