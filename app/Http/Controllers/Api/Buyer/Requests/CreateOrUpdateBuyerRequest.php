@@ -28,7 +28,7 @@ class CreateOrUpdateBuyerRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => [
-                            'required', 'string', 'email', 'max:255',
+                            'nullable', 'string', 'email', 'max:255',
                             Rule::unique('buyers', 'email')->when(! empty($this->buyerId), function ($query) {
                                 return $query->ignore($this->buyerId);
                             })
