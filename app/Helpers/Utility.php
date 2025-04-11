@@ -61,6 +61,7 @@ class Utility
     public static $pageSlugs = [
         'report' => 'Report',
         'global_leads' => 'Global Leads',
+        'platform_leads' => 'Platform Leads'
     ];
 
     /**
