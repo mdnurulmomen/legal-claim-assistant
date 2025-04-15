@@ -106,8 +106,27 @@ class SettingsController extends Controller
         $rules['all_possible_receivers'] = $admins;
 
         // all possible lists
-        $lists = PlatformList::where('status', "Active")->select('id', 'name')->get();
-        $rules['all_possible_lists'] = $lists;
+        $lists = PlatformList::where('status', "Active")->select('id', 'name', 'integrations')->get();
+        
+        // Extract integration names from each list
+        $listsWithIntegrationNames = $lists->map(function($list) {
+            $integrations = $list->integrations ?? [];
+            $integrationNames = [];
+            
+            foreach ($integrations as $integration) {
+                if (isset($integration['name'])) {
+                    $integrationNames[] = $integration['name'];
+                }
+            }
+            
+            return [
+                'id' => $list->id,
+                'name' => $list->name,
+                'integration_names' => $integrationNames
+            ];
+        });
+        
+        $rules['all_possible_lists'] = $listsWithIntegrationNames;
 
         // Create a ResourceCollection with a single item
         $resourceCollection = new ResourceCollection([new RulesResource($rules)]);
