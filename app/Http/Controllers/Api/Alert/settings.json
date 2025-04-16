@@ -1,0 +1,409 @@
+{
+    "via": [
+        "email",
+        "app"
+    ],
+    "rules": [
+        {
+            "id": "platformLists_rule_1",
+            "name": "No New Leads Alert",
+            "status": "inactive",
+            "recivers": [
+                "47"
+            ],
+            "ignored_lists": [
+                "43",
+                "46"
+            ]
+        },
+        {
+            "id": "platformLists_rule_2",
+            "name": "Errors and Missing Entry Alert",
+            "status": "active",
+            "recivers": [
+                "8",
+                "47",
+                "60",
+                "71",
+                "499"
+            ],
+            "safeResponse": [
+                {
+                    "header": "tortexpert_error",
+                    "values": [
+                        "Profanity in Last Name",
+                        "Litigator Scrub"
+                    ],
+                    "operator": "contains"
+                },
+                {
+                    "header": "reliable_legal_status",
+                    "values": [
+                        "Ineligible",
+                        "201"
+                    ],
+                    "operator": "contains"
+                },
+                {
+                    "header": "all",
+                    "values": [
+                        "created"
+                    ],
+                    "operator": "contains"
+                },
+                {
+                    "header": "cag_default_response",
+                    "values": [
+                        "state",
+                        "does",
+                        "not",
+                        "have",
+                        "a",
+                        "valid",
+                        "value",
+                        "\"TN\".",
+                        "Duplicate",
+                        "Lead."
+                    ],
+                    "operator": "contains"
+                },
+                {
+                    "header": "eternus_2_status",
+                    "values": [
+                        "Ineligible"
+                    ],
+                    "operator": "contains"
+                },
+                {
+                    "header": "eternus_errors",
+                    "values": [
+                        "Duplicate Lead"
+                    ],
+                    "operator": "equals"
+                },
+                {
+                    "header": "inbounds_status",
+                    "values": [
+                        "Ineligible",
+                        "ERROR",
+                        "ACCEPTED",
+                        "Spam"
+                    ],
+                    "operator": "contains"
+                },
+                {
+                    "header": "accident_com_status",
+                    "values": [
+                        "duplicate",
+                        "Ineligible",
+                        "created",
+                        "Spam"
+                    ],
+                    "operator": "equals"
+                },
+                {
+                    "header": "tortexpert_msg",
+                    "values": [
+                        "Lead Accepted",
+                        "Lead Rejected"
+                    ],
+                    "operator": "contains"
+                },
+                {
+                    "header": "consumer_awareness_default_response",
+                    "values": [
+                        "Lead Accepted",
+                        "Duplicate Lead",
+                        "state",
+                        "does",
+                        "not",
+                        "have",
+                        "valid",
+                        "value",
+                        "\"TN\".",
+                        "\"LA\".",
+                        "This lead is in our DNC."
+                    ],
+                    "operator": "contains"
+                },
+                {
+                    "header": "eternus_status",
+                    "values": [
+                        "Ineligible"
+                    ],
+                    "operator": "contains"
+                },
+                {
+                    "header": "gmfo_error",
+                    "values": [
+                        "Not Match",
+                        "Ping Was Not Accepted",
+                        "Duplicate",
+                        "Lead Posted More than Once",
+                        "TrustedForm Lead Age Rule Not Met"
+                    ],
+                    "operator": "contains"
+                },
+                {
+                    "header": "gmfo_msg",
+                    "values": [
+                        "Lead Rejected",
+                        "Lead Accepted"
+                    ],
+                    "operator": "contains"
+                }
+            ],
+            "ignored_lists": [
+                "41",
+                "43",
+                "46"
+            ],
+            "ignoreParameters": [
+                "sbn_and_associates_outcome",
+                "sbn_and_associates_outcome",
+                "sbn_and_associates_outcome",
+                "sbn_and_associates_outcome",
+                "sbn_and_associates_outcome"
+            ],
+            "buyerResponseMatching": [
+                {
+                    "header": "convergedirect_error",
+                    "values": [
+                        "{NULL}"
+                    ]
+                },
+                {
+                    "header": "eternus_2_errors",
+                    "values": [
+                        "{NULL}"
+                    ]
+                },
+                {
+                    "header": "eternus_2_status",
+                    "values": [
+                        "success",
+                        "ineligible"
+                    ]
+                },
+                {
+                    "header": "eternus_errors",
+                    "values": [
+                        "{NULL}"
+                    ]
+                },
+                {
+                    "header": "eternus_status",
+                    "values": [
+                        "success",
+                        "Ineligible",
+                        "denied"
+                    ]
+                },
+                {
+                    "header": "inbounds_status",
+                    "values": [
+                        "Accepted",
+                        "Duplicated"
+                    ]
+                },
+                {
+                    "header": "crew_axad_capital_status",
+                    "values": [
+                        "Accepted",
+                        "Duplicated"
+                    ]
+                },
+                {
+                    "header": "sunrun_status",
+                    "values": [
+                        "Post_valid",
+                        "Post_reject_duplicate_info"
+                    ]
+                },
+                {
+                    "header": "ma_status",
+                    "values": [
+                        "Succeeded",
+                        "{NULL}"
+                    ]
+                },
+                {
+                    "header": "reliable_legal_status",
+                    "values": [
+                        "Success"
+                    ]
+                },
+                {
+                    "header": "crew_nasa_status",
+                    "values": [
+                        "Accepted"
+                    ]
+                },
+                {
+                    "header": "accident_com_status",
+                    "values": [
+                        "duplicate",
+                        "created",
+                        "Ineligible"
+                    ]
+                },
+                {
+                    "header": "WeQuote_errors",
+                    "values": [
+                        "{NULL}"
+                    ]
+                },
+                {
+                    "header": "consumer_genius_error",
+                    "values": [
+                        "{NULL}",
+                        "Duplicate",
+                        "No Match"
+                    ]
+                },
+                {
+                    "header": "nextlevel_direct_error",
+                    "values": [
+                        "{NULL}",
+                        "Ping Was Not Accepted"
+                    ]
+                },
+                {
+                    "header": "targeted_consumer_error",
+                    "values": [
+                        "Duplicate Lead",
+                        "{NULL}",
+                        "No Qualified Buyers Found"
+                    ]
+                },
+                {
+                    "header": "rapid_response_message",
+                    "values": [
+                        "Duplicate Lead"
+                    ]
+                },
+                {
+                    "header": "rapid_response_status",
+                    "values": [
+                        "Duplicated"
+                    ]
+                },
+                {
+                    "header": "gmfo_error",
+                    "values": [
+                        "{NULL}"
+                    ]
+                },
+                {
+                    "header": "gmfo_msg",
+                    "values": [
+                        "Lead Accepted"
+                    ]
+                },
+                {
+                    "header": "sbn_and_associates_reason",
+                    "values": [
+                        "Duplicate Lead",
+                        "{NULL}",
+                        "Skip"
+                    ]
+                },
+                {
+                    "header": "sbn_and_associates_outcome",
+                    "values": [
+                        "success"
+                    ]
+                },
+                {
+                    "header": "consumer_awareness_default_response",
+                    "values": [
+                        "Duplicate Lead",
+                        "Lead Accepted",
+                        "Duplicate Lead.",
+                        "No phone provided. Phone number is required",
+                        "state does not have a valid value \"LA\"",
+                        "state does not have a valid value \"IN\"",
+                        "state does not have a valid value \"TN\""
+                    ]
+                },
+                {
+                    "header": "tortexpert_msg",
+                    "values": [
+                        "Lead Accepted",
+                        "Lead Rejected"
+                    ]
+                },
+                {
+                    "header": "reliable_legal_errors",
+                    "values": [
+                        "{NULL}"
+                    ]
+                },
+                {
+                    "header": "popular_error",
+                    "values": [
+                        "Duplicate",
+                        "{NULL}",
+                        "No Match",
+                        "Suspect IP",
+                        "Litigator Scrub"
+                    ]
+                },
+                {
+                    "header": "tortexpert_error",
+                    "values": [
+                        "Duplicate",
+                        "No Match",
+                        "Suspect IP",
+                        "{NULL}",
+                        "Invalid Email",
+                        "Profanity in First Name",
+                        "Invalid Phone Number"
+                    ]
+                },
+                {
+                    "header": "sdm_status",
+                    "values": [
+                        "{NULL}",
+                        "Success",
+                        "Request Sent To Trigger Execution Server"
+                    ]
+                },
+                {
+                    "header": "injury_help_desk_msg",
+                    "values": [
+                        "{NULL}",
+                        "lead submit successfully"
+                    ]
+                },
+                {
+                    "header": "cag_default_response",
+                    "values": [
+                        "Lead Accepted",
+                        "Duplicate Lead",
+                        "Phone Number Provided Is Not Verified. [a1]",
+                        "This Lead Is In Our Dnc.",
+                        "{NULL}",
+                        "Duplicate Lead.",
+                        "state does not have a valid value"
+                    ]
+                },
+                {
+                    "header": "billy_com_reason",
+                    "values": [
+                        "{NULL}"
+                    ]
+                }
+            ]
+        }
+    ],
+    "status": "active",
+    "check_period": {
+        "label": "hours",
+        "value": "1"
+    },
+    "check_interval": {
+        "label": "hours",
+        "value": "2"
+    }
+}
