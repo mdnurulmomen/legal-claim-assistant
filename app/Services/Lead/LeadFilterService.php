@@ -278,7 +278,7 @@ class LeadFilterService
     {
         $actualHeadersObj = collect($request->actual_headers ?? [])->pluck('value', 'model_value')->toArray();
         $conditionKeys = $this->getConditionKeys(($request->conditions[0] ?? []), $actualHeadersObj);
-        $mappedHeads = $this->getMappedHeaders(($request->mapped_headers ?? []), $conditionKeys);
+        $mappedHeads = $this->getMappedHeaders(($request->mapped_headers ?? []), $request->actual_headers);
 
         $csvData = $request->csv_data ?? [];
 
@@ -334,21 +334,19 @@ class LeadFilterService
         return $updatableLeads;
     }
 
-    /**
-     * Gets the mapped headers with the condition keys excluded.
-     *
-     * @param array $mappedHeads The array of mapped headers.
-     * @param array $conditionKeys The array of condition keys to exclude.
-     * @return array The array of mapped headers with the condition keys excluded.
-     */
-    public function getMappedHeaders($mappedHeads, $conditionKeys)
+    public function getMappedHeaders($mappedHeads, array $actualHeaders)
     {
-        return collect($mappedHeads)
-                    // ->reject(function($item) use ($conditionKeys) {
-                    //     return in_array($item, $conditionKeys);
-                    // })
+        $customColumns = collect($actualHeaders ?? [])->filter(function($item) {
+                                return isset($item['isCustom']) && $item['isCustom'] === true;
+                            })
+                            ->pluck('value')
+                            ->all();
+
+        $heads = collect($mappedHeads)
                     ->values()
                     ->all();
+
+        return array_merge($heads, $customColumns);
     }
 
     /**
