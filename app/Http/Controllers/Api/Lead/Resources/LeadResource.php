@@ -57,9 +57,11 @@ class LeadResource extends JsonResource
 
         $leads = array_merge($leads, $data);
 
-        // if (! empty($request->is_export)){
-        //     return (new LeadService())->filterDataForExport($leads);
-        // }
+        if(! empty($request->columns)) {
+            $leads = collect($request->columns)
+                        ->mapWithKeys(fn($field) => [$field => ($leads[$field] ?? '')])
+                        ->toArray();
+        }
 
         return $leads;
     }
