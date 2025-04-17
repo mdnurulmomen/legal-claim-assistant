@@ -275,7 +275,7 @@ class LeadService extends ReportingService
      * @param array $values
      * @return array
      */
-    public function makeConditionWithoutOperator(string $column, array $values = [])
+    public function makeConditionWithoutOperator($column, array $values = [])
     {
         $values = array_map('strtolower', $values);
 
