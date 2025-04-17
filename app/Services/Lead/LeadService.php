@@ -922,10 +922,30 @@ class LeadService extends ReportingService
         }
 
         $columns = [
-            'list_name' => 'platform_lists.name',
-            'buyer_name' => 'buyers.name',
-            'buyer_integration' => 'integrations.name',
-            'affiliate_name' => 'users.name',
+            'list_name' => function (Builder $query) {
+                return $query->select('name')
+                    ->from('platform_lists')
+                    ->whereColumn('platform_lists.id', 'platform_datas.list_id')
+                    ->limit(1);
+            },
+            'buyer_name' => function(Builder $query) {
+                return $query->select('name')
+                        ->from('buyers')
+                        ->whereColumn('buyers.id', 'platform_datas.buyer_id')
+                        ->limit(1);
+            },
+            'buyer_integration' => function(Builder $query) {
+                return $query->select('name')
+                        ->from('integrations')
+                        ->whereColumn('integrations.id', 'platform_datas.buyer_integration_id')
+                        ->limit(1);
+            },
+            'affiliate_name' => function(Builder $query) {
+                return $query->select('name')
+                        ->from('users')
+                        ->whereColumn('users.id', 'platform_datas.affiliate_id')
+                        ->limit(1);
+            },
             'affid' => 'platform_datas.affid',
             'phone' => 'platform_datas.phone',
             'email' => 'platform_datas.email',

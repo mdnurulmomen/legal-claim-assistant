@@ -53,6 +53,8 @@ class LeadController extends Controller
         $excelFilters = $leadService->formatExcelFilters($request);
         $perPage = empty($request->limit) ? 10 : $request->limit;
         [$orderBy, $orderIn] = $leadService->formatLeadOrderByIn($request);
+        $columns = is_string($request->columns) ? json_decode($request->columns, true) : ($request->columns ?? []);
+        $request->merge(['columns' => $columns]);
 
         $leadQuery = PlatformData::query()
                         ->when(! empty($request->is_total) || ! empty($request->is_export), function($query) {
@@ -73,12 +75,7 @@ class LeadController extends Controller
                                 'platform_datas.retained_date',
                                 'platform_datas.sold_type',
                                 'platform_datas.affm_lead_id',
-                                'platform_datas.internal_lead_note',
-                                // 'buyers.name as buyer_name',
-                                // 'users.name as affiliate_name',
-                                // 'platform_lists.name as list_name',
-                                // 'integrations.name as buyer_integration',
-                                // 'users.data->affids as affids',
+                                'platform_datas.internal_lead_note'
                             )
                             ->addSelect([
                                 'buyer_name' => Buyer::select('name')->whereColumn('buyers.id', 'platform_datas.buyer_id')->limit(1),
@@ -88,10 +85,6 @@ class LeadController extends Controller
                                 'affids' => User::select('data->affids')->whereColumn('users.id', 'platform_datas.affiliate_id')->limit(1),
                             ]);
                         })
-                        // ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
-                        // ->leftJoin('buyers', 'buyers.id', '=', 'platform_datas.buyer_id')
-                        // ->leftJoin('users', 'users.id', '=', 'platform_datas.affiliate_id')
-                        // ->leftJoin('platform_lists', 'platform_lists.id', '=', 'platform_datas.list_id')
                         ->when(empty($request->is_total) && empty($request->is_export), function($query) use ($orderBy, $orderIn) {
                             return $query->addSelect([
                                 'revenue' => LeadReport::select(DB::raw('sum(lead_reports.lead_revenue)'))
