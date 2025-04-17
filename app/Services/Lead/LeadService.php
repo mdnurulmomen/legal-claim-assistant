@@ -368,7 +368,7 @@ class LeadService extends ReportingService
      * @param string|int|null $value
      * @return array
      */
-    public function makeConditions(string $column, string $operator, string | int | null $value = '', bool $isRelational = false): array
+    public function makeConditions($column, string $operator, string | int | null $value = '', bool $isRelational = false): array
     {
         return [
             'column' => $isRelational ? $column : ("platform_datas.datas->" . $column),
@@ -922,25 +922,25 @@ class LeadService extends ReportingService
         }
 
         $columns = [
-            'list_name' => function (Builder $query) {
+            'list_name' => function ($query) {
                 return $query->select('name')
                     ->from('platform_lists')
                     ->whereColumn('platform_lists.id', 'platform_datas.list_id')
                     ->limit(1);
             },
-            'buyer_name' => function(Builder $query) {
+            'buyer_name' => function($query) {
                 return $query->select('name')
                         ->from('buyers')
                         ->whereColumn('buyers.id', 'platform_datas.buyer_id')
                         ->limit(1);
             },
-            'buyer_integration' => function(Builder $query) {
+            'buyer_integration' => function($query) {
                 return $query->select('name')
                         ->from('integrations')
                         ->whereColumn('integrations.id', 'platform_datas.buyer_integration_id')
                         ->limit(1);
             },
-            'affiliate_name' => function(Builder $query) {
+            'affiliate_name' => function($query) {
                 return $query->select('name')
                         ->from('users')
                         ->whereColumn('users.id', 'platform_datas.affiliate_id')
