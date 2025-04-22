@@ -52,7 +52,7 @@ class PlatformSpecsService
         //find out the events that occurred in this change
         $eventsOccured = [];
         //check if price increased or decreased by comparing the old and new payout
-        $oldPayout = $specs->options['lead_posting']['payout']['amount'] ?? 0;
+        $oldPayout = $request->payout['model'] == 'dynamic' ? $specs->options['lead_posting']['payout']['percentage'] ?? 0 : $specs->options['lead_posting']['payout']['amount'] ?? 0;
         $newPayout = $request->payout['model'] == 'dynamic' ? $request->payout['percentage'] ?? 0 : $request->payout['amount'] ?? 0;
         if ($newPayout != $oldPayout && !($newPayout == 0 && $oldPayout == 0)) {
             $eventsOccured['price_update'] = [
