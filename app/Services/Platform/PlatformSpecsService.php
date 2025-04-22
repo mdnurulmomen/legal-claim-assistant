@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use App\Models\Buyer;
 
 class PlatformSpecsService
 {
@@ -104,6 +105,13 @@ class PlatformSpecsService
             $specUrl = config('app.spec_endpoint_domain') . '/posting-instructions/' . $platform->tag . '/' . $specProfile->api_token;
             $affiliatePortalUrl = config('app.affiliate_portal_domain') . '/dashboard/campaign/' . $platform->tag;
             $emailContent = str_replace('{{spec_url}}', $specUrl, $emailContent);
+            $buyerIDs = Buyer::join('integrations', 'buyers.id', '=', 'integrations.buyer_id')
+                        ->whereIn('integrations.buyer_unique_id', $request->buyers)
+                        ->get();
+
+            $buyerIDs = count($buyerIDs) > 0 ? implode(', ', array_map(function($id) {
+                return 'Buyer-' . $id;
+            }, $buyerIDs->pluck('buyer_alias_id')->toArray())) : '';
 
             //replace template
             $replaceTemplate = [
@@ -117,6 +125,7 @@ class PlatformSpecsService
                 'new_value' => $eventsOccured['price_update']['new_value'],
                 'context' => $eventsOccured['price_update']['context'],
                 'event' => $notification->name,
+                'buyer_ids' => $buyerIDs,
             ];
 
             //replace dynamic contents
