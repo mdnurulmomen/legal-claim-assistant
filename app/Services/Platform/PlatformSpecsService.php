@@ -110,7 +110,7 @@ class PlatformSpecsService
                         ->get();
 
             $buyerIDs = count($buyerIDs) > 0 ? implode(', ', array_map(function($id) {
-                return 'Buyer-' . $id;
+                return '#' . $id;
             }, $buyerIDs->pluck('buyer_alias_id')->toArray())) : '';
 
             //replace template
