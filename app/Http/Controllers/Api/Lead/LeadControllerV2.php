@@ -17,6 +17,7 @@ use App\Services\Lead\LeadFilterService;
 use App\Traits\CommonTrait;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 
 class LeadControllerV2 extends Controller
 {
@@ -92,7 +93,15 @@ class LeadControllerV2 extends Controller
 
                         $request->merge(['leads' => $formattedLeads]);
 
-                        $platformService->formatAndUpdateLeads($request);
+                        try {
+                            DB::beginTransaction();
+                            $platformService->formatAndUpdateLeads($request);
+                            DB::commit();
+                        } catch (\Throwable $th) {
+                            DB::rollback();
+                            throw $th;
+                        }
+
                     }
 
             $oldConfig = DispositionConfigMongo::where('user_id', $userId)->latest('id')->select('id')->first();

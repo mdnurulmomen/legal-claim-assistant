@@ -318,6 +318,7 @@ class LeadController extends Controller
                         ->select(
                             'id',
                             'is_retainer',
+                            'is_returned',
                             'is_paid',
                             'is_internal',
                             'is_posted',
@@ -426,6 +427,7 @@ class LeadController extends Controller
                         ->select(
                             'lead_reports.id',
                             'lead_reports.is_retainer',
+                            'lead_reports.is_returned',
                             'lead_reports.is_paid',
                             'lead_reports.is_internal',
                             'lead_reports.is_posted',
@@ -467,7 +469,7 @@ class LeadController extends Controller
             return withError('Invalid Lead Id Provided');
         }
 
-        if(! empty($request->is_retainer) && $leadService->hasAnyRetainedLead($request->lead_id, $reportId)){
+        if((!empty($request->is_retainer) || !empty($request->is_returned)) && $leadService->hasAnyRetainedLead($request->lead_id, $reportId)){
             return withError('Lead has been retained and cannot be updated.');
         }
 
@@ -480,7 +482,7 @@ class LeadController extends Controller
             DB::beginTransaction();
             $report->update($formattedData);
             $leadService->updateReportData($clonedReport, $request, $formattedData, platformData: $lead);
-            $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer, $request->lead_status);
+            $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer, $request->lead_status, $request->is_returned);
             $leadService->updateRevenuePayout($request->lead_id);
             DB::commit();
 
