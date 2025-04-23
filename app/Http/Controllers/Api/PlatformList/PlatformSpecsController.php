@@ -122,6 +122,7 @@ class PlatformSpecsController extends Controller
 
         try {
 
+            $specsService->notifyAffiliate($request, $specs, $affiliate);
             $specsService->saveAffiliate($request, $affiliate);
             $specsService->saveSpecs($request, $specs);
 

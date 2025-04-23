@@ -125,4 +125,18 @@ return [
 
     'platform_key' => env('PLATFORM_KEY', ''),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Specs Update Notification Settings
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for specs update notification system.
+    |
+    */
+    'affiliate_portal_domain' => env('AFFILIATE_PORTAL_DOMAIN', 'https://legalclaimassistant.support'),
+    'spec_endpoint_domain' => env('SPEC_ENDPOINT_DOMAIN ', 'https://leads.affimedia.nl'),
+    'specs_update_notify_enabled' => env('SPECS_UPDATE_NOTIFY_ENABLED', true),
+    'specs_update_notify_sandbox' => env('SPEC_UPDATE_NOTFIFY_SANDBOX', true),
+    'specs_update_notify_sandbox_email' => env('SPEC_UPDATE_NOTFIFY_SANDBOX_EMAIL', 'sarwar@legalclaimassistant.com'),
+
 ];
