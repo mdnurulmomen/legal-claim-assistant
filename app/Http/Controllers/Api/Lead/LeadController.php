@@ -85,10 +85,13 @@ class LeadController extends Controller
                                 'affids' => User::select('data->affids')->whereColumn('users.id', 'platform_datas.affiliate_id')->limit(1),
                             ]);
                         })
-                        ->when(empty($request->is_total) && empty($request->is_export), function($query) use ($orderBy, $orderIn) {
+                        ->when(empty($request->is_total) && empty($request->is_export), function($query) use ($orderBy, $orderIn, $startDate, $endDate) {
                             return $query->addSelect([
                                 'revenue' => LeadReport::select(DB::raw('sum(lead_reports.lead_revenue)'))
                                                 ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                                ->when(! empty($startDate) && ! empty($endDate), function (Builder $query) use ($startDate, $endDate) {
+                                                    return $query->whereBetween('lead_reports.created_at', [$startDate, $endDate]);
+                                                })
                                                 ->limit(1),
 
                                 'profit' => LeadReport::select(DB::raw('sum(lead_reports.lead_profit)'))
@@ -114,7 +117,17 @@ class LeadController extends Controller
                             return $query->whereBetween('platform_datas.retained_date', [$retainedStartDate, $retainedEndDate]);
                         })
                         ->when(! empty($startDate) && ! empty($endDate), function (Builder $query) use ($startDate, $endDate) {
-                            return $query->whereBetween('platform_datas.created_at', [$startDate, $endDate]);
+                            return $query->where(function($query) use ($startDate, $endDate) {
+                                // Option 1: Leads with matching leadReports
+                                $query->whereHas('leadReports', function($subQuery) use ($startDate, $endDate) {
+                                    return $subQuery->whereBetween('created_at', [$startDate, $endDate]);
+                                })
+                                // Option 2: Leads without any leadReports (using whereDoesntHave)
+                                ->orWhere(function($subQuery) use ($startDate, $endDate) {
+                                    $subQuery->whereDoesntHave('leadReports')
+                                        ->whereBetween('platform_datas.created_at', [$startDate, $endDate]);
+                                });
+                            });
                         })
                         ->when(! empty($request->search_txt), function (Builder $query) use ($request, $leadService) {
                             return $leadService->formatSearchColumn($request, $query);
@@ -135,7 +148,7 @@ class LeadController extends Controller
         }
 
         if(! empty($request->is_total)) {
-            $leads = $leadService->getLeadTotals($leadQuery, $request);
+            $leads = $leadService->getLeadTotals($leadQuery, $request, $startDate, $endDate);
             return withSuccess($leads);
         }
 

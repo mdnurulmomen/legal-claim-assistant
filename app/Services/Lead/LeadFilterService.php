@@ -37,11 +37,6 @@ class LeadFilterService
 
         $groupedData = iterator_to_array($this->groupCsvData($request, $conditionFirst));
 
-        // $oldConfig = DispositionConfigMongo::where('user_id', $userId)->latest('id')->select('id')->first();
-        // if(! empty($oldConfig)) {
-        //     RemoveConfigLogs::dispatch($oldConfig->id);
-        // }
-
         $columns = array_keys($conditionFirst);
         $fillableKeys = (new PlatformData())->getFillable();
         $selectableKeys = $this->formatSelectableKeys($request, $fillableKeys);
@@ -461,6 +456,7 @@ class LeadFilterService
 
             $columnsSql[] = "$column VARCHAR(255) COLLATE utf8mb4_unicode_ci";
         }
+
         $columnsSql[] = "INDEX(" . implode("), INDEX(", $columns) . ")";
 
         DB::statement("CREATE TEMPORARY TABLE temp_conditions (" . implode(', ', $columnsSql) . ")");

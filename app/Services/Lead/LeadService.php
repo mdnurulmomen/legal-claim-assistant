@@ -120,7 +120,7 @@ class LeadService extends ReportingService
      * @param Builder $baseQuery
      * @param Request $request
      */
-    public function getLeadTotals(Builder $baseQuery, Request $request)
+    public function getLeadTotals(Builder $baseQuery, Request $request, $startDate, $endDate)
     {
         $totals = $baseQuery->leftJoin('lead_reports', 'lead_reports.lead_id', '=', 'platform_datas.id')
                         ->selectRaw('
@@ -129,6 +129,9 @@ class LeadService extends ReportingService
                             SUM(lead_reports.affiliate_payout) as avg_affiliate_payout,
                             (SUM(lead_reports.affiliate_margin) / COUNT(DISTINCT platform_datas.id)) as avg_affiliate_margin
                         ')
+                        ->when(! empty($startDate) && ! empty($endDate), function (Builder $query) use ($startDate, $endDate) {
+                            return $query->whereBetween('lead_reports.created_at', [$startDate, $endDate]);
+                        })
                         ->first();
 
         $totals->total_revenue = (float) $totals->total_revenue;
