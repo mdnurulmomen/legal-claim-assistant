@@ -509,6 +509,11 @@ class PlatformService
                     continue;
                 }
 
+                if($key === 'affiliate_payout') {
+                    $lead['payout'] = $value;
+                    continue;
+                }
+
                 if(in_array($key, $excludedFields)) continue;
 
                 if(is_array($data)) {
@@ -522,10 +527,6 @@ class PlatformService
 
             if($isRetainer = $newLead['is_show_portal'] ?? null) {
                 $lead['is_retainer'] = $isRetainer;
-            }
-
-            if($payout = $newLead['affiliate_payout'] ?? 0) {
-                $lead['payout'] = $payout;
             }
 
             if($retainedDate = $newLead['retained_date'] ?? null) {
@@ -662,8 +663,6 @@ class PlatformService
                                     ->filter(fn($item) => in_array($item, ['affid', 'revenue', 'affiliate_payout']))
                                     ->map(fn($item) => $item === 'revenue' ? 'lead_revenue' : $item)
                                     ->values();
-
-        $isRevenuePayoutField = $updatableReportFields->contains(fn($field) => in_array($field, ['lead_revenue', 'affiliate_payout']));
 
         if(empty($updatableReportFields)) return;
 

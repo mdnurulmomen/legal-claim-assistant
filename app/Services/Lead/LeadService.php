@@ -737,12 +737,6 @@ class LeadService extends ReportingService
         if($isReportUpdatable || ($request->is_retainer || $request->is_returned)){
             $this->updatePlatformData($request->lead_id, $leadData);
         }
-
-        // if(! empty($request->is_returned)) {
-        //     $leadData['returned_date'] = $date;
-        //     $leadData['is_returned'] = 1;
-        //     $this->updatePlatformData($request->lead_id, $leadData);
-        // }
     }
 
     /**
@@ -765,7 +759,7 @@ class LeadService extends ReportingService
         // $hasReturned = $this->hasAnyReturnedLead($leadId, $reportId);
 
         $isRetainedOrReturned = $this->hasAnyRetainedLead($leadId, $reportId);
-        if($isRetainedOrReturned) return;
+        if(! empty($isRetainedOrReturned)) return;
 
         $this->updatePlatformData($leadId, [
             'lead_status' => $leadStatus ?: 'Pending',
@@ -881,10 +875,10 @@ class LeadService extends ReportingService
      * Updates the platform data for a given ID.
      *
      * @param int $id The ID of the platform data.
-     * @param mixed $data The data to update.
+     * @param array $data The data to update.
      * @return void
      */
-    public function updatePlatformData(int $id, $data): void
+    public function updatePlatformData(int $id, array $data): void
     {
         PlatformData::where('id', $id)->update($data);
     }
