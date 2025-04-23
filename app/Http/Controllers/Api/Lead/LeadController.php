@@ -96,14 +96,23 @@ class LeadController extends Controller
 
                                 'profit' => LeadReport::select(DB::raw('sum(lead_reports.lead_profit)'))
                                                 ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                                ->when(! empty($startDate) && ! empty($endDate), function (Builder $query) use ($startDate, $endDate) {
+                                                    return $query->whereBetween('lead_reports.created_at', [$startDate, $endDate]);
+                                                })
                                                 ->limit(1),
 
                                 'affiliate_payout' => LeadReport::select(DB::raw('sum(lead_reports.affiliate_payout)'))
                                                         ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                                        ->when(! empty($startDate) && ! empty($endDate), function (Builder $query) use ($startDate, $endDate) {
+                                                            return $query->whereBetween('lead_reports.created_at', [$startDate, $endDate]);
+                                                        })
                                                         ->limit(1),
 
                                 'affiliate_margin' => LeadReport::select(DB::raw('sum(lead_reports.affiliate_margin)'))
                                                         ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                                        ->when(! empty($startDate) && ! empty($endDate), function (Builder $query) use ($startDate, $endDate) {
+                                                            return $query->whereBetween('lead_reports.created_at', [$startDate, $endDate]);
+                                                        })
                                                         ->limit(1)
                             ])
                             ->when(! empty($orderBy) && ! empty($orderIn), function ($query) use ($orderBy, $orderIn) {
