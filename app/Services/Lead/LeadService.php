@@ -120,7 +120,7 @@ class LeadService extends ReportingService
      * @param Builder $baseQuery
      * @param Request $request
      */
-    public function getLeadTotals(Builder $baseQuery, Request $request)
+    public function getLeadTotals(Builder $baseQuery, Request $request, $startDate, $endDate)
     {
         $totals = $baseQuery->leftJoin('lead_reports', 'lead_reports.lead_id', '=', 'platform_datas.id')
                         ->selectRaw('
@@ -129,6 +129,9 @@ class LeadService extends ReportingService
                             SUM(lead_reports.affiliate_payout) as avg_affiliate_payout,
                             (SUM(lead_reports.affiliate_margin) / COUNT(DISTINCT platform_datas.id)) as avg_affiliate_margin
                         ')
+                        ->when(! empty($startDate) && ! empty($endDate), function (Builder $query) use ($startDate, $endDate) {
+                            return $query->whereBetween('lead_reports.created_at', [$startDate, $endDate]);
+                        })
                         ->first();
 
         $totals->total_revenue = (float) $totals->total_revenue;
@@ -737,12 +740,6 @@ class LeadService extends ReportingService
         if($isReportUpdatable || ($request->is_retainer || $request->is_returned)){
             $this->updatePlatformData($request->lead_id, $leadData);
         }
-
-        // if(! empty($request->is_returned)) {
-        //     $leadData['returned_date'] = $date;
-        //     $leadData['is_returned'] = 1;
-        //     $this->updatePlatformData($request->lead_id, $leadData);
-        // }
     }
 
     /**
@@ -765,7 +762,7 @@ class LeadService extends ReportingService
         // $hasReturned = $this->hasAnyReturnedLead($leadId, $reportId);
 
         $isRetainedOrReturned = $this->hasAnyRetainedLead($leadId, $reportId);
-        if($isRetainedOrReturned) return;
+        if(! empty($isRetainedOrReturned)) return;
 
         $this->updatePlatformData($leadId, [
             'lead_status' => $leadStatus ?: 'Pending',
@@ -881,10 +878,10 @@ class LeadService extends ReportingService
      * Updates the platform data for a given ID.
      *
      * @param int $id The ID of the platform data.
-     * @param mixed $data The data to update.
+     * @param array $data The data to update.
      * @return void
      */
-    public function updatePlatformData(int $id, $data): void
+    public function updatePlatformData(int $id, array $data): void
     {
         PlatformData::where('id', $id)->update($data);
     }

@@ -30,6 +30,7 @@ class PlatformData extends Model
         'payout',
         'cost',
         'is_retainer',
+        'is_returned',
         'is_sold',
         'is_internal',
         'retained_date',

@@ -71,6 +71,9 @@ class ReportingController extends Controller
                     ->when(! empty($reportStart) && ! empty($reportEnd), function ($query) use ($reportStart, $reportEnd) {
                         return $query->whereBetween('lead_reports.created_at', [$reportStart, $reportEnd]);
                     })
+                    ->when(! empty($request->is_retained_only), function ($query) {
+                        return $query->where('pd.is_retainer', '>', 0);
+                    })
                     ->groupBy($groupBy);
 
         $baseQuery = DB::table(DB::raw("({$subQuery->toSql()}) as sub"))
