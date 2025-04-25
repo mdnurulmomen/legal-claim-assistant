@@ -9,6 +9,7 @@ Route::prefix('buyer')->as('buyer.')
     ->middleware('auth:sanctum')
     ->group(function ($route) {
         $route->get('list', 'buyerList')->name('buyer.list');
+        $route->get('dropdown-list', 'buyerDropdownList')->name('buyer.dropdown-list');
         $route->post('store-buyer', 'storeBuyer')->name('store.buyer');
         $route->get('show-buyer/{buyerId}', 'showBuyer')->name('show.buyer');
         $route->put('update-buyer/{buyerId}', 'updateBuyer')->name('update.buyer');

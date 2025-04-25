@@ -40,7 +40,14 @@ class CreateOrUpdateBuyerRequest extends FormRequest
                             })
                         ],
             'company_name' => ['nullable', 'string', 'max:255'],
-            'alias' => ['nullable', 'string', 'max:255'],
+            'alias' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('buyers', 'alias')->when(! empty($this->buyerId), function ($query) {
+                    return $query->ignore($this->buyerId);
+                })
+            ],
             'address' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
             'state' => ['nullable', 'string', 'max:255'],

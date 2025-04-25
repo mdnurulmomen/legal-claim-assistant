@@ -26,12 +26,16 @@ class BuyerController extends Controller
                     ->when(! empty($request->search_txt), function (Builder $query) use ($request) {
                         return $query->whereAny([
                                     'name',
+                                    'company_name',
                                     'email',
                                     'phone',
                                 ], 'like', "%{$request->search_txt}%");
                     })
                     ->when(! empty($request->status), function($query) use ($request) {
                         return $query->where('status', $request->status);
+                    })
+                    ->when(! empty($request->search_buyer_alias), function($query) use ($request) {
+                        return $query->whereIn('alias', $request->search_buyer_alias);
                     })
                     ->latest('id')
                     ->paginate($perPage);
@@ -103,5 +107,26 @@ class BuyerController extends Controller
         $buyer->delete();
 
         return withSuccess(message: 'Buyer deleted successfully');
+    }
+
+    /**
+     * Retrieves a list of integrated mail contents to be used in the dropdown list.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function buyerDropdownList(Request $request): Response
+    {
+        $limit = $request->input('per_page', 20);
+
+        $contents = Buyer::query()
+                        ->select('alias as value', 'alias as label')
+                        ->when(! empty($request->search), function ($query) use ($request) {
+                            return $query->where('alias', 'like', "%{$request->search}%");
+                        })
+                        ->where('status', 'active')
+                        ->paginate($limit);
+
+        return withSuccess($contents);
     }
 }
