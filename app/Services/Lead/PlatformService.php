@@ -509,6 +509,11 @@ class PlatformService
                     continue;
                 }
 
+                if($key === 'affiliate_payout') {
+                    $lead['payout'] = $value;
+                    continue;
+                }
+
                 if(in_array($key, $excludedFields)) continue;
 
                 if(is_array($data)) {
@@ -522,10 +527,6 @@ class PlatformService
 
             if($isRetainer = $newLead['is_show_portal'] ?? null) {
                 $lead['is_retainer'] = $isRetainer;
-            }
-
-            if($payout = $newLead['affiliate_payout'] ?? 0) {
-                $lead['payout'] = $payout;
             }
 
             if($retainedDate = $newLead['retained_date'] ?? null) {
@@ -632,6 +633,19 @@ class PlatformService
 
         $this->updateRelevantLeadReports($fields, $leadData, $leadIds, $request->upload_type);
         $this->updateRelevantLeadLog($fields, $leadGroup, $leadIds, $fillable);
+
+        if($request->upload_type === 'retainer_upload') {
+            GlobalPostBackTriggerJob::dispatch([
+                'type' => 'bulk_retainer',
+                'lead_ids' => $leads->pluck('id')->all()
+            ], 'on_retainer_added');
+        }
+        //  else {
+        //     GlobalPostBackTriggerJob::dispatch([
+        //         'type' => 'bulk_retainer',
+        //         'lead_ids' => $leads->pluck('id')->all()
+        //     ], 'on_lead_update');
+        // }
     }
 
     /**
@@ -649,8 +663,6 @@ class PlatformService
                                     ->filter(fn($item) => in_array($item, ['affid', 'revenue', 'affiliate_payout']))
                                     ->map(fn($item) => $item === 'revenue' ? 'lead_revenue' : $item)
                                     ->values();
-
-        $isRevenuePayoutField = $updatableReportFields->contains(fn($field) => in_array($field, ['lead_revenue', 'affiliate_payout']));
 
         if(empty($updatableReportFields)) return;
 
@@ -708,13 +720,6 @@ class PlatformService
 
             if(count($newReports) > 0) {
                 LeadReport::insert($newReports);
-            }
-
-            if($isRevenuePayoutField && $uploadType === 'retainer_upload') {
-                GlobalPostBackTriggerJob::dispatch([
-                    'type' => 'bulk_retainer',
-                    'lead_reports' => $leadReportData->toArray()
-                ]);
             }
         }
 
@@ -783,7 +788,7 @@ class PlatformService
             if(empty($lead)) continue;
 
             $logData = $log->log_data;
-            $originalPayload = $logData && $logData['original_payload'] ? $logData['original_payload'] : null;
+            $originalPayload = $logData['original_payload'] ?? null;
             if(empty($originalPayload)) continue;
 
             $data = is_string($lead['datas']) ? json_decode($lead['datas'], true) : $lead['datas'];
@@ -968,7 +973,7 @@ class PlatformService
     * @param array $leadReportData
     * @return array
     */
-    public function getFormData(array $lead, ?array $oldRetainer = null, string $uploadType = null, float $evenlyDistributedRevenue = 0, float $evenlyDistributedPayout = 0): array
+    public function getFormData(array $lead, ?array $oldRetainer = null, string $uploadType = "", float $evenlyDistributedRevenue = 0, float $evenlyDistributedPayout = 0): array
     {
         $newDate = now();
 

@@ -6,6 +6,7 @@ use App\Helpers\Utility;
 use App\Http\Controllers\Api\Test\Resources\TestResource;
 use App\Http\Controllers\Controller;
 use App\Models\Integration;
+use App\Models\LeadReport;
 use App\Models\PlatformData;
 use App\Models\PlatformDataItem;
 use App\Models\Test;
@@ -138,5 +139,159 @@ class TestController extends Controller
                     }
 
         return withSuccess(message: 'Data items updated successfully');
+    }
+
+    public function updateMissingRetainers(Request $request)
+    {
+        $formattedLeads = [];
+        $formattedReports = [];
+        $newReports = [];
+
+        $leads = PlatformData::query()
+                    // ->select(['id', 'phone', 'email', 'retained_date', 'lead_status', 'created_at', 'updated_at', 'revenue', 'payout'])
+                    ->select([
+                        'id',
+                        'affiliate_id',
+                        'list_id',
+                        'buyer_id',
+                        'affid',
+                        'buyer_integration_id',
+                        'affiliate_specs_id',
+                        'affm_source_id',
+                        'revenue',
+                        'payout',
+                        'sold_type',
+                        'retained_date',
+                        'lead_status',
+                        'created_at',
+                        'updated_at',
+                        'revenue',
+                        'payout'
+                    ])
+                    ->whereNull('retained_date')
+                    ->where('lead_status', 'Retained')
+                    ->when(! empty($request->updated_at), function($query) use ($request) {
+                        return $query->whereDate('updated_at', $request->updated_at);
+                    })
+                    ->with('leadReports')
+                    ->orderByDesc('id')
+                    ->lazyById(500)
+                    ->each(function($lead) use (&$formattedLeads, &$formattedReports, &$newReports) {
+                        $formattedLeads[] = $this->formatLead($lead, $formattedReports, $newReports);
+                    });
+
+        try {
+            DB::beginTransaction();
+                PlatformData::upsert(
+                    $formattedLeads,
+                    ['id'],
+                    ['retained_date', 'lead_status', 'is_retainer']
+                );
+
+                LeadReport::upsert(
+                    $formattedReports,
+                    ['id'],
+                    ['is_retainer']
+                );
+
+                LeadReport::insert($newReports);
+
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return withError('Lead Filled Fields Update Failed.' . $th->getMessage());
+        }
+
+        return withSuccess([
+            'formatted_leads' => $formattedLeads,
+            'formatted_reports' => $formattedReports,
+            'new_reports' => $newReports,
+            'total_leads' => $leads->count(),
+            // 'leads' => $leads
+        ]);
+    }
+
+    private function formatLead($lead, &$formattedReports, &$newReports)
+    {
+        $newLead = [
+            'id' => $lead->id,
+            'lead_status' => $lead->lead_status,
+            'retained_date' => $lead->retained_date,
+            'is_retainer' => $lead->is_retainer
+        ];
+
+        if($lead->revenue == "0.00") {
+            $newLead['lead_status'] = 'Pending';
+            $newLead['retained_date'] = null;
+            $newLead['is_retainer'] = 0;
+        } else {
+            $newLead['lead_status'] = 'Retained';
+            $newLead['retained_date'] = $lead->updated_at;
+            $newLead['is_retainer'] = 1;
+
+            if(
+                $lead->leadReports->isNotEmpty()
+                && $lead->leadReports->doesntContain(function ($item) {
+                    return $item['is_retainer'] > 0;
+                })
+            ) {
+                $lastReport = $lead->leadReports->last();
+
+                $formattedReports[] = [
+                    'id' => $lastReport['id'],
+                    'is_retainer' => 1
+                ];
+            }
+
+            if($lead->leadReports->isEmpty()) {
+                $newReports[] = $this->getFormData($lead);
+            }
+        }
+
+        return $newLead;
+    }
+
+    public function getFormData($lead): array
+    {
+        $newDate = now();
+        $revenue = (float) $lead->revenue;
+        $payout = (float) $lead->payout;
+
+        $formData = [
+            'lead_id' => $lead['id'] ?? null,
+            'affiliate_id' => $lead['affiliate_id'] ?? null,
+            'list_id' => $lead['list_id'] ?? null,
+            'buyer_id' => $lead['buyer_id'] ?? null,
+            'affid' => $lead['affid'] ?? null,
+            'buyer_integration_id' => $lead['buyer_integration_id'] ?? null,
+            'affiliate_specs_id' => $lead['affiliate_specs_id'] ?? null,
+            'affm_source_id' => $lead['affm_source_id'] ?? null,
+            'is_retainer' => 1,
+            'lead_revenue' => $revenue,
+            'affiliate_payout' => $payout,
+            'lead_profit' => 0,
+            'affiliate_margin' => 0,
+            'profit_margin' => 0,
+            'sold_type' => $lead['sold_type'] ?? null,
+            'created_at' => $lead['retained_date'] ?? $newDate,
+            'updated_at' => $lead['retained_date'] ?? $newDate
+        ];
+
+        $reportData = $this->calculateRevenuePayout((float) $formData['lead_revenue'], (float) $formData['affiliate_payout']);
+
+        return array_merge($formData, $reportData);
+    }
+
+    public function calculateRevenuePayout( float | int $revenue = 0, float | int $affiliatePayout): array
+    {
+        $profit = $revenue - $affiliatePayout;
+        $affiliateMargin = $revenue ? (($affiliatePayout / $revenue) * 100) : 0;
+        $profitMargin = $revenue ? (($profit / $revenue) * 100) : 0;
+
+        return [
+            'lead_profit' => $profit,
+            'affiliate_margin' => $affiliateMargin,
+            'profit_margin' => $profitMargin
+        ];
     }
 }

@@ -172,7 +172,7 @@ class PlatformIntegrationController extends Controller
             return withError('Failed to delete integration! ' . $th->getMessage());
         }
 
-        return withSuccess(message: 'Integration deleted successfully!');
+        return withSuccess(message: 'Integration archived successfully!');
     }
 
     /**

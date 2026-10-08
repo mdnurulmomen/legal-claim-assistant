@@ -120,7 +120,7 @@ class LeadService extends ReportingService
      * @param Builder $baseQuery
      * @param Request $request
      */
-    public function getLeadTotals(Builder $baseQuery, Request $request)
+    public function getLeadTotals(Builder $baseQuery, Request $request, $startDate, $endDate)
     {
         $totals = $baseQuery->leftJoin('lead_reports', 'lead_reports.lead_id', '=', 'platform_datas.id')
                         ->selectRaw('
@@ -129,6 +129,9 @@ class LeadService extends ReportingService
                             SUM(lead_reports.affiliate_payout) as avg_affiliate_payout,
                             (SUM(lead_reports.affiliate_margin) / COUNT(DISTINCT platform_datas.id)) as avg_affiliate_margin
                         ')
+                        ->when(! empty($startDate) && ! empty($endDate), function (Builder $query) use ($startDate, $endDate) {
+                            return $query->whereBetween('lead_reports.created_at', [$startDate, $endDate]);
+                        })
                         ->first();
 
         $totals->total_revenue = (float) $totals->total_revenue;
@@ -275,7 +278,7 @@ class LeadService extends ReportingService
      * @param array $values
      * @return array
      */
-    public function makeConditionWithoutOperator(string $column, array $values = [])
+    public function makeConditionWithoutOperator($column, array $values = [])
     {
         $values = array_map('strtolower', $values);
 
@@ -299,7 +302,7 @@ class LeadService extends ReportingService
             return [[], []];
         }
 
-        $filters = json_decode($filters, true);
+        $filters = is_string($filters) ? json_decode($filters, true) : $filters;
         $formattedFilters = [];
         $relationalConditions = [];
 
@@ -368,7 +371,7 @@ class LeadService extends ReportingService
      * @param string|int|null $value
      * @return array
      */
-    public function makeConditions(string $column, string $operator, string | int | null $value = '', bool $isRelational = false): array
+    public function makeConditions($column, string $operator, string | int | null $value = '', bool $isRelational = false): array
     {
         return [
             'column' => $isRelational ? $column : ("platform_datas.datas->" . $column),
@@ -538,6 +541,11 @@ class LeadService extends ReportingService
 
         $this->updateLeadReports($updatedLeadsData);
         $this->updateLeadLogs($leads);
+
+        // GlobalPostBackTriggerJob::dispatch([
+        //     'type' => 'bulk_retainer',
+        //     'lead_ids' => $leadData->pluck('id')->all()
+        // ], 'on_lead_update');
     }
 
     /**
@@ -732,12 +740,6 @@ class LeadService extends ReportingService
         if($isReportUpdatable || ($request->is_retainer || $request->is_returned)){
             $this->updatePlatformData($request->lead_id, $leadData);
         }
-
-        // if(! empty($request->is_returned)) {
-        //     $leadData['returned_date'] = $date;
-        //     $leadData['is_returned'] = 1;
-        //     $this->updatePlatformData($request->lead_id, $leadData);
-        // }
     }
 
     /**
@@ -760,7 +762,7 @@ class LeadService extends ReportingService
         // $hasReturned = $this->hasAnyReturnedLead($leadId, $reportId);
 
         $isRetainedOrReturned = $this->hasAnyRetainedLead($leadId, $reportId);
-        if($isRetainedOrReturned) return;
+        if(! empty($isRetainedOrReturned)) return;
 
         $this->updatePlatformData($leadId, [
             'lead_status' => $leadStatus ?: 'Pending',
@@ -876,10 +878,10 @@ class LeadService extends ReportingService
      * Updates the platform data for a given ID.
      *
      * @param int $id The ID of the platform data.
-     * @param mixed $data The data to update.
+     * @param array $data The data to update.
      * @return void
      */
-    public function updatePlatformData(int $id, $data): void
+    public function updatePlatformData(int $id, array $data): void
     {
         PlatformData::where('id', $id)->update($data);
     }
@@ -917,10 +919,30 @@ class LeadService extends ReportingService
         }
 
         $columns = [
-            'list_name' => 'platform_lists.name',
-            'buyer_name' => 'buyers.name',
-            'buyer_integration' => 'integrations.name',
-            'affiliate_name' => 'users.name',
+            'list_name' => function ($query) {
+                return $query->select('name')
+                    ->from('platform_lists')
+                    ->whereColumn('platform_lists.id', 'platform_datas.list_id')
+                    ->limit(1);
+            },
+            'buyer_name' => function($query) {
+                return $query->select('name')
+                        ->from('buyers')
+                        ->whereColumn('buyers.id', 'platform_datas.buyer_id')
+                        ->limit(1);
+            },
+            'buyer_integration' => function($query) {
+                return $query->select('name')
+                        ->from('integrations')
+                        ->whereColumn('integrations.id', 'platform_datas.buyer_integration_id')
+                        ->limit(1);
+            },
+            'affiliate_name' => function($query) {
+                return $query->select('name')
+                        ->from('users')
+                        ->whereColumn('users.id', 'platform_datas.affiliate_id')
+                        ->limit(1);
+            },
             'affid' => 'platform_datas.affid',
             'phone' => 'platform_datas.phone',
             'email' => 'platform_datas.email',
@@ -999,8 +1021,30 @@ class LeadService extends ReportingService
     public function getAffiliates(Request $request): Collection
     {
         $affiliates = User::select('id as value', 'name as label', 'data->affids as affids', 'role')
-                        ->when(! empty($request->search_txt), function ($query) use ($request) {
-                            return $query->where('name', 'like', '%'.$request->search_txt.'%');
+                        ->when(!empty($request->search_txt), function ($query) use ($request) {
+
+                            $searchTxt = "%{$request->search_txt}%";
+
+                            return $query->where(function ($query) use ($searchTxt, $request) {
+
+                                $affIds = explode(',', str_replace(' ', '', $request->search_txt));
+
+                                return $query->where(function($query) use ($request, $affIds) {
+                                    return $query->where('data->affids', 'like', '%' . $request->search_txt . '%')
+                                                ->orWhereJsonContains('data->affids', $affIds);
+                                })
+                                ->when(hasAffiliateAccess(), function ($query) use ($request, $searchTxt) {
+                                    return $query->orWhere('name', 'like', $searchTxt)
+                                                ->orWhere('email', 'like', $searchTxt)
+                                                ->orWhere('username', 'like', $searchTxt)
+                                                ->orWhereHas('affiliate', function ($query) use ($searchTxt) {
+                                                        $query->where('country', 'like', $searchTxt)
+                                                        ->orWhere('company_name', 'like', $searchTxt);
+                                                });
+
+                                });
+                            });
+
                         })
                         ->where('role', 'affiliate')
                         ->when(! empty($request->is_remote_search), function($query) {
@@ -1009,17 +1053,18 @@ class LeadService extends ReportingService
                         ->get();
 
         return $affiliates->map(function ($user): array {
+                    $affids = $user->affids ? implode(', ', json_decode($user->affids, true)) : '';
 
                     if(! hasAffiliateAccess() && $user->role === 'affiliate') {
                         return [
                             'value' => $user->value,
-                            'label' => $user->affids ? implode(', ', json_decode($user->affids, true)) : ''
+                            'label' => $affids
                         ];
                     }
 
                     return [
                         'value' => $user->value,
-                        'label' => $user->label
+                        'label' => $user->label . ($affids ? ' (' . $affids . ')' : '')
                     ];
                 });
     }
@@ -1269,7 +1314,7 @@ class LeadService extends ReportingService
             GlobalPostBackTriggerJob::dispatch([
                 'type' => 'bulk_retainer',
                 'lead_reports' => $leadReportData
-            ]);
+            ], 'on_retainer_added');
         }
 
         if(count($leadRevenuePayouts) > 0) {

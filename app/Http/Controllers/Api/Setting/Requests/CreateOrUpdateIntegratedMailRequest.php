@@ -1,18 +1,16 @@
 <?php
 
-namespace App\Http\Controllers\Api\GlobalPostback\Requests;
+namespace App\Http\Controllers\Api\Setting\Requests;
 
-use App\Helpers\SettingHandler;
-use App\Helpers\Utility;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Validation\Rule;
 
-class CreateOrUpdateGlobalPostbackRequest extends FormRequest
+class CreateOrUpdateIntegratedMailRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * Determine if the Admin Role is authorized to make this request.
      */
     public function authorize(): bool
     {
@@ -27,11 +25,9 @@ class CreateOrUpdateGlobalPostbackRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'url' => ['required', 'string'],
-            'status' => ['required'],
-            'conditions' =>  ['required'],
-            'postback_event' => ['nullable', 'string', 'max:255', Rule::in(array_keys(SettingHandler::$postBackEvents))],
+            'title' => ['required', 'string', 'max:255', Rule::unique('integration_emails', 'title')->ignore($this->contentId)],
+            'content' => ['required', 'string'],
+            'status' => ['required', Rule::in(['active', 'inactive'])],
         ];
     }
 

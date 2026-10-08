@@ -11,12 +11,14 @@ use App\Http\Controllers\Api\Lead\Resources\LeadReportResource;
 use App\Http\Controllers\Api\Lead\Resources\LeadResource;
 use App\Http\Controllers\Controller;
 use App\Jobs\GlobalPostBackTriggerJob;
+use App\Models\Buyer;
 use App\Models\Integration;
 use App\Models\LeadReport;
 use App\Models\PlatformData;
 use App\Models\PlatformPings;
 use App\Models\LeadLog;
 use App\Models\PlatformList;
+use App\Models\User;
 use App\Services\ExcelService;
 use App\Services\Lead\LeadService;
 use App\Services\Lead\PlatformService;
@@ -51,6 +53,8 @@ class LeadController extends Controller
         $excelFilters = $leadService->formatExcelFilters($request);
         $perPage = empty($request->limit) ? 10 : $request->limit;
         [$orderBy, $orderIn] = $leadService->formatLeadOrderByIn($request);
+        $columns = is_string($request->columns) ? json_decode($request->columns, true) : ($request->columns ?? []);
+        $request->merge(['columns' => $columns]);
 
         $leadQuery = PlatformData::query()
                         ->when(! empty($request->is_total) || ! empty($request->is_export), function($query) {
@@ -65,40 +69,50 @@ class LeadController extends Controller
                                 'platform_datas.phone',
                                 'platform_datas.buyer_integration_id',
                                 'platform_datas.buyer_id',
-                                'buyers.name as buyer_name',
-                                'users.name as affiliate_name',
-                                'platform_lists.name as list_name',
-                                'integrations.name as buyer_integration',
                                 'platform_datas.affiliate_id',
-                                'users.data->affids as affids',
                                 'platform_datas.lead_status',
                                 'platform_datas.created_at',
                                 'platform_datas.retained_date',
                                 'platform_datas.sold_type',
                                 'platform_datas.affm_lead_id',
                                 'platform_datas.internal_lead_note'
-                            );
+                            )
+                            ->addSelect([
+                                'buyer_name' => Buyer::select('name')->whereColumn('buyers.id', 'platform_datas.buyer_id')->limit(1),
+                                'affiliate_name' => User::select('name')->whereColumn('users.id', 'platform_datas.affiliate_id')->limit(1),
+                                'list_name' => PlatformList::select('name')->whereColumn('platform_lists.id', 'platform_datas.list_id')->limit(1),
+                                'buyer_integration' => Integration::select('name')->whereColumn('integrations.id', 'platform_datas.buyer_integration_id')->limit(1),
+                                'affids' => User::select('data->affids')->whereColumn('users.id', 'platform_datas.affiliate_id')->limit(1),
+                            ]);
                         })
-                        ->leftJoin('integrations', 'platform_datas.buyer_integration_id', '=', 'integrations.id')
-                        ->leftJoin('buyers', 'buyers.id', '=', 'platform_datas.buyer_id')
-                        ->leftJoin('users', 'users.id', '=', 'platform_datas.affiliate_id')
-                        ->leftJoin('platform_lists', 'platform_lists.id', '=', 'platform_datas.list_id')
-                        ->when(empty($request->is_total) && empty($request->is_export), function($query) use ($orderBy, $orderIn) {
+                        ->when(empty($request->is_total) && empty($request->is_export), function($query) use ($orderBy, $orderIn, $startDate, $endDate) {
                             return $query->addSelect([
                                 'revenue' => LeadReport::select(DB::raw('sum(lead_reports.lead_revenue)'))
                                                 ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                                ->when(! empty($startDate) && ! empty($endDate), function (Builder $query) use ($startDate, $endDate) {
+                                                    return $query->whereBetween('lead_reports.created_at', [$startDate, $endDate]);
+                                                })
                                                 ->limit(1),
 
                                 'profit' => LeadReport::select(DB::raw('sum(lead_reports.lead_profit)'))
                                                 ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                                ->when(! empty($startDate) && ! empty($endDate), function (Builder $query) use ($startDate, $endDate) {
+                                                    return $query->whereBetween('lead_reports.created_at', [$startDate, $endDate]);
+                                                })
                                                 ->limit(1),
 
                                 'affiliate_payout' => LeadReport::select(DB::raw('sum(lead_reports.affiliate_payout)'))
                                                         ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                                        ->when(! empty($startDate) && ! empty($endDate), function (Builder $query) use ($startDate, $endDate) {
+                                                            return $query->whereBetween('lead_reports.created_at', [$startDate, $endDate]);
+                                                        })
                                                         ->limit(1),
 
                                 'affiliate_margin' => LeadReport::select(DB::raw('sum(lead_reports.affiliate_margin)'))
                                                         ->whereColumn('lead_reports.lead_id', 'platform_datas.id')
+                                                        ->when(! empty($startDate) && ! empty($endDate), function (Builder $query) use ($startDate, $endDate) {
+                                                            return $query->whereBetween('lead_reports.created_at', [$startDate, $endDate]);
+                                                        })
                                                         ->limit(1)
                             ])
                             ->when(! empty($orderBy) && ! empty($orderIn), function ($query) use ($orderBy, $orderIn) {
@@ -112,7 +126,17 @@ class LeadController extends Controller
                             return $query->whereBetween('platform_datas.retained_date', [$retainedStartDate, $retainedEndDate]);
                         })
                         ->when(! empty($startDate) && ! empty($endDate), function (Builder $query) use ($startDate, $endDate) {
-                            return $query->whereBetween('platform_datas.created_at', [$startDate, $endDate]);
+                            return $query->where(function($query) use ($startDate, $endDate) {
+                                // Option 1: Leads with matching leadReports
+                                $query->whereHas('leadReports', function($subQuery) use ($startDate, $endDate) {
+                                    return $subQuery->whereBetween('created_at', [$startDate, $endDate]);
+                                })
+                                // Option 2: Leads without any leadReports (using whereDoesntHave)
+                                ->orWhere(function($subQuery) use ($startDate, $endDate) {
+                                    $subQuery->whereDoesntHave('leadReports')
+                                        ->whereBetween('platform_datas.created_at', [$startDate, $endDate]);
+                                });
+                            });
                         })
                         ->when(! empty($request->search_txt), function (Builder $query) use ($request, $leadService) {
                             return $leadService->formatSearchColumn($request, $query);
@@ -133,7 +157,7 @@ class LeadController extends Controller
         }
 
         if(! empty($request->is_total)) {
-            $leads = $leadService->getLeadTotals($leadQuery, $request);
+            $leads = $leadService->getLeadTotals($leadQuery, $request, $startDate, $endDate);
             return withSuccess($leads);
         }
 
@@ -316,6 +340,7 @@ class LeadController extends Controller
                         ->select(
                             'id',
                             'is_retainer',
+                            'is_returned',
                             'is_paid',
                             'is_internal',
                             'is_posted',
@@ -400,6 +425,12 @@ class LeadController extends Controller
                 'lead_id' => $report->lead_id
             ]);
         }
+        //  else {
+        //     GlobalPostBackTriggerJob::dispatch([
+        //         'type' => 'single_lead_update',
+        //         'lead_id' => $report->lead_id
+        //     ], 'on_lead_update');
+        // }
 
         return withSuccess(message: 'Lead Created Successfully');
     }
@@ -418,6 +449,7 @@ class LeadController extends Controller
                         ->select(
                             'lead_reports.id',
                             'lead_reports.is_retainer',
+                            'lead_reports.is_returned',
                             'lead_reports.is_paid',
                             'lead_reports.is_internal',
                             'lead_reports.is_posted',
@@ -459,7 +491,7 @@ class LeadController extends Controller
             return withError('Invalid Lead Id Provided');
         }
 
-        if(! empty($request->is_retainer) && $leadService->hasAnyRetainedLead($request->lead_id, $reportId)){
+        if((!empty($request->is_retainer) || !empty($request->is_returned)) && $leadService->hasAnyRetainedLead($request->lead_id, $reportId)){
             return withError('Lead has been retained and cannot be updated.');
         }
 
@@ -472,7 +504,7 @@ class LeadController extends Controller
             DB::beginTransaction();
             $report->update($formattedData);
             $leadService->updateReportData($clonedReport, $request, $formattedData, platformData: $lead);
-            $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer, $request->lead_status);
+            $leadService->updateLeadStatus($request->lead_id, $report->id, $request->is_retainer, $request->lead_status, $request->is_returned);
             $leadService->updateRevenuePayout($request->lead_id);
             DB::commit();
 
@@ -482,12 +514,26 @@ class LeadController extends Controller
             return withError('Lead Report Update Failed!');
         }
 
+        $isRevenuePayoutUpdated = ((float) $clonedReport->lead_revenue !== (float) $request->lead_revenue) || ((float) $clonedReport->affiliate_payout !== (float) $request->affiliate_payout);
+
         if(empty($clonedReport->is_retainer) && $request->is_retainer){
             GlobalPostBackTriggerJob::dispatch([
                 'type' => 'single_retainer',
                 'lead_id' => $report->lead_id
             ]);
+        } else if(! empty($request->is_retainer) && $isRevenuePayoutUpdated){
+            GlobalPostBackTriggerJob::dispatch([
+                'type' => 'single_retainer_revenue',
+                'lead_id' => $report->lead_id
+            ], 'on_retainer_revenue_update');
         }
+
+        // if(empty($clonedReport->is_retainer) && empty($request->is_retainer)){
+        //     GlobalPostBackTriggerJob::dispatch([
+        //         'type' => 'single_lead_update',
+        //         'lead_id' => $report->lead_id
+        //     ], 'on_lead_update');
+        // }
 
         return withSuccess(message: 'Lead Report Updated Successfully!');
     }
@@ -501,9 +547,11 @@ class LeadController extends Controller
     public function getBuyerIntegrations(Request $request): Response
     {
         $integrations = Integration::query()
-                            ->select('id as value', 'name as label')
+                            ->select('integrations.id as value', DB::raw("CONCAT(integrations.name , ' (', pl.name, ')') as label"))
+                            // ->select('id as value', 'name as label')
+                            ->leftJoin('platform_lists as pl', 'integrations.list_id', '=', 'pl.id')
                             ->when(! empty($request->search_txt), function ($query) use ($request) {
-                                return $query->where('name', 'like', "%{$request->search_txt}%");
+                                return $query->where('integrations.name', 'like', "%{$request->search_txt}%");
                             })
                             ->limit(50)
                             ->get();

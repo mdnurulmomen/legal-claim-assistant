@@ -24,4 +24,10 @@ class Buyer extends Model
         'notes',
         'status',
     ];
+
+    //get buyer_alias_id
+    public function getBuyerAliasIdAttribute()
+    {
+        return $this->id;
+    }
 }

@@ -2,17 +2,21 @@
 
 namespace App\Services\Lead;
 
+use App\Library\Services\BestMatchSearch;
+use App\Models\Buyer;
 use App\Models\DispositionConfigMongo;
 use App\Models\DispositionLogMongo;
+use App\Models\DispositionMissingRecordMongo;
 use App\Models\LeadReport;
 use App\Models\PlatformData;
 use App\Models\PlatformDataItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Faker\Factory as Faker;
 
 class LeadFilterService
 {
+
+    protected $actualBuyers = [];
 
     public function getFilterLeadsV2(Request $request)
     {
@@ -25,22 +29,15 @@ class LeadFilterService
         $now = now();
 
         $requestedConditions = collect($request->conditions ?? []);
-
-        $conditions = $this->formatConditionsData($requestedConditions);
-        if(empty($conditions)) {
+        if(empty($requestedConditions)) {
             abort(400, 'Filter items must not be empty!');
         }
 
-        $groupedData = iterator_to_array($this->groupCsvData($request));
+        $conditionFirst = $this->formatAndSaveConditionData($requestedConditions, $request);
 
-        // $oldConfig = DispositionConfigMongo::where('user_id', $userId)->latest('id')->select('id')->first();
-        // if(! empty($oldConfig)) {
-        //     RemoveConfigLogs::dispatch($oldConfig->id);
-        // }
+        $groupedData = iterator_to_array($this->groupCsvData($request, $conditionFirst));
 
-        $this->saveDataToTemporaryTable($conditions);
-
-        $columns = array_keys($conditions[0] ?? []);
+        $columns = array_keys($conditionFirst);
         $fillableKeys = (new PlatformData())->getFillable();
         $selectableKeys = $this->formatSelectableKeys($request, $fillableKeys);
         $isAmountField = in_array('revenue', $request->mapped_headers) || in_array('affiliate_payout', $request->mapped_headers);
@@ -53,13 +50,18 @@ class LeadFilterService
                         'uid' => (string) str()->uuid()
                     ]);
 
-        $todos = PlatformData::query()
+        $leads = PlatformData::query()
                     ->select($selectableKeys)
                     ->when(in_array('lead_id_1', $columns), function($query) {
                         return $query->addSelect([
                             'custom_lead_id' => PlatformDataItem::whereColumn('platform_datas.id', 'platform_data_items.platform_data_id')
                                                     ->select('platform_data_items.value')
                                                     ->limit(1)
+                        ]);
+                    })
+                    ->when(in_array('buyer_name', $columns), function($query) {
+                        return $query->addSelect([
+                            'buyer_name' => Buyer::select('name')->whereColumn('platform_datas.buyer_id', 'buyers.id')->limit(1)
                         ]);
                     })
                     ->when($isAmountField, function ($query) use($request) {
@@ -100,30 +102,46 @@ class LeadFilterService
                                 continue;
                             }
 
+                            if ($column === 'buyer_name') {
+
+                                $query->whereExists(function ($subQuery) use($column) {
+                                        $subQuery->select(DB::raw(1))
+                                            ->from('buyers')
+                                            ->whereColumn('platform_datas.buyer_id', 'buyers.id')
+                                            ->whereColumn('buyers.name', "tc.$column");
+                                    });
+
+                                continue;
+                            }
+
                             $query->whereColumn("tc.$column", "platform_datas.$column");
                         }
                     })
                     ->lazyById(10000);
 
-                    foreach($todos as $lead) {
-                        $keys = array_map(
-                            fn($key) => strtolower($lead[$key] ?? ''),
-                            $conditionalKeys
-                        );
+                    function generateGroupedKey($lead, array $conditionalKeys): string {
+                        $keys = array_map(fn($key) => $lead[$key] ?? '', $conditionalKeys);
+                        return strtolower(implode('_', array_filter($keys)));
+                    }
 
-                        $groupedKey = implode('_', array_filter($keys));
-
+                    foreach ($leads as $lead) {
+                        $groupedKey = generateGroupedKey($lead, $conditionalKeys);
                         $groupedKeyCounts[$groupedKey] = ($groupedKeyCounts[$groupedKey] ?? 0) + 1;
+                    }
+
+                    foreach($leads as $lead) {
+
+                        $groupedKey = generateGroupedKey($lead, $conditionalKeys);
 
                         $buffer[] = [
                             'disposition_config_id' => $config->id,
                             'platform_data_id' => $lead->id,
                             'lead_status' => $lead->lead_status,
                             'data' => $lead->toArray(),
-                            'is_duplicate' => $groupedKeyCounts[$groupedKey] > 1 ? true : false,
-                            'updatable_data' => $groupedData[$groupedKey] ?? [],
+                            'is_duplicate' => $groupedKeyCounts[$groupedKey] > 1,
+                            'updatable_data' => $groupedData[$groupedKey] ?? null,
                             'created_at' => $now,
-                            'updated_at' => $now
+                            'updated_at' => $now,
                         ];
 
                         if (count($buffer) >= $batchSize) {
@@ -136,7 +154,39 @@ class LeadFilterService
                         DispositionLogMongo::insert($buffer);
                     }
 
+        $this->saveMissingRecords($groupedData, $groupedKeyCounts, $config, $userId);
+
+        $config->headers = array_keys(reset($groupedData));
+        $config->save();
+
         return $this->getDispositionLog(new Request());
+    }
+
+    /**
+     * Saves missing records to the database.
+     *
+     * @param array $groupedData The grouped data from the request body.
+     * @param array $groupedKeyCounts The count of records with the same grouped key.
+     * @param DispositionConfigMongo $config The disposition config object.
+     * @param int $userId The ID of the authenticated user.
+     *
+     * @return void
+     */
+    public function saveMissingRecords($groupedData, $groupedKeyCounts, $config, $userId): void
+    {
+        $missingRecords = array_values(array_diff_key($groupedData, $groupedKeyCounts));
+        $missingRecords = array_chunk($missingRecords, 3000);
+
+        foreach($missingRecords as $records) {
+            $formattedRecords = array_map(function($record) use ($config, $userId) {
+                return [
+                    'disposition_config_id' => $config->id,
+                    'user_id' => $userId,
+                    'data' => $record
+                ];
+            }, $records);
+            DispositionMissingRecordMongo::insert($formattedRecords);
+        }
     }
 
     /**
@@ -165,12 +215,12 @@ class LeadFilterService
 
         return DispositionLogMongo::query()
                 ->where('disposition_config_id', $config->id)
-                ->when(! empty($searchText) && empty($request->is_updatable_only), function ($query) use ($searchText) {
-                    return $query->whereRaw('LOWER(data) like ?', ["%{$searchText}%"]);
-                })
-                ->when(! empty($searchText) && ! empty($request->is_updatable_only), function ($query) use ($searchText) {
-                    return $query->whereRaw('LOWER(updatable_data) like ?', ["%{$searchText}%"]);
-                })
+                // ->when(! empty($searchText) && empty($request->is_updatable_only), function ($query) use ($searchText) {
+                //     return $query->whereRaw('LOWER(data) like ?', ["%{$searchText}%"]);
+                // })
+                // ->when(! empty($searchText) && ! empty($request->is_updatable_only), function ($query) use ($searchText) {
+                //     return $query->whereRaw('LOWER(updatable_data) like ?', ["%{$searchText}%"]);
+                // })
                 ->when(! empty($leadStatus), function ($query) use ($leadStatus) {
                     return $query->where('lead_status', $leadStatus);
                 })
@@ -223,19 +273,24 @@ class LeadFilterService
     {
         $actualHeadersObj = collect($request->actual_headers ?? [])->pluck('value', 'model_value')->toArray();
         $conditionKeys = $this->getConditionKeys(($request->conditions[0] ?? []), $actualHeadersObj);
-        $mappedHeads = $this->getMappedHeaders(($request->mapped_headers ?? []), $conditionKeys);
+        $mappedHeads = $this->getMappedHeaders(($request->mapped_headers ?? []), $request->actual_headers);
 
         $csvData = $request->csv_data ?? [];
 
         foreach ($csvData as $item) {
 
-            $keys = array_map(
-                fn($key) => strtolower($item[$actualHeadersObj[$key]] ?? ''),
-                $conditionKeys
-            );
+            $keys = array_map(function($key) use ($actualHeadersObj, $item) {
+                            $keyValue = $item[$actualHeadersObj[$key]] ?? '';
 
-            $groupedKey = implode('_', array_filter($keys));
+                            if(! empty($this->actualBuyers) && $key === 'buyer_name') {
+                                return $this->actualBuyers[$keyValue] ?? $keyValue;
+                            }
+                            return $keyValue;
+                        },
+                        $conditionKeys
+                    );
 
+            $groupedKey = strtolower(implode('_', array_filter($keys)));
             $grouped[$groupedKey][] = $item;
 
             if (count($grouped) > 10000) {
@@ -274,21 +329,19 @@ class LeadFilterService
         return $updatableLeads;
     }
 
-    /**
-     * Gets the mapped headers with the condition keys excluded.
-     *
-     * @param array $mappedHeads The array of mapped headers.
-     * @param array $conditionKeys The array of condition keys to exclude.
-     * @return array The array of mapped headers with the condition keys excluded.
-     */
-    public function getMappedHeaders($mappedHeads, $conditionKeys)
+    public function getMappedHeaders($mappedHeads, array $actualHeaders)
     {
-        return collect($mappedHeads)
-                    ->reject(function($item) use ($conditionKeys) {
-                        return in_array($item, $conditionKeys);
-                    })
+        $customColumns = collect($actualHeaders ?? [])->filter(function($item) {
+                                return isset($item['isCustom']) && $item['isCustom'] === true;
+                            })
+                            ->pluck('value')
+                            ->all();
+
+        $heads = collect($mappedHeads)
                     ->values()
                     ->all();
+
+        return array_merge($heads, $customColumns);
     }
 
     /**
@@ -318,50 +371,80 @@ class LeadFilterService
         return $formattedKeys;
     }
 
-    /**
-     * Formats the conditions data for saving to the temporary table.
-     *
-     * @param array $conditions The array of condition objects.
-     * @return array The formatted conditions data.
-     */
-    public function formatConditionsData($conditions) {
+    public function formatAndSaveConditionData($conditions, $request) {
+        $firstCondition = [];
+        $buyers = [];
+        $matchSearch = new BestMatchSearch();
 
-        $formattedConditions = $conditions->map(function($item) {
-                                    $newItem = $item;
+        if(in_array('buyer_name', array_keys($conditions[0] ?? [])) && (($request->rules['buyer_name'] ?? null) === 'contains')) {
+            $buyers = $this->getBuyerNames();
+        }
 
-                                    $custom = $newItem['custom'] ?? [];
-                                    unset($newItem['custom']);
+        foreach($conditions->chunk(2000) as $chunk) {
+            $formattedConditions = $this->formatConditions($chunk, $buyers, $matchSearch);
 
-                                    if(! empty($custom) && is_array($custom)) {
-                                        foreach($custom as $key => $item) {
-                                            $newKey = $key + 1;
-                                            $newItem["buyer_id_$newKey" ]= $item['buyer_id'];
-                                            $newItem["lead_id_$newKey" ]= $item['lead_id'];
-                                        }
-                                    }
+            if(empty($firstCondition)) {
+                $firstCondition = $formattedConditions[0] ?? [];
+                $this->createTemporaryTable($firstCondition);
+            }
 
-                                    return $newItem;
-                                })
-                                ->all();
+            DB::table('temp_conditions')->insert($formattedConditions);
+        }
 
-        return $formattedConditions;
-
+        return $firstCondition;
     }
 
-    /**
-     * Save the given conditions data to a temporary table.
-     *
-     * The table columns are determined by the keys of the first condition.
-     * The columns are created with the following types:
-     * - buyer_id_*: int
-     * - All other columns: VARCHAR(255) COLLATE utf8mb4_unicode_ci
-     *
-     * @param array $conditions The array of condition objects.
-     * @return void
-     */
-    public function saveDataToTemporaryTable($conditions)
+    public function getBuyerNames()
     {
-        $firstCondition = $conditions[0] ?? [];
+        return DB::table('buyers')->pluck('name')->toArray();
+    }
+
+    public function formatConditions($conditions, $buyers, $matchSearch)
+    {
+        if(! empty($buyers)) {
+            return $conditions->map(function($item) use ($buyers, $matchSearch) {
+
+                $newItem = $item;
+                unset($newItem['custom']);
+
+                if(! empty($custom) && is_array($custom)) {
+                    foreach($custom as $key => $item) {
+                        $newKey = $key + 1;
+                        $newItem["buyer_id_$newKey" ]= $item['buyer_id'];
+                        $newItem["lead_id_$newKey" ]= $item['lead_id'];
+                    }
+                }
+
+                $oldBuyerName = $item['buyer_name'];
+
+                $newItem['buyer_name'] = $matchSearch->findBestMatch($buyers, $oldBuyerName) ?? $oldBuyerName;
+                $this->actualBuyers[$oldBuyerName] = $newItem['buyer_name'];
+                return $newItem;
+            })
+            ->all();
+        }
+
+        return $conditions->map(function($item) {
+                $newItem = $item;
+
+                $custom = $newItem['custom'] ?? [];
+                unset($newItem['custom']);
+
+                if(! empty($custom) && is_array($custom)) {
+                    foreach($custom as $key => $item) {
+                        $newKey = $key + 1;
+                        $newItem["buyer_id_$newKey" ]= $item['buyer_id'];
+                        $newItem["lead_id_$newKey" ]= $item['lead_id'];
+                    }
+                }
+
+                return $newItem;
+            })
+            ->all();
+    }
+
+    public function createTemporaryTable($firstCondition)
+    {
         $columns = array_keys($firstCondition);
 
         $columnsSql = [];
@@ -373,13 +456,10 @@ class LeadFilterService
 
             $columnsSql[] = "$column VARCHAR(255) COLLATE utf8mb4_unicode_ci";
         }
+
         $columnsSql[] = "INDEX(" . implode("), INDEX(", $columns) . ")";
 
         DB::statement("CREATE TEMPORARY TABLE temp_conditions (" . implode(', ', $columnsSql) . ")");
-
-        foreach (array_chunk($conditions, 5000) as $chunk) {
-            DB::table('temp_conditions')->insert($chunk);
-        }
     }
 
     /**
@@ -416,7 +496,8 @@ class LeadFilterService
             'email',
             'buyer_id',
             'lead_status',
-            'affm_source_id'
+            'affm_source_id',
+            'buyer_name'
         ];
     }
 

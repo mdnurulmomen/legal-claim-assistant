@@ -20,7 +20,7 @@ class GlobalPostBackTriggerJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(protected array $data)
+    public function __construct(protected array $data, protected string $postBackType = 'on_retainer_added')
     {
         //
     }
@@ -31,28 +31,17 @@ class GlobalPostBackTriggerJob implements ShouldQueue
     public function handle()
     {
         if($this->data['type'] === 'bulk_retainer') {
-            $this->triggerBulkRetainer($this->data['lead_reports']);
+            $this->triggerBulkRetainer($this->data['lead_ids']);
             return;
         }
 
-        if($this->data['type'] === 'single_retainer') {
-            $this->triggerSingleRetainer($this->data['lead_id']);
-            return;
-        }
+        $this->triggerSingleRetainer($this->data['lead_id']);
     }
 
-    public function triggerBulkRetainer(array $leadReports) {
-
-        $reportGroups = collect($leadReports)->pluck('lead_id')->unique()->all();
-
-        $leadReports = LeadReport::query()
-            ->where('is_retainer', '=', 1)
-            ->whereIn('lead_id', $reportGroups)
-            ->select('id', 'lead_id')
-            ->lazy(1000)
-            ->each(function($leadReport) {
-                $this->triggerSingleRetainer($leadReport->lead_id);
-            });
+    public function triggerBulkRetainer(array $leadIds) {
+        foreach($leadIds as $leadId) {
+            $this->triggerSingleRetainer($leadId);
+        }
     }
 
     /**
@@ -84,18 +73,7 @@ class GlobalPostBackTriggerJob implements ShouldQueue
             "platform_list" => $list->toArray()
         ];
 
-        (new PostBackTriggerService())->trigger($triggerData);
-    }
-
-    /**
-     * Returns the condition method based on the given index.
-     *
-     * @param int $index
-     * @return string
-     */
-    public function getConditionMethod(int $index): string
-    {
-        return ($index == 0) ? 'where' : 'orWhere';
+        (new PostBackTriggerService())->trigger($triggerData, $this->postBackType);
     }
 
 }

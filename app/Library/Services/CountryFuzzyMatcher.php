@@ -2,7 +2,6 @@
 
 namespace App\Library\Services;
 
-use Illuminate\Support\Collection;
 use Propaganistas\LaravelPhone\PhoneNumber;
 
 class CountryFuzzyMatcher

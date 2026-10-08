@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Helpers\Utility;
 use App\Http\Controllers\Api\Lead\Resources\ExcelLeadResource;
 use App\Http\Controllers\Api\Lead\Resources\LeadResource;
+use App\Http\Controllers\Api\Lead\Resources\MissingRecordResource;
 use App\Http\Controllers\Api\Reporting\Resources\ReportingResource;
 use App\Library\Services\CountryFuzzyMatcher;
 use App\Models\PlatformData;
@@ -37,12 +38,16 @@ class ExcelService
         $skip = $from - ($from === 1 ? 1 : 0);
         $take = $to - $skip;
 
-        $columns = $request->columns ? json_decode($request->columns, true) : [];
+        $columns = is_string($request->columns) ? json_decode($request->columns, true) : $request->columns;
         if(empty($columns)) {
             abort(400, 'Columns are required to export data.');
         }
 
-        [$tableColumns, $amountColumns] = $this->formatExportColumns($columns);
+        $request->merge([
+            'columns' => $columns
+        ]);
+
+        [$tableColumns, $amountColumns, $relationColumns] = $this->formatExportColumns($columns);
 
         $leadReport = function ($column) {
             return "(
@@ -60,11 +65,11 @@ class ExcelService
                                 $query->addSelect(DB::raw($leadReport($this->convertKeyToColumn($column)) . " AS {$column}"));
                             }
                         })
-                        ->addSelect([
-                            'custom_lead_id' => PlatformDataItem::whereColumn('platform_datas.id', 'platform_data_items.platform_data_id')
-                                                    ->select('platform_data_items.value')
-                                                    ->limit(1)
-                        ])
+                        ->when(! empty($relationColumns), function ($query) use ($relationColumns) {
+                            foreach ($relationColumns as $column => $callBack) {
+                                $query->addSelect(DB::raw($callBack() . " AS {$column}"));
+                            }
+                        })
                         ->selectRaw("platform_datas.created_at")
                         ->skip($skip)
                         ->take($take);
@@ -95,6 +100,30 @@ class ExcelService
     }
 
     /**
+     * Formats the missing records export data and returns it as a CSV file or a string.
+     *
+     * @param Request $request
+     * @param Builder $leadQuery
+     * @return string|StreamedResponse
+     */
+    public function formatMissingRecordsExportData(Request $request, Builder $leadQuery): string|StreamedResponse
+    {
+        function missingRecordsGenerators($leadQuery) {
+            foreach ($leadQuery->cursor(3000) as $lead) {
+                yield new MissingRecordResource($lead);
+            }
+        }
+
+        $fileName = 'Not Found Records Export - ' . $this->formatDateTime(now(), 'M j Y g:i:s a', timezone: config('app.timezone')) . ".csv";
+
+        $exportLead = (new FastExcel(missingRecordsGenerators($leadQuery)))
+                        ->configureCsv(',', '"', 'UTF-8', false)
+                        ->download($fileName);
+
+        return $exportLead;
+    }
+
+    /**
      * Format the given columns into two arrays: table columns and amount columns.
      *
      * @param array $columns
@@ -106,14 +135,43 @@ class ExcelService
         $fillable = (new PlatformData())->getFillable();
 
         $specialColumns = [
-            'buyer_name' => 'buyers.name as buyer_name',
-            'affiliate_name' => 'users.name as affiliate_name',
-            'list_name' => 'platform_lists.name as list_name',
-            'buyer_integration' => 'integrations.name as buyer_integration',
+            'buyer_name' => function () {
+                return "(
+                    SELECT buyers.name
+                    FROM buyers
+                    WHERE buyers.id = platform_datas.buyer_id
+                    LIMIT 1
+                )";
+            },
+            'affiliate_name' => function() {
+                return "(
+                    SELECT users.name
+                    FROM users
+                    WHERE users.id = platform_datas.affiliate_id
+                    LIMIT 1
+                )";
+            },
+            'list_name' => function() {
+                return "(
+                    SELECT platform_lists.name
+                    FROM platform_lists
+                    WHERE platform_lists.id = platform_datas.list_id
+                    LIMIT 1
+                )";
+            },
+            'buyer_integration' => function() {
+                return "(
+                    SELECT integrations.name
+                    FROM integrations
+                    WHERE integrations.id = platform_datas.buyer_integration_id
+                    LIMIT 1
+                )";
+            },
         ];
 
         $amountColumns = [];
         $tableColumns = ['platform_datas.id'];
+        $relationColumns = [];
 
         foreach ($columns as $column) {
             if (in_array($column, ['revenue', 'profit', 'affiliate_payout', 'affiliate_margin'], true)) {
@@ -121,13 +179,13 @@ class ExcelService
             } elseif (in_array($column, $fillable, true)) {
                 $tableColumns[] = "platform_datas.{$column}";
             } elseif (isset($specialColumns[$column])) {
-                $tableColumns[] = $specialColumns[$column];
+                $relationColumns[$column] = $specialColumns[$column];
             } else {
                 $tableColumns[] = "platform_datas.datas->{$column} as {$column}";
             }
         }
 
-        return [$tableColumns, $amountColumns];
+        return [$tableColumns, $amountColumns, $relationColumns];
     }
 
     /**
