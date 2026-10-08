@@ -1,5 +1,7 @@
 <?php
 
+use App\Events\PublicEvent;
+
 use App\Library\Services\BestMatchSearch;
 use App\Models\Integration;
 use App\Models\IntegrationEmail;
@@ -12,16 +14,12 @@ Route::get('/', function () {
         'Content-Type' => 'text/plain',
         'X-Content-Type-Options' => 'nosniff',
         'X-Frame-Options' => 'deny',
-        'X-XSS-Protection' => '1; mode=block'
+        'X-XSS-Protection' => '1;
+        mode=block'
     ]);
 });
 
-Route::get('/test', function (Request $request) {
-
-    return response('Hello World test!', 200, [
-        'Content-Type' => 'text/plain',
-        'X-Content-Type-Options' => 'nosniff',
-        'X-Frame-Options' => 'deny',
-        'X-XSS-Protection' => '1; mode=block'
-    ]);
+Route::get('/test', function () {
+    PublicEvent::dispatch('integration-setting', 'test');
+    return response('Hello World!', 200);
 });

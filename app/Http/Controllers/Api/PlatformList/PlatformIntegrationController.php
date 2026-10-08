@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\PlatformList;
 
+use App\Events\PublicEvent;
 use App\Helpers\PlatformHandler;
 use App\Http\Controllers\Api\PlatformList\Requests\AddOrEditIntegrationRequest;
 use App\Http\Controllers\Api\PlatformList\Requests\IntegrationSettingRequest;
@@ -95,6 +96,14 @@ class PlatformIntegrationController extends Controller
 
             $integrationService->insertOrDeleteCapsHistory($request, $platform, $name);
             $integrationService->addOrUpdateIntegration($request, $platform, $name);
+
+            PublicEvent::dispatch(
+                'integration-setting',
+                [
+                    'platform_id' => $platform->id,
+                ],
+                auth()->id()
+            );
 
             DB::commit();
             return withSuccess(message: 'Integration saved successfully');
