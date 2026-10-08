@@ -15,6 +15,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Database\Eloquent\Builder;
 
 class InvoiceController extends Controller
 {
@@ -68,6 +69,17 @@ class InvoiceController extends Controller
 
             $invoices = $invoices->where([['created_at', '<', $date_e], ['created_at', '>=', $date_s]]);
         }
+
+        $invoices->when(! empty($request->search_txt), function (Builder $query) use ($request) {
+            return $query->whereAny([
+                        'name',
+                        'tag',
+                        'amount',
+                        'paid_on',
+                        'proof',
+                        'comment',
+                    ], 'like', "%{$request->search_txt}%");
+        });
 
         // $invoices_total = $invoices->count();
         $invoices = $invoices->orderBy('created_at', 'DESC')->latest()->paginate(20);

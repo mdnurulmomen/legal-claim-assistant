@@ -61,7 +61,18 @@ class Utility
     public static $pageSlugs = [
         'report' => 'Report',
         'global_leads' => 'Global Leads',
+        'platform_leads' => 'Platform Leads'
     ];
 
+    /**
+     * Define Log Types
+     *
+     * @var array
+     */
+    public static $aliasLogTypes = [
+        'lead_export' => 'lead_export',
+        'report_export' => 'report_export',
+        'integration_trigger' => 'integration_trigger'
+    ];
 
 }

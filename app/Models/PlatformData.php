@@ -30,9 +30,11 @@ class PlatformData extends Model
         'payout',
         'cost',
         'is_retainer',
+        'is_returned',
         'is_sold',
         'is_internal',
         'retained_date',
+        'returned_date',
         'page_source',
     ];
 
@@ -48,5 +50,15 @@ class PlatformData extends Model
     public function leadReport()
     {
         return $this->hasOne(LeadReport::class, 'lead_id', 'id');
+    }
+
+    /**
+     * Get all lead reports associated with this platform data.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function leadReports()
+    {
+        return $this->hasMany(LeadReport::class, 'lead_id', 'id');
     }
 }

@@ -2,10 +2,12 @@
 
 namespace App\Services\Platform;
 
+use App\Helpers\Utility;
 use App\Models\Caps;
+use App\Models\GlobalLog;
 use App\Models\Integration;
 use App\Models\PlatformList;
-use Illuminate\Database\Eloquent\Collection;
+use App\Services\GlobalLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -25,14 +27,13 @@ class PlatformIntegrationService
      *
      * @param Request $request
      * @param PlatformList $platform
+     * @param string $name
      * @return array
      * @throws \Illuminate\Http\Exceptions\HttpResponseException If the integration is not found.
      */
-    public function formatSettingData(Request $request, PlatformList $platform): array
+    public function formatSettingData(Request $request, PlatformList $platform, string $name): array
     {
-        $name = str()->slug($request->name, '_');
-
-        $integrations = $platform->integrations;
+        $integrations = $platform->integrations ?? [];
 
         $index = collect($integrations)->search(function ($item) use ($name) {
                     return strtolower($item['name']) === strtolower($name);
@@ -65,6 +66,37 @@ class PlatformIntegrationService
             $requestData['convert_maps'] = $this->replaceStringWithBool($requestData['convert_maps']);
         }
 
+        if($requestData['custom_maps'] ?? null){
+            $requestData['custom_maps'] = $this->replaceStringWithBool($requestData['custom_maps'], 'custom_maps');
+        }
+
+        if($requestData['maps'] ?? null){
+            $requestData['maps'] = $this->replaceStringWithBool($requestData['maps']);
+        }
+
+        $ping = $requestData['ping'] ?? null;
+
+        if($ping && array_key_exists('save_data', $ping)) {
+            $ping['save_data'] = $this->convertNullToString($ping['save_data']);
+        }
+
+        if($ping && array_key_exists('triggers', $ping)) {
+            $ping['triggers'] = $this->convertNullToString($ping['triggers']);
+        }
+
+        $requestData['ping'] = $ping;
+
+        if(empty($requestData['ping'])) {
+            unset($requestData['ping']);
+        }
+
+        $brandData = $requestData['brand_data'] ?? null;
+        $requestData['brand_data'] = $brandData;
+
+        if(empty($requestData['brand_data'])) {
+            unset($requestData['brand_data']);
+        }
+
         if($index === false) {
             $requestData['order'] = count($integrations) + 1;
 
@@ -77,10 +109,12 @@ class PlatformIntegrationService
             abort(400, 'Integration not found');
         }
 
-        $ping = $requestData['ping'] ?? null;
-
-        if(! $ping) {
+        if(empty($ping) && array_key_exists('ping', $integration)) {
             unset($integration['ping']);
+        }
+
+        if(empty($brandData) && array_key_exists('brand_data', $integration)) {
+            unset($integration['brand_data']);
         }
 
         $integrations[$index] = array_merge($integration, $requestData);
@@ -88,14 +122,52 @@ class PlatformIntegrationService
     }
 
     /**
+     * Adds or updates an integration for the given platform ID and name.
+     *
+     * @param Request $request
+     * @param PlatformList $platform
+     * @param string $name
+     * @return void
+     */
+    public function addOrUpdateIntegration(Request $request, PlatformList $platform, string $name)
+    {
+        $integration = Integration::firstOrNew([
+                            'list_id' => $platform->id,
+                            'buyer_unique_id' => $name,
+                        ]);
+
+        $integration->list_id = $platform->id;
+        $integration->buyer_id = $request->buyer_profile;
+        $integration->name = $name;
+        $integration->buyer_unique_id = $name;
+        $integration->type = $request->buyer_type;
+        $integration->buyer_headers = $request->save_data;
+        $integration->lead_id_key = $request->lead_id_key;
+        $integration->save();
+    }
+
+    /**
+     * Converts null values in the given data array to empty strings.
+     *
+     * @param array $data The data array to convert.
+     * @return array The converted data array.
+     */
+    public function convertNullToString($data) {
+        return array_map(function ($value) {
+            return $value === null || $value === 'null' ? '' : $value;
+        }, $data);
+    }
+
+    /**
      * Formats CV triggers data for a given platform integration.
      *
      * @param Request $request
      * @param PlatformList $platform
+     * @param string $name
      * @return array
      * @throws \Illuminate\Http\Exceptions\HttpResponseException
      */
-    public function formatTriggersData(Request $request, PlatformList $platform): array
+    public function formatTriggersData(Request $request, PlatformList $platform, string $name): array
     {
         $name = str()->slug($request->name, '_');
         $cvTriggers = $platform->cv_trigger;
@@ -189,21 +261,31 @@ class PlatformIntegrationService
      * @param array $array The array to replace string values in.
      * @return array The array with string values replaced by their corresponding values.
      */
-    public function replaceStringWithBool($array): array
+    public function replaceStringWithBool($array, $type = null): array
     {
+
         $updatedArray = [];
+
         foreach ($array as $key => $value) {
+
             if (is_array($value)) {
-                $updatedArray[$key] = $this->replaceStringWithBool($value); // Recursive call for nested arrays
-            } elseif ($value === "null") {
-                $updatedArray[$key] = null; // Replace "null" string with null value
-            } elseif ($value === "true") {
-                $updatedArray[$key] = true; // Replace "true" string with true value
-            } elseif ($value === "false") {
-                $updatedArray[$key] = false; // Replace "false" string with false value
-            } else {
-                $updatedArray[$key] = $value; // Copy the original value
+                $updatedArray[$key] = $this->replaceStringWithBool($value);
+                continue;
             }
+
+            $newValue = match (true) {
+                strcasecmp($value, 'true') === 0 => true,     // Boolean true
+                strcasecmp($value, 'false') === 0 => false,   // Boolean false
+                strcasecmp($value, 'null') === 0 => null,     // Null
+                strcasecmp($value, 'undefined') === 0 => null, // Null
+                is_numeric($value) => ((ctype_digit($value) && (((string) $value)[0]) === '0')
+                        ? $value
+                        : (strpos($value, '.') === false ? (int) $value : (float) $value)),
+
+                default => $value
+            };
+
+            $updatedArray[$key] = $newValue;
         }
         return $updatedArray;
     }
@@ -237,10 +319,10 @@ class PlatformIntegrationService
      *
      * @param Request $request
      * @param PlatformList $platform
+     * @param string $name
      */
-    public function insertOrDeleteCapsHistory(Request $request, PlatformList $platform): void
+    public function insertOrDeleteCapsHistory(Request $request, PlatformList $platform, string $name): void
     {
-        $name = str()->slug($request->name, '_');
         $listIntegration = collect($platform->integrations)->firstWhere('name', $name);
         $caps = $listIntegration['caps'] ?? [];
         $buyerId = (int) $listIntegration['buyer_profile'];
@@ -321,5 +403,110 @@ class PlatformIntegrationService
         $key = key($columns);
         $value = $columns[$key];
         return "{$key}:{$value}";
+    }
+
+    /**
+     * Removes an integration and its associated CV trigger from a given platform.
+     *
+     * @param Request $request
+     * @param PlatformList $platform
+     * @param string $slug
+     */
+    public function removeIntegrationAndCvTrigger(Request $request, PlatformList $platform, $slug): void
+    {
+        $integrations = collect($platform->integrations);
+        $cvTriggers = collect($platform->cv_trigger ?? []);
+
+        $index = $integrations->search(function ($item) use ($slug) {
+                    return strtolower($item['name']) === strtolower($slug);
+                });
+
+        if($index === false) {
+            abort(400, 'Integration not found!');
+        }
+
+        $triggerIndex = $cvTriggers->search(function ($item) use ($slug) {
+                            return strtolower($item['name']) === strtolower($slug);
+                        });
+
+        $oldIntegration = $integrations->get($index);
+        $oldTrigger = $triggerIndex !== false ? $cvTriggers->get($triggerIndex) : null;
+
+        $integrations->forget($index);
+        $cvTriggers->forget($triggerIndex);
+
+        $platform->integrations = $integrations->values()->toArray();
+        $platform->cv_trigger = $cvTriggers->values()->toArray();
+        $platform->save();
+
+        $this->saveIntegrationTriggerData($platform->id, $oldIntegration, $oldTrigger);
+    }
+
+    /**
+     * Saves integration trigger data for a given platform ID.
+     *
+     * @param int $platformId The ID of the platform.
+     * @param array $integration The integration data.
+     * @param array $cvTrigger The CV trigger data.
+     */
+    public function saveIntegrationTriggerData(int $platformId, array $integration, array $cvTrigger): void
+    {
+        $data = [
+            'loggable_type' => Utility::$aliasLogTypes['integration_trigger'],
+            'loggable_id' => $platformId,
+            'data' => [
+                'name' => $integration['name'],
+                'integration' => $integration,
+                'cv_trigger' => $cvTrigger
+            ]
+        ];
+
+        (new GlobalLogService())->createLog($data);
+    }
+
+    /**
+     * Restores an integration and its associated CV trigger to a given platform.
+     *
+     * @param Request $request
+     * @param GlobalLog $log
+     * @param PlatformList $platform
+     *
+     * @throws \Illuminate\Http\Exceptions\HttpResponseException If the integration or CV trigger already exists.
+     *
+     * @return void
+     */
+    public function formatAndRestoreIntegration(Request $request, GlobalLog $log, PlatformList $platform): void
+    {
+        $integration = $log->data['integration'];
+        $cvTrigger = $log->data['cv_trigger'];
+        $name = $log->data['name'];
+
+        $integrations = $platform->integrations;
+        $cvTriggers = $platform->cv_trigger;
+
+        $index = collect($integrations)->search(function ($item) use ($name) {
+            return strtolower($item['name']) === strtolower($name);
+        });
+
+        $triggerIndex = collect($cvTriggers)->search(function ($item) use ($name) {
+            return strtolower($item['name']) === strtolower($name);
+        });
+
+        if($index > -1) {
+            abort(400, 'Integration already exists');
+        }
+
+        if($triggerIndex > -1) {
+            abort(400, 'CV Trigger already exists');
+        }
+
+        $integrations[] = $integration;
+        $cvTriggers[] = $cvTrigger;
+
+        $platform->integrations = $integrations;
+        $platform->cv_trigger = $cvTriggers;
+        $platform->save();
+
+        $log->delete();
     }
 }

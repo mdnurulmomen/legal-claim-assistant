@@ -26,6 +26,9 @@ class UserResource extends JsonResource
             'admin_role_id' => $this->admin_role_id,
             'admin_role_name' => $this->admin_role_name,
             'status' => $this->status,
+            'user_status' => $this->status ? 1 : 0,
+            'country' => $this->country,
+            'has_two_fa' => (bool) $this->has_two_fa,
             'user_access' => []
         ];
 

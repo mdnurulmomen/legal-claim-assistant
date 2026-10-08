@@ -8,14 +8,17 @@ use App\Http\Controllers\Api\PlatformList\PlatformSpecsController;
 use Illuminate\Support\Facades\Route;
 
 
-Route::prefix('platform')->as('platform.')
+Route::prefix('platform')
+    ->as('platform.')
     ->controller(PlatformListController::class)
     ->middleware('auth:sanctum')
     ->group(function ($route) {
         $route->get('list', 'platformList')->name('list');
         $route->get('get-source-list', 'getSourceList')->name('get-source-list');
+        $route->get('integrated-buyers', 'integratedBuyers')->name('integrated-buyers');
         $route->get('buyer-list/{platformId}', 'buyerList')->name('buyer-list');
         $route->get('show/{platformId}', 'showPlatform')->name('show');
+        $route->get('/integration-by-list/{platformListId}/{buyer_unique_id}', 'getIntegrationByList')->name('integration-by-list');
     });
 
 Route::prefix('platform-integrations')->as('platform.integrations.')
@@ -26,10 +29,11 @@ Route::prefix('platform-integrations')->as('platform.integrations.')
         $route->get('buyer-types', 'buyerTypes')->name('buyer-types');
         $route->get('integration-methods', 'integrationMethods')->name('integration-methods');
         $route->get('cap-durations', 'capDurations')->name('cap-durations');
-        $route->post('save-integration/{platformId}/{settingType}', 'saveIntegration')->name('save-integration');
         $route->post('save-full-integration/{platformId}', 'saveFullIntegration')->name('save-full-integration');
         $route->post('update-integration/{platformId}', 'updateIntegration')->name('update-integration');
         $route->post('store-integration/{platformId}', 'storeIntegration')->name('store-integration');
+        $route->delete('delete-integration/{platformId}/{slug}', 'deleteIntegration')->name('delete-integration');
+        $route->post('restore-integration/{id}', 'restoreIntegration')->name('restore-integration');
     });
 
 Route::prefix('platform-specs')->as('platform.specs.')

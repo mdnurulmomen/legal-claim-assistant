@@ -137,6 +137,106 @@ class MenuSeeder extends Seeder
                 'order' => 6.1,
                 'created_at' => $now,
                 'updated_at' => $now
+            ],
+            [
+                'id' => 12,
+                'title' => 'General Information',
+                'route_name' => 'general-information',
+                'type' => 'endpoint',
+                'menu_id' => null,
+                'order' => 10,
+                'created_at' => $now,
+                'updated_at' => $now
+            ],
+            [
+                'id' => 13,
+                'title' => 'Campaign News',
+                'route_name' => 'newest-campaign',
+                'type' => 'endpoint',
+                'menu_id' => null,
+                'order' => 11,
+                'created_at' => $now,
+                'updated_at' => $now
+            ],
+            [
+                'id' => 14,
+                'title' => 'Conferences',
+                'route_name' => 'conference',
+                'type' => 'endpoint',
+                'menu_id' => null,
+                'order' => 12,
+                'created_at' => $now,
+                'updated_at' => $now
+            ],
+            [
+                'id' => 15,
+                'title' => 'Affiliate Creatives',
+                'route_name' => 'creative',
+                'type' => 'endpoint',
+                'menu_id' => null,
+                'order' => 13,
+                'created_at' => $now,
+                'updated_at' => $now
+            ],
+            [
+                'id' => 16,
+                'title' => 'Creative Template',
+                'route_name' => 'creative-template',
+                'type' => 'endpoint',
+                'menu_id' => null,
+                'order' => 13.1,
+                'created_at' => $now,
+                'updated_at' => $now
+            ],
+            [
+                'id' => 17,
+                'title' => 'Creative Offer',
+                'route_name' => 'template-offer',
+                'type' => 'endpoint',
+                'menu_id' => null,
+                'order' => 13.2,
+                'created_at' => $now,
+                'updated_at' => $now
+            ],
+            [
+                'id' => 18,
+                'title' => 'Case Study',
+                'route_name' => 'case-study',
+                'type' => 'endpoint',
+                'menu_id' => null,
+                'order' => 14,
+                'created_at' => $now,
+                'updated_at' => $now
+            ],
+            [
+                'id' => 19,
+                'title' => 'Case Study Category',
+                'route_name' => 'case-study-category',
+                'type' => 'endpoint',
+                'menu_id' => null,
+                'order' => 14.1,
+                'created_at' => $now,
+                'updated_at' => $now
+            ],
+            [
+                'id' => 20,
+                'title' => 'Case Study Tags',
+                'route_name' => 'case-study-tags',
+                'type' => 'endpoint',
+                'menu_id' => null,
+                'order' => 14.2,
+                'created_at' => $now,
+                'updated_at' => $now
+            ],
+            [
+                'id' => 21,
+                'title' => 'Integration Email',
+                'route_name' => 'integrationEmail',
+                'type' => 'endpoint',
+                'menu_id' => null,
+                'order' => 9.1,
+                'created_at' => $now,
+                'updated_at' => $now
             ]
         ];
 

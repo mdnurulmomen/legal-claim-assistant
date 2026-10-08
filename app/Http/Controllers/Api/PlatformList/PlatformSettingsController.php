@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\PlatformList;
 
 use App\Http\Controllers\Api\PlatformList\Requests\PlatformSettingRequest;
 use App\Http\Controllers\Controller;
+use App\Jobs\ClearListCache;
 use App\Models\PlatformList;
 use App\Services\Platform\PlatformSettingService;
 use Illuminate\Http\Response;
@@ -25,18 +26,22 @@ class PlatformSettingsController extends Controller
             return withError('Invalid Platform Id Provided!');
         }
 
-        DB::beginTransaction();
-
         try {
+            DB::beginTransaction();
+
             $settingService->savePlatformData($request, $platform);
             $settingService->saveSettingOptions($request, $platform);
 
             DB::commit();
-            return withSuccess(message: 'Platform Settings saved successfully');
         } catch (\Throwable $th) {
-            info($th->getMessage());
             DB::rollBack();
             return withError('Platform Settings Saved Failed!');
         }
+
+        if($platform->tag) {
+            ClearListCache::dispatch($platform->tag);
+        }
+
+        return withSuccess(message: 'Platform Settings saved successfully');
     }
 }

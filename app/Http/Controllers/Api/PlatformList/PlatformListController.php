@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\PlatformList;
 
+use App\Http\Controllers\Api\PlatformList\Resources\IntegrationResource;
 use App\Http\Controllers\Api\PlatformList\Resources\PlatformListResource;
 use App\Http\Controllers\Controller;
 use App\Models\Buyer;
@@ -24,10 +25,24 @@ class PlatformListController extends Controller
         $limit = $request->input('limit', 10);
         $orderBy = $request->input('order_by') == 'total_leads' ? 'total' : $request->input('order_by');
         $orderIn = $request->input('order_in');
-        $platformSourceIds = $request->input('platform_source_ids', []);
+
+        $platformSourceIds = ! empty($request->platform_source_ids) && is_string($request->platform_source_ids) ? json_decode($request->platform_source_ids) : [];
+        $integrationIds = ! empty($request->integration_ids) && is_string($request->integration_ids) ? json_decode($request->integration_ids) : [];
+        $leadDistributions = ! empty($request->lead_distribution) && is_string($request->lead_distribution) ? json_decode($request->lead_distribution) : [];
 
         $platforms = PlatformList::query()
-                        ->select('id', 'tag', 'name', 'total', 'campaign_name', 'options', 'source', 'status', 'updated_at', 'created_at')
+                        ->select(
+                            'id',
+                            'tag',
+                            'name',
+                            'total',
+                            'campaign_name',
+                            'options',
+                            'source',
+                            'status',
+                            'updated_at',
+                            'created_at'
+                        )
                         ->when(! empty($request->search_txt), function ($query) use ($request) {
                             return $query->whereAny([
                                 'name',
@@ -40,6 +55,21 @@ class PlatformListController extends Controller
                         })
                         ->when(! empty($platformSourceIds) && is_array($platformSourceIds), function ($query) use ($platformSourceIds) {
                             return $query->whereIn('id', $platformSourceIds);
+                        })
+                        ->when(! empty($integrationIds) && is_array($integrationIds), function ($query) use ($integrationIds) {
+
+                            $searchValues = array_merge($integrationIds, array_map('strval', $integrationIds));
+
+                            return $query->whereRaw(
+                                'JSON_OVERLAPS(
+                                    JSON_EXTRACT(integrations, "$[*].buyer_profile"),
+                                    CAST(? AS JSON)
+                                )',
+                                [json_encode($searchValues)]
+                            );
+                        })
+                        ->when(! empty($leadDistributions), function($query) use ($leadDistributions) {
+                            return $query->whereIn('options->lead_distribution', $leadDistributions);
                         })
                         ->when(! empty($orderBy) && ! empty($orderIn), function ($query) use ($orderBy, $orderIn) {
                             return $query->orderBy($orderBy, $orderIn);
@@ -68,6 +98,27 @@ class PlatformListController extends Controller
                             ->get();
 
         return withSuccess($platformSource);
+    }
+
+    /**
+     * Retrieves a list of integrated buyers based on the search text provided in the request.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function integratedBuyers(Request $request): Response
+    {
+        $limit = $request->per_page ?? 50;
+
+        $integrations = Integration::query()
+                            ->latest('buyer_unique_id')
+                            ->select('id as value', 'buyer_unique_id as label')
+                            ->when(! empty($request->search), function ($query) use ($request) {
+                                return $query->where('buyer_unique_id', 'like', "%{$request->search}%");
+                            })
+                            ->paginate($limit);
+
+        return withSuccess($integrations);
     }
 
     public function buyerList(Request $request, int $platformId): Response
@@ -112,6 +163,30 @@ class PlatformListController extends Controller
         }
 
         return withSuccess(new PlatformListResource($platform));
+    }
+
+    /**
+     * Retrieves an integration by the given platform list ID and buyer unique ID.
+     *
+     * @param Request $request
+     * @param int $platformListId
+     * @param string $buyerUniqueId
+     * @return Response
+     */
+    public function getIntegrationByList(Request $request, int $platformListId, string $buyerUniqueId): Response
+    {
+        $integration = Integration::query()
+                        ->where([
+                            'list_id' => $platformListId,
+                            'buyer_unique_id' => $buyerUniqueId
+                        ])
+                        ->first();
+
+        if(empty($integration)) {
+            return withError('Integration not found');
+        }
+
+        return withSuccess(new IntegrationResource($integration));
     }
 
 }

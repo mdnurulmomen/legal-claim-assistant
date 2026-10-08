@@ -2,6 +2,11 @@
 
 use App\Events\PublicEvent;
 
+use App\Library\Services\BestMatchSearch;
+use App\Models\Integration;
+use App\Models\IntegrationEmail;
+use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {

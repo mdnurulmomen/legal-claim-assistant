@@ -21,10 +21,12 @@ class AuthResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phone,
+            'phone_secret' => $this->phone ? str()->substr(str()->of($this->phone)->mask('*', 0, -4), 5) : null,
             'workspace' => $this->workspace,
             'api_token' => $this->access_token,
             'role' => $this->admin_role,
-            'status' => $this->status
+            'status' => $this->status,
+            'has_two_fa' => $this->has_two_fa
         ];
     }
 }

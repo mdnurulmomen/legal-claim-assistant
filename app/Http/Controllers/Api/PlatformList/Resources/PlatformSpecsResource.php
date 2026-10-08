@@ -37,6 +37,7 @@ class PlatformSpecsResource extends JsonResource
             'posting_type' => $this->label,
             'platform_tag' => $this->platform_tag,
             'is_active' => (bool) $this->is_active,
+            'approve_test_lead' => (bool) $this->approve_test_lead,
             'buyers_count' => $this->buyers_count,
             'ping_required_fields' => $this->ping_required_fields ? json_decode($this->ping_required_fields) : [],
             'buyers' => $this->buyers ? json_decode($this->buyers) : [],

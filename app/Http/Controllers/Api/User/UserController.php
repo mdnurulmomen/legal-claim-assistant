@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\User;
 
+use App\Helpers\Utility;
 use App\Http\Controllers\Api\Auth\Resources\AuthResource;
 use App\Http\Controllers\Api\User\Requests\CreateOrUpdateUserRequest;
 use App\Http\Controllers\Api\User\Requests\UpdateBasicInfoRequest;
@@ -16,7 +17,10 @@ use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -42,6 +46,8 @@ class UserController extends Controller
                         'users.phone',
                         'users.workspace',
                         'users.status',
+                        'users.country',
+                        'users.has_two_fa',
                         'ar.admin_role',
                         'ar.name as admin_role_name',
                         'ar.is_show_affiliate',
@@ -109,12 +115,16 @@ class UserController extends Controller
             return withError('User not found', 404);
         }
 
-        $validatedData = $request->validated();
-        $formattedData = $userService->formatRequestData($validatedData);
+        try {
+            $validatedData = $request->validated();
+            $formattedData = $userService->formatRequestData($validatedData);
 
-        $user->update($formattedData);
+            $user->update($formattedData);
 
-        return withSuccess(new UserResource($user->refresh()), 'User updated successfully');
+            return withSuccess(new UserResource($user->refresh()), 'User updated successfully');
+        } catch (\Throwable $th) {
+            return withError($th->getMessage());
+        }
     }
 
     /**
@@ -131,6 +141,46 @@ class UserController extends Controller
         }
         $user->delete();
         return withSuccess(message: 'User deleted successfully');
+    }
+
+    /**
+     * Updates the status of a user with the given user ID.
+     *
+     * @param Request $request
+     * @param int $userId
+     * @return Response
+     */
+    public function updateStatus(Request $request, int $userId): Response
+    {
+        $validator = Validator::make($request->all(), [
+            'status' => ['required', Rule::in(array_keys(Utility::$userStatus))]
+        ]);
+
+        if ($validator->fails()) {
+            return withError($validator->errors()->first());
+        }
+
+        $user = User::find($userId);
+        if(empty($user)){
+            return withError('User not found', 404);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $user->status = $request->status;
+            $user->save();
+
+            $user->tokens()->delete();
+
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+
+            return withError('User status update failed !');
+        }
+
+        return withSuccess(message: 'User status updated successfully !');
     }
 
     /**
